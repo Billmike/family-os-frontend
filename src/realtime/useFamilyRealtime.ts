@@ -1,9 +1,9 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
-import { addDays, toCalendarEvent, toShoppingItem, toTask } from '../api/adapters'
+import { addDays, toCalendarEvent, toNotification, toShoppingItem, toTask } from '../api/adapters'
 import { getAccessToken, wsBase } from '../api/client'
 import * as eventsApi from '../api/events'
 import type { FamilyWsMessage } from '../api/types'
-import type { CalendarEvent, ShoppingItem, Task } from '../types'
+import type { CalendarEvent, Notification, ShoppingItem, Task } from '../types'
 
 const PING_MS = 30_000
 const BACKOFF_START_MS = 1_000
@@ -17,6 +17,13 @@ function upsertById<T extends { id: string }>(prev: T[], item: T): T[] {
   return next
 }
 
+function prependNotification(prev: Notification[], item: Notification): Notification[] {
+  if (prev.some(n => n.id === item.id)) {
+    return prev.map(n => (n.id === item.id ? item : n))
+  }
+  return [item, ...prev]
+}
+
 export function useFamilyRealtime(opts: {
   familyId: string
   timeZone: string
@@ -25,8 +32,9 @@ export function useFamilyRealtime(opts: {
   setEvents: Dispatch<SetStateAction<CalendarEvent[]>>
   setTasks: Dispatch<SetStateAction<Task[]>>
   setShopping: Dispatch<SetStateAction<ShoppingItem[]>>
+  setNotifs: Dispatch<SetStateAction<Notification[]>>
 }) {
-  const { familyId, timeZone, today, loadAll, setEvents, setTasks, setShopping } = opts
+  const { familyId, timeZone, today, loadAll, setEvents, setTasks, setShopping, setNotifs } = opts
   const loadAllRef = useRef(loadAll)
   const timeZoneRef = useRef(timeZone)
   const todayRef = useRef(today)
@@ -66,6 +74,10 @@ export function useFamilyRealtime(opts: {
     }
 
     function applyMessage(msg: FamilyWsMessage) {
+      if (msg.type === 'notification.created') {
+        setNotifs(prev => prependNotification(prev, toNotification(msg.notification)))
+        return
+      }
       if (msg.type === 'event.deleted') {
         setEvents(prev => prev.filter(e => e.id !== msg.event_id))
         return
@@ -204,5 +216,5 @@ export function useFamilyRealtime(opts: {
         ws = null
       }
     }
-  }, [familyId, setEvents, setShopping, setTasks])
+  }, [familyId, setEvents, setNotifs, setShopping, setTasks])
 }

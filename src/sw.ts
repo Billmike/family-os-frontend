@@ -36,12 +36,18 @@ self.addEventListener('push', event => {
   const title = payload.title || 'FamilyOS'
   const url = payload.url || TYPE_TO_URL[payload.type ?? ''] || '/'
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: payload.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { ...payload, url },
-    }),
+    (async () => {
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of clients) {
+        client.postMessage({ type: 'notification.push', notification: payload })
+      }
+      await self.registration.showNotification(title, {
+        body: payload.body || '',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data: { ...payload, url },
+      })
+    })(),
   )
 })
 

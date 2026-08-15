@@ -239,7 +239,24 @@ function MainApp() {
     setEvents,
     setTasks,
     setShopping,
+    setNotifs,
   })
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    function onSwMessage(event: MessageEvent) {
+      const data = event.data as { type?: string } | null
+      if (data?.type !== 'notification.push') return
+      void notificationsApi
+        .listNotifications()
+        .then(ns => setNotifs(ns.map(toNotification)))
+        .catch(() => {
+          /* keep current list */
+        })
+    }
+    navigator.serviceWorker.addEventListener('message', onSwMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onSwMessage)
+  }, [])
 
   useEffect(() => {
     const on = () => setIsOffline(false)

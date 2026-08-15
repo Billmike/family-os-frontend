@@ -170,6 +170,7 @@ export type FamilyWsMessage =
   | { type: 'task.created'; task: TaskOut }
   | { type: 'task.updated'; task: TaskOut }
   | { type: 'task.deleted'; task_id: string }
+  | { type: 'notification.created'; notification: NotificationOut }
 
 /** @deprecated Use FamilyWsMessage */
 export type ShoppingWsMessage = Extract<FamilyWsMessage, { type: `shopping.${string}` }>

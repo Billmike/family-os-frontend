@@ -52,5 +52,7 @@ export function unsubscribePush(subscriptionId: string) {
 }
 
 export function sendTestPush() {
-  return apiRequest<{ sent: number }>('/api/push/test', { method: 'POST' })
+  return apiRequest<{ sent: number; subscriptions: number; error: string | null }>('/api/push/test', {
+    method: 'POST',
+  })
 }

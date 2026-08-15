@@ -131,9 +131,15 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
     setPushBusy(true)
     setError(null)
     try {
-      const { sent } = await notificationsApi.sendTestPush()
+      const { sent, subscriptions, error } = await notificationsApi.sendTestPush()
       if (sent < 1) {
-        setError('No push subscription on the server for this account. Toggle push off and on again.')
+        if (error) {
+          setError(error)
+        } else if (subscriptions < 1) {
+          setError('No push subscription on the server for this account. Toggle push off and on again.')
+        } else {
+          setError('Push send failed. Check VAPID keys on the server.')
+        }
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to send test push')

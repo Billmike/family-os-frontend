@@ -50,3 +50,7 @@ export function subscribePush(data: {
 export function unsubscribePush(subscriptionId: string) {
   return apiRequest<void>(`/api/push/subscribe/${subscriptionId}`, { method: 'DELETE' })
 }
+
+export function sendTestPush() {
+  return apiRequest<{ sent: number }>('/api/push/test', { method: 'POST' })
+}

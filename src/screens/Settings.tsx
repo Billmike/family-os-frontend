@@ -127,6 +127,21 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
     }
   }
 
+  const sendTestPush = async () => {
+    setPushBusy(true)
+    setError(null)
+    try {
+      const { sent } = await notificationsApi.sendTestPush()
+      if (sent < 1) {
+        setError('No push subscription on the server for this account. Toggle push off and on again.')
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to send test push')
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   const onInstallRowClick = async () => {
     if (pwa.mode === 'installed') return
     if (pwa.mode === 'prompt') {
@@ -180,11 +195,20 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
         )}
         <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           {showPushToggle && (
-            <ToggleRow
-              label="Push on this device"
-              value={pushOnDevice}
-              onChange={() => void togglePush()}
-            />
+            <>
+              <ToggleRow
+                label="Push on this device"
+                value={pushOnDevice}
+                onChange={() => void togglePush()}
+              />
+              {pushOnDevice && (
+                <SettingsRow
+                  label="Send test push"
+                  divider
+                  onClick={() => void sendTestPush()}
+                />
+              )}
+            </>
           )}
           <PrefGroup label="Calendar" divider={showPushToggle}>
             <ToggleRow label="Events and reminders" value={prefs.eventReminders} onChange={() => void toggle('eventReminders')} />

@@ -34,13 +34,23 @@ export function isPushEnabledOnThisDevice(): boolean {
   return Notification.permission === 'granted' && getStoredSubscriptionId() != null
 }
 
-function urlBase64ToUint8Array(base64String: string): BufferSource {
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(base64)
   const output = new Uint8Array(raw.length)
   for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i)
   return output
+}
+
+function applicationServerKeysEqual(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+  if (!a) return false
+  const view = new Uint8Array(a)
+  if (view.byteLength !== b.byteLength) return false
+  for (let i = 0; i < view.byteLength; i++) {
+    if (view[i] !== b[i]) return false
+  }
+  return true
 }
 
 export async function subscribeThisDevice(): Promise<PushSubscribeResult> {
@@ -54,13 +64,21 @@ export async function subscribeThisDevice(): Promise<PushSubscribeResult> {
   if (permission !== 'granted') return 'denied'
 
   const registration = await navigator.serviceWorker.ready
-  const existing = await registration.pushManager.getSubscription()
-  const subscription =
-    existing ??
-    (await registration.pushManager.subscribe({
+  const applicationServerKey = urlBase64ToUint8Array(public_key)
+  let subscription = await registration.pushManager.getSubscription()
+
+  // Reuse only if the subscription was created for the current VAPID public key.
+  if (subscription && !applicationServerKeysEqual(subscription.options.applicationServerKey, applicationServerKey)) {
+    await subscription.unsubscribe()
+    subscription = null
+  }
+
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(public_key),
-    }))
+      applicationServerKey: applicationServerKey as BufferSource,
+    })
+  }
 
   const json = subscription.toJSON()
   const endpoint = json.endpoint

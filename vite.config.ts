@@ -1,9 +1,13 @@
 import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 
 import siteConfiguration from './.figma/make/site.json' with { type: 'json' }
+
+const PWA_THEME_COLOR = '#4338CA'
+const PWA_BACKGROUND_COLOR = '#4338CA'
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -23,6 +27,60 @@ export default defineConfig(({ mode }) => {
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: [
+          'icons/icon.svg',
+          'icons/icon-maskable.svg',
+          'icons/apple-touch-icon.png',
+        ],
+        manifest: {
+          name: 'FamilyOS',
+          short_name: 'FamilyOS',
+          description:
+            siteConfiguration.description ??
+            'Everything your family needs to coordinate today, in one place.',
+          start_url: '/',
+          scope: '/',
+          display: 'standalone',
+          background_color: PWA_BACKGROUND_COLOR,
+          theme_color: PWA_THEME_COLOR,
+          lang: siteConfiguration.language ?? 'en',
+          icons: [
+            {
+              src: 'icons/icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: 'icons/icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: 'icons/icon-maskable-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+            {
+              src: 'icons/icon-maskable-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+        },
+        workbox: {
+          navigateFallback: '/index.html',
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
+        },
+        devOptions: {
+          enabled: false,
+        },
+      }),
     ],
     resolve: {
       alias: {

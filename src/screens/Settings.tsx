@@ -3,7 +3,9 @@ import type { AppHandlers, Member } from '../types'
 import type { UserOut } from '../api/types'
 import * as notificationsApi from '../api/notifications'
 import { ApiError } from '../api/client'
-import { t, r, Toggle, MemberAvatar } from '../ui'
+import { t, r, Toggle, MemberAvatar, BottomSheet } from '../ui'
+import { InstallStepsList } from '../lib/pwa/InstallStepsList'
+import { usePwaInstall } from '../lib/pwa/usePwaInstall'
 
 interface Props {
   navigate: AppHandlers['navigate']
@@ -31,6 +33,9 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showInstallSheet, setShowInstallSheet] = useState(false)
+  const [installBusy, setInstallBusy] = useState(false)
+  const pwa = usePwaInstall()
 
   useEffect(() => {
     void (async () => {
@@ -69,6 +74,27 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
       setSaving(false)
     }
   }
+
+  const onInstallRowClick = async () => {
+    if (pwa.mode === 'installed') return
+    if (pwa.mode === 'prompt') {
+      setInstallBusy(true)
+      try {
+        await pwa.promptInstall()
+      } finally {
+        setInstallBusy(false)
+      }
+      return
+    }
+    setShowInstallSheet(true)
+  }
+
+  const installLabel =
+    pwa.mode === 'installed'
+      ? 'Installed'
+      : installBusy
+        ? 'Installing…'
+        : 'Install FamilyOS'
 
   return (
     <div style={{ minHeight: '100%', paddingBottom: 40 }}>
@@ -121,11 +147,23 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
       <section style={{ margin: '0 16px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>App</p>
         <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-          <SettingsRow label="Install FamilyOS" />
+          <SettingsRow
+            label={installLabel}
+            onClick={pwa.mode === 'installed' ? undefined : () => void onInstallRowClick()}
+          />
           <SettingsRow label="About" divider />
           <SettingsRow label="Sign out" danger divider onClick={onSignOut} />
         </div>
       </section>
+
+      {showInstallSheet && (
+        <BottomSheet title="Install FamilyOS" onClose={() => setShowInstallSheet(false)}>
+          <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, marginBottom: 16 }}>
+            Add FamilyOS to your home screen for a full-screen app experience.
+          </p>
+          <InstallStepsList variant={pwa.isIos ? 'ios' : 'manual'} />
+        </BottomSheet>
+      )}
     </div>
   )
 }
@@ -141,7 +179,7 @@ function SettingsRow({ label, divider, danger, onClick }: { label: string; divid
       color: danger ? 'var(--ds-error)' : t.text,
     }}>
       {label}
-      {!danger && <span style={{ color: t.textTer, fontSize: 18 }}>›</span>}
+      {!danger && onClick && <span style={{ color: t.textTer, fontSize: 18 }}>›</span>}
     </button>
   )
 }

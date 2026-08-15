@@ -1,9 +1,11 @@
 import { useState, type CSSProperties } from 'react'
-import { Check, ChevronLeft, Copy, Bell, Download, Plus, CheckSquare, ShoppingCart, ArrowRight, Home } from 'lucide-react'
+import { Check, ChevronLeft, Copy, Bell, Download, Plus, CheckSquare, ShoppingCart, ArrowRight } from 'lucide-react'
 import { t, r, sh } from '../ui'
 import { ApiError } from '../api/client'
 import * as familiesApi from '../api/families'
 import type { FamilyOut } from '../api/types'
+import { InstallStepsList } from '../lib/pwa/InstallStepsList'
+import { usePwaInstall } from '../lib/pwa/usePwaInstall'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,6 +199,8 @@ export default function Onboarding({ handlers }: Props) {
   const [inviteToken, setInviteToken] = useState('')
   const [joinToken, setJoinToken] = useState('')
   const [copied, setCopied] = useState(false)
+  const pwa = usePwaInstall()
+  const [installBusy, setInstallBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createdFamilyId, setCreatedFamilyId] = useState<string | null>(null)
@@ -348,9 +352,13 @@ export default function Onboarding({ handlers }: Props) {
     <div style={shell}>
       <div style={{ ...card, textAlign: 'center', gap: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 20, background: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: sh.md }}>
-            <Home size={30} color="#fff" />
-          </div>
+          <img
+            src="/icons/icon-192.png"
+            alt=""
+            width={64}
+            height={64}
+            style={{ width: 64, height: 64, borderRadius: 20, boxShadow: sh.md }}
+          />
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 700, color: t.text, letterSpacing: '-0.025em', lineHeight: 1.2, marginBottom: 10 }}>
           Welcome to<br />FamilyOS
@@ -738,39 +746,74 @@ export default function Onboarding({ handlers }: Props) {
   )
 
   // Install PWA
-  if (step === 'install') return (
-    <div style={shell}>
-      <div style={{ ...card, textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 22, background: '#1C1917', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: sh.md }}>
-            <Home size={32} color="#fff" />
+  if (step === 'install') {
+    const installed = pwa.mode === 'installed'
+    const showIosSteps = pwa.mode === 'ios'
+    const showManualSteps = pwa.mode === 'manual'
+    const canNativePrompt = pwa.mode === 'prompt'
+
+    const onInstallClick = async () => {
+      if (!canNativePrompt) return
+      setInstallBusy(true)
+      try {
+        await pwa.promptInstall()
+      } finally {
+        setInstallBusy(false)
+      }
+    }
+
+    return (
+      <div style={shell}>
+        <div style={{ ...card, textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              width={72}
+              height={72}
+              style={{ width: 72, height: 72, borderRadius: 22, boxShadow: sh.md }}
+            />
           </div>
-        </div>
-        <Heading>Add to your home screen</Heading>
-        <Sub>Install FamilyOS for the best experience — it works like a native app, even offline.</Sub>
+          <Heading>{installed ? "You're all set" : 'Add to your home screen'}</Heading>
+          <Sub>
+            {installed
+              ? 'FamilyOS is installed. Open it anytime from your home screen.'
+              : 'Install FamilyOS for the best experience — it works like a native app, even offline.'}
+          </Sub>
 
-        <div style={{ background: t.surfaceMuted, borderRadius: r.lg, border: `1px solid ${t.border}`, padding: '16px', marginBottom: 24, textAlign: 'left' }}>
-          {[
-            { step: '1', text: 'Tap the Share button in your browser' },
-            { step: '2', text: '"Add to Home Screen"' },
-            { step: '3', text: 'Tap "Add" to confirm' },
-          ].map((s, i) => (
-            <div key={s.step} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i > 0 ? `1px solid ${t.border}` : 'none' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 9999, background: t.primary, color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.step}</div>
-              <span style={{ fontSize: 14, color: t.text }}>{s.text}</span>
+          {(showIosSteps || showManualSteps) && (
+            <div style={{ marginBottom: 24 }}>
+              <InstallStepsList variant={showIosSteps ? 'ios' : 'manual'} />
             </div>
-          ))}
-        </div>
+          )}
 
-        <PrimaryBtn onClick={() => handlers.onEnterApp()}>
-          <Download size={18} /> Install FamilyOS
-        </PrimaryBtn>
-        <div style={{ marginTop: 10 }}>
-          <GhostBtn onClick={() => handlers.onEnterApp()}>Take me to the app</GhostBtn>
+          {installed ? (
+            <PrimaryBtn onClick={() => handlers.onEnterApp()}>
+              Continue to FamilyOS
+            </PrimaryBtn>
+          ) : canNativePrompt ? (
+            <>
+              <PrimaryBtn onClick={() => void onInstallClick()} disabled={installBusy}>
+                <Download size={18} /> {installBusy ? 'Installing…' : 'Install FamilyOS'}
+              </PrimaryBtn>
+              <div style={{ marginTop: 10 }}>
+                <GhostBtn onClick={() => handlers.onEnterApp()}>Take me to the app</GhostBtn>
+              </div>
+            </>
+          ) : (
+            <>
+              <PrimaryBtn onClick={() => handlers.onEnterApp()}>
+                Got it — take me to the app
+              </PrimaryBtn>
+              <div style={{ marginTop: 10 }}>
+                <GhostBtn onClick={() => handlers.onEnterApp()}>Skip for now</GhostBtn>
+              </div>
+            </>
+          )}
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return null
 }

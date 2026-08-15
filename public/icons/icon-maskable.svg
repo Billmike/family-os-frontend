@@ -1,0 +1,29 @@
+<!--
+  Maskable icon for Android adaptive icons.
+  Safe zone = centre 80% (409×409 px).
+  Background extends full-bleed (no rounded corners).
+  House is scaled down slightly so it stays comfortably inside the safe zone.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" shape-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4338CA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed background — no border radius, fills every mask shape -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- House — fits well within the 80% safe zone (51–461 px range) -->
+  <!-- Reduced version: peak (256,148) → right eave (390,268) → base (390,378) → (122,378) → left eave (122,268) -->
+  <path
+    d="M256,148 L390,268 L390,378 L122,378 L122,268 Z"
+    fill="white" opacity="0.96"/>
+
+  <!-- Door -->
+  <rect x="214" y="284" width="84" height="94" rx="12" fill="url(#bg)"/>
+
+  <!-- Chimney -->
+  <rect x="310" y="196" width="34" height="66" rx="9" fill="white" opacity="0.96"/>
+</svg>

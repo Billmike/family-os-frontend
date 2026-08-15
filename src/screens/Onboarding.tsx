@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Check, ChevronLeft, Copy, Bell, Download, Plus, CheckSquare, ShoppingCart, ArrowRight } from 'lucide-react'
 import { t, r, sh } from '../ui'
 import { ApiError } from '../api/client'
@@ -6,6 +6,11 @@ import * as familiesApi from '../api/families'
 import type { FamilyOut } from '../api/types'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
 import { usePwaInstall } from '../lib/pwa/usePwaInstall'
+import {
+  clearPendingInviteToken,
+  getPendingInviteToken,
+  normalizeInviteTokenInput,
+} from '../invite/pendingInvite'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -187,7 +192,12 @@ function errMessage(e: unknown): string {
 // ─── Main Onboarding component ────────────────────────────────────────────────
 
 export default function Onboarding({ handlers }: Props) {
-  const [step, setStep] = useState<Step>(handlers.needsFamily ? 'family' : 'welcome')
+  const pendingAtStart = getPendingInviteToken()
+  const [step, setStep] = useState<Step>(() => {
+    if (pendingAtStart && handlers.needsFamily) return 'join'
+    if (pendingAtStart) return 'welcome'
+    return handlers.needsFamily ? 'family' : 'welcome'
+  })
   const [familyName, setFamilyName] = useState('')
   const [userName, setUserName] = useState(handlers.userName ?? '')
   const [email, setEmail] = useState('')
@@ -197,18 +207,69 @@ export default function Onboarding({ handlers }: Props) {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLink, setInviteLink] = useState('')
   const [inviteToken, setInviteToken] = useState('')
-  const [joinToken, setJoinToken] = useState('')
+  const [joinToken, setJoinToken] = useState(pendingAtStart ?? '')
   const [copied, setCopied] = useState(false)
   const pwa = usePwaInstall()
   const [installBusy, setInstallBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createdFamilyId, setCreatedFamilyId] = useState<string | null>(null)
+  const [hasPendingInvite, setHasPendingInvite] = useState(Boolean(pendingAtStart))
+  const acceptLock = useRef(false)
 
   const go = (s: Step) => {
     setError(null)
     setStep(s)
   }
+
+  const acceptInviteToken = async (raw: string) => {
+    const token = normalizeInviteTokenInput(raw)
+    if (!token) {
+      setError('Paste an invite token or link to join')
+      return false
+    }
+    if (acceptLock.current) return false
+    acceptLock.current = true
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await familiesApi.acceptInvitation(token)
+      clearPendingInviteToken()
+      setHasPendingInvite(false)
+      await handlers.onJoinedFamily(result.family.id)
+      handlers.onEnterApp()
+      return true
+    } catch (e) {
+      acceptLock.current = false
+      setError(errMessage(e))
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // After login lands on needs_family, continue into family setup or pending invite
+  useEffect(() => {
+    if (!handlers.needsFamily) return
+    if (step !== 'login' && step !== 'welcome' && step !== 'register') return
+    const pending = getPendingInviteToken()
+    if (pending) {
+      setHasPendingInvite(true)
+      setJoinToken(pending)
+      go('join')
+      return
+    }
+    if (step === 'login') go('family')
+  }, [handlers.needsFamily]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-accept when we have a pending deep-link token on the join step
+  useEffect(() => {
+    if (step !== 'join') return
+    if (!handlers.needsFamily) return
+    const pending = getPendingInviteToken()
+    if (!pending || acceptLock.current) return
+    void acceptInviteToken(pending)
+  }, [step, handlers.needsFamily]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addChild = () => {
     if (!childName.trim()) return
@@ -228,7 +289,14 @@ export default function Onboarding({ handlers }: Props) {
     setError(null)
     try {
       await handlers.login(email.trim(), password)
-      // Session provider updates status; parent will remount or show app / family setup
+      const pending = getPendingInviteToken()
+      if (pending) {
+        setHasPendingInvite(true)
+        setJoinToken(pending)
+        // needs_family effect / join auto-accept will finish; if already ready, AppRoot handles it
+        go('join')
+        return
+      }
       handlers.onEnterApp()
     } catch (e) {
       setError(errMessage(e))
@@ -246,6 +314,14 @@ export default function Onboarding({ handlers }: Props) {
     setError(null)
     try {
       await handlers.register(email.trim(), password, userName.trim())
+      const pending = getPendingInviteToken()
+      if (pending) {
+        setHasPendingInvite(true)
+        setJoinToken(pending)
+        const ok = await acceptInviteToken(pending)
+        if (!ok) go('join')
+        return
+      }
       go('family')
     } catch (e) {
       setError(errMessage(e))
@@ -329,22 +405,7 @@ export default function Onboarding({ handlers }: Props) {
   }
 
   const doJoin = async () => {
-    const token = joinToken.trim() || inviteToken.trim()
-    if (!token) {
-      setError('Paste an invite token to join')
-      return
-    }
-    setBusy(true)
-    setError(null)
-    try {
-      const result = await familiesApi.acceptInvitation(token)
-      await handlers.onJoinedFamily(result.family.id)
-      handlers.onEnterApp()
-    } catch (e) {
-      setError(errMessage(e))
-    } finally {
-      setBusy(false)
-    }
+    await acceptInviteToken(joinToken.trim() || inviteToken.trim() || getPendingInviteToken() || '')
   }
 
   // Welcome
@@ -361,13 +422,15 @@ export default function Onboarding({ handlers }: Props) {
           />
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 700, color: t.text, letterSpacing: '-0.025em', lineHeight: 1.2, marginBottom: 10 }}>
-          Welcome to<br />FamilyOS
+          {hasPendingInvite ? <>You&apos;re invited</> : <>Welcome to<br />FamilyOS</>}
         </h1>
         <p style={{ fontSize: 15, color: t.textSec, lineHeight: 1.65, marginBottom: 32, maxWidth: 320, margin: '0 auto 32px' }}>
-          The calm, organised way to manage your household together.
+          {hasPendingInvite
+            ? 'Create an account or sign in to join the family. Your invite is ready.'
+            : 'The calm, organised way to manage your household together.'}
         </p>
         <PrimaryBtn onClick={() => go('register')}>
-          Get started <ArrowRight size={18} />
+          {hasPendingInvite ? 'Join with a new account' : 'Get started'} <ArrowRight size={18} />
         </PrimaryBtn>
         <button
           onClick={() => go('login')}
@@ -375,6 +438,14 @@ export default function Onboarding({ handlers }: Props) {
         >
           I already have an account
         </button>
+        {!hasPendingInvite && (
+          <button
+            onClick={() => go('join')}
+            style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: t.textTer, fontFamily: 'var(--ds-font)' }}
+          >
+            I have an invite link
+          </button>
+        )}
       </div>
     </div>
   )
@@ -393,7 +464,11 @@ export default function Onboarding({ handlers }: Props) {
         <BackBtn onClick={() => go('welcome')} />
         <Eyebrow>Sign in</Eyebrow>
         <Heading>Welcome back</Heading>
-        <Sub>Sign in to continue to your family.</Sub>
+        <Sub>
+          {hasPendingInvite
+            ? 'Sign in to accept your family invitation.'
+            : 'Sign in to continue to your family.'}
+        </Sub>
         <ErrorText message={error} />
         <div style={{ marginBottom: 12 }}>
           <label htmlFor="login-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Email</label>
@@ -423,9 +498,11 @@ export default function Onboarding({ handlers }: Props) {
         <PrimaryBtn type="submit" disabled={busy || !email.includes('@') || password.length < 8}>
           {busy ? 'Signing in…' : 'Sign in'}
         </PrimaryBtn>
-        <p style={{ fontSize: 12, color: t.textTer, marginTop: 14, textAlign: 'center', lineHeight: 1.5 }}>
-          Have an invite? Sign in first, then join from the family setup screen.
-        </p>
+        {!hasPendingInvite && (
+          <p style={{ fontSize: 12, color: t.textTer, marginTop: 14, textAlign: 'center', lineHeight: 1.5 }}>
+            Have an invite? Sign in first, then join from the family setup screen.
+          </p>
+        )}
       </form>
     </div>
   )
@@ -444,7 +521,11 @@ export default function Onboarding({ handlers }: Props) {
         <BackBtn onClick={() => go('welcome')} />
         <Eyebrow>Create account</Eyebrow>
         <Heading>Create your account</Heading>
-        <Sub>{"You'll use this to sign in and manage your family."}</Sub>
+        <Sub>
+          {hasPendingInvite
+            ? 'Create an account to accept your family invitation.'
+            : "You'll use this to sign in and manage your family."}
+        </Sub>
         <ErrorText message={error} />
         <div style={{ marginBottom: 12 }}>
           <label htmlFor="register-name" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Your name</label>
@@ -499,11 +580,20 @@ export default function Onboarding({ handlers }: Props) {
       <div style={{ ...card }}>
         <BackBtn onClick={() => go(getAccessHint() ? 'login' : 'welcome')} />
         <Eyebrow>Join family</Eyebrow>
-        <Heading>Have an invite?</Heading>
-        <Sub>Paste the invite token from your invitation link to join a family.</Sub>
+        <Heading>{busy && hasPendingInvite ? 'Joining…' : 'Have an invite?'}</Heading>
+        <Sub>
+          {hasPendingInvite
+            ? 'Accepting your invitation. If this stalls, paste the invite link below and try again.'
+            : 'Paste the invite link or token to join a family.'}
+        </Sub>
         <ErrorText message={error} />
         <div style={{ marginBottom: 20 }}>
-          <Input placeholder="Invite token" value={joinToken} onChange={setJoinToken} autoFocus />
+          <Input
+            placeholder="Invite link or token"
+            value={joinToken}
+            onChange={setJoinToken}
+            autoFocus
+          />
         </div>
         <PrimaryBtn onClick={() => void doJoin()} disabled={busy || !joinToken.trim()}>
           {busy ? 'Joining…' : 'Join family'}
@@ -619,7 +709,7 @@ export default function Onboarding({ handlers }: Props) {
           <ProgressDots current="invite" />
           <Eyebrow>Step 3 of 3</Eyebrow>
           <Heading>Invite your partner</Heading>
-          <Sub>Share a link so they can join your family and start collaborating together.</Sub>
+          <Sub>Copy and share this link. Email delivery is not enabled yet — the link is the invite.</Sub>
           <ErrorText message={error} />
 
           <div style={{ marginBottom: 16 }}>
@@ -644,24 +734,25 @@ export default function Onboarding({ handlers }: Props) {
               </button>
             </div>
             {copied && <p style={{ fontSize: 12, color: t.success, marginTop: 6 }}>Link copied to clipboard</p>}
-            {inviteToken && (
-              <p style={{ fontSize: 11, color: t.textTer, marginTop: 8, wordBreak: 'break-all' }}>
-                Token: {inviteToken}
-              </p>
-            )}
           </div>
 
           <div style={{ position: 'relative', textAlign: 'center', margin: '8px 0 16px' }}>
             <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: t.border }} />
-            <span style={{ position: 'relative', background: t.surface, padding: '0 12px', fontSize: 12, color: t.textTer }}>or send by email</span>
+            <span style={{ position: 'relative', background: t.surface, padding: '0 12px', fontSize: 12, color: t.textTer }}>optional</span>
           </div>
 
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>
+              Email (saved for later — not sent yet)
+            </label>
             <Input placeholder="partner@email.com" value={inviteEmail} onChange={setInviteEmail} type="email" />
           </div>
+          <p style={{ fontSize: 12, color: t.textTer, marginBottom: 24, lineHeight: 1.5 }}>
+            Share the invite link above. We&apos;ll use the email when delivery is turned on.
+          </p>
 
           <PrimaryBtn onClick={() => void doInviteAndContinue()} disabled={busy}>
-            {busy ? 'Sending…' : inviteEmail.includes('@') ? 'Send & continue' : 'Continue'} <ArrowRight size={18} />
+            {busy ? 'Saving…' : 'Continue'} <ArrowRight size={18} />
           </PrimaryBtn>
           <div style={{ marginTop: 10 }}>
             <GhostBtn onClick={() => go('highlights')}>Skip for now</GhostBtn>

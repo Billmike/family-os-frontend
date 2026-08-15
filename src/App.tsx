@@ -32,6 +32,11 @@ import * as shoppingApi from './api/shopping'
 import * as notificationsApi from './api/notifications'
 import * as familiesApi from './api/families'
 import type { ShoppingWsMessage } from './api/types'
+import {
+  capturePendingInviteFromUrl,
+  clearPendingInviteToken,
+  getPendingInviteToken,
+} from './invite/pendingInvite'
 
 const BOTTOM_NAV = [
   { screen: 'dashboard' as Screen, icon: Home, label: 'Home' },
@@ -61,11 +66,37 @@ export default function App() {
 function AppRoot() {
   const session = useSession()
   const [setupPending, setSetupPending] = useState(false)
+  const [inviteBusy, setInviteBusy] = useState(false)
+  const inviteAcceptRef = useRef(false)
 
-  if (session.status === 'loading') {
+  // Synchronous so onboarding initial state sees the token on first paint
+  capturePendingInviteFromUrl()
+
+  // Signed-in user already in a family who opens /invite/:token
+  useEffect(() => {
+    if (session.status !== 'ready') return
+    const token = getPendingInviteToken()
+    if (!token || inviteAcceptRef.current) return
+    inviteAcceptRef.current = true
+    setInviteBusy(true)
+    void (async () => {
+      try {
+        const result = await familiesApi.acceptInvitation(token)
+        clearPendingInviteToken()
+        await session.selectFamily(result.family.id)
+      } catch {
+        clearPendingInviteToken()
+        inviteAcceptRef.current = false
+      } finally {
+        setInviteBusy(false)
+      }
+    })()
+  }, [session.status, session.selectFamily])
+
+  if (session.status === 'loading' || inviteBusy) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bg, color: t.textSec, fontFamily: 'var(--ds-font)' }}>
-        Loading…
+        {inviteBusy ? 'Joining family…' : 'Loading…'}
       </div>
     )
   }
@@ -388,7 +419,7 @@ function MainApp() {
         email: email || undefined,
         role: 'Parent',
       })
-      showToast(email ? 'Invitation sent' : 'Invite link ready')
+      showToast('Invite link ready')
       return { invite_url: inv.invite_url, invite_token: inv.invite_token }
     } catch (e) {
       handleError(e)
@@ -839,6 +870,7 @@ function InviteMemberSheet({ familyName, onClose, onInvite }: {
   const [email, setEmail] = useState('')
   const [link, setLink] = useState('')
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -853,7 +885,7 @@ function InviteMemberSheet({ familyName, onClose, onInvite }: {
   return (
     <BottomSheet title="Invite Family Member" onClose={onClose}>
       <p style={{ fontSize: 14, color: t.textSec, marginBottom: 20, lineHeight: 1.6 }}>
-        Invite someone to join {familyName}. They will receive a link to create their account.
+        Share this link so someone can join {familyName}. They will open it, create an account if needed, and join your family.
       </p>
       <FormField label="Invite link">
         <div style={{ display: 'flex', gap: 8 }}>
@@ -863,26 +895,39 @@ function InviteMemberSheet({ familyName, onClose, onInvite }: {
             </span>
           </div>
           <button
-            onClick={() => { if (link) navigator.clipboard?.writeText(link) }}
+            onClick={() => {
+              if (!link) return
+              navigator.clipboard?.writeText(link)
+              setCopied(true)
+              window.setTimeout(() => setCopied(false), 1500)
+            }}
             style={{ padding: '0 16px', height: 44, borderRadius: 'var(--ds-radius-md)', border: `1px solid ${t.borderStrong}`, background: t.surface, fontSize: 13, fontWeight: 500, color: t.text, cursor: 'pointer', fontFamily: 'var(--ds-font)', flexShrink: 0 }}
           >
-            Copy
+            {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
       </FormField>
       <div style={{ position: 'relative', textAlign: 'center', margin: '16px 0' }}>
         <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: t.border }} />
-        <span style={{ position: 'relative', background: t.surface, padding: '0 12px', fontSize: 12, color: t.textTer }}>or invite by email</span>
+        <span style={{ position: 'relative', background: t.surface, padding: '0 12px', fontSize: 12, color: t.textTer }}>optional</span>
       </div>
-      <FormField label="Email address">
+      <FormField label="Email (optional — delivery not enabled yet)">
         <Input placeholder="name@email.com" value={email} onChange={setEmail} type="email" />
       </FormField>
+      <p style={{ fontSize: 12, color: t.textTer, marginTop: -8, marginBottom: 16, lineHeight: 1.5 }}>
+        Saving an email stores it for later. Share the invite link above for now.
+      </p>
       <PrimaryButton
-        onClick={() => { void onInvite(email) }}
+        onClick={() => {
+          void (async () => {
+            const result = await onInvite(email)
+            if (result) setLink(result.invite_url)
+          })()
+        }}
         fullWidth
         disabled={!email.includes('@') || busy}
       >
-        Send Invitation
+        Create invite with email
       </PrimaryButton>
     </BottomSheet>
   )

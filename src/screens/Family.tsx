@@ -115,7 +115,7 @@ export default function FamilyScreen({ members, familyName, currentMemberId, onR
           </div>
           <div style={{ textAlign: 'left' }}>
             <p style={{ fontSize: 15, fontWeight: 500, color: t.primary, marginBottom: 2 }}>Invite family member</p>
-            <p style={{ fontSize: 12, color: t.textTer }}>Share a link or send an email invitation</p>
+            <p style={{ fontSize: 12, color: t.textTer }}>Share an invite link</p>
           </div>
         </button>
       </div>

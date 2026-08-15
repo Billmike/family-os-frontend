@@ -75,14 +75,20 @@ const inputStyle: CSSProperties = {
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 
-function Input({ placeholder, value, onChange, autoFocus, type = 'text' }: {
+function Input({ placeholder, value, onChange, autoFocus, type = 'text', name, autoComplete, id }: {
   placeholder?: string; value: string; onChange: (v: string) => void;
-  autoFocus?: boolean; type?: string
+  autoFocus?: boolean; type?: string; name?: string; autoComplete?: string; id?: string
 }) {
   return (
     <input
-      type={type} style={inputStyle} placeholder={placeholder}
-      value={value} onChange={e => onChange(e.target.value)}
+      id={id}
+      name={name}
+      type={type}
+      autoComplete={autoComplete}
+      style={inputStyle}
+      placeholder={placeholder}
+      value={value}
+      onChange={e => onChange(e.target.value)}
       autoFocus={autoFocus}
       onFocus={e => { e.target.style.borderColor = 'var(--ds-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--ds-focus)' }}
       onBlur={e => { e.target.style.borderColor = 'var(--ds-border-strong)'; e.target.style.boxShadow = 'none' }}
@@ -90,9 +96,11 @@ function Input({ placeholder, value, onChange, autoFocus, type = 'text' }: {
   )
 }
 
-function PrimaryBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+function PrimaryBtn({ onClick, disabled, children, type = 'button' }: {
+  onClick?: () => void; disabled?: boolean; children: React.ReactNode; type?: 'button' | 'submit'
+}) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
+    <button type={type} onClick={onClick} disabled={disabled} style={{
       width: '100%', padding: '14px', borderRadius: r.md, border: 'none',
       background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
       color: disabled ? 'var(--ds-disabled-text)' : '#fff',
@@ -107,7 +115,7 @@ function PrimaryBtn({ onClick, disabled, children }: { onClick: () => void; disa
 
 function GhostBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} style={{
+    <button type="button" onClick={onClick} style={{
       width: '100%', padding: '12px', borderRadius: r.md,
       border: `1px solid ${t.border}`, background: 'transparent',
       fontSize: 15, fontWeight: 400, cursor: 'pointer', color: t.textSec,
@@ -120,7 +128,7 @@ function GhostBtn({ onClick, children }: { onClick: () => void; children: React.
 
 function BackBtn({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{
+    <button type="button" onClick={onClick} style={{
       position: 'absolute', top: 20, left: 20,
       background: 'none', border: 'none', cursor: 'pointer',
       display: 'flex', alignItems: 'center', gap: 4,
@@ -363,58 +371,114 @@ export default function Onboarding({ handlers }: Props) {
   // Login
   if (step === 'login') return (
     <div style={shell}>
-      <div style={{ ...card, position: 'relative' }}>
+      <form
+        style={{ ...card, position: 'relative' }}
+        onSubmit={e => {
+          e.preventDefault()
+          if (busy || !email.includes('@') || password.length < 8) return
+          void doLogin()
+        }}
+      >
         <BackBtn onClick={() => go('welcome')} />
         <Eyebrow>Sign in</Eyebrow>
         <Heading>Welcome back</Heading>
         <Sub>Sign in to continue to your family.</Sub>
         <ErrorText message={error} />
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Email</label>
-          <Input type="email" placeholder="you@email.com" value={email} onChange={setEmail} autoFocus />
+          <label htmlFor="login-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Email</label>
+          <Input
+            id="login-email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            placeholder="you@email.com"
+            value={email}
+            onChange={setEmail}
+            autoFocus
+          />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Password</label>
-          <Input type="password" placeholder="••••••••" value={password} onChange={setPassword} />
+          <label htmlFor="login-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Password</label>
+          <Input
+            id="login-password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={setPassword}
+          />
         </div>
-        <PrimaryBtn onClick={() => void doLogin()} disabled={busy || !email.includes('@') || password.length < 8}>
+        <PrimaryBtn type="submit" disabled={busy || !email.includes('@') || password.length < 8}>
           {busy ? 'Signing in…' : 'Sign in'}
         </PrimaryBtn>
         <p style={{ fontSize: 12, color: t.textTer, marginTop: 14, textAlign: 'center', lineHeight: 1.5 }}>
           Have an invite? Sign in first, then join from the family setup screen.
         </p>
-      </div>
+      </form>
     </div>
   )
 
   // Register
   if (step === 'register') return (
     <div style={shell}>
-      <div style={{ ...card, position: 'relative' }}>
+      <form
+        style={{ ...card, position: 'relative' }}
+        onSubmit={e => {
+          e.preventDefault()
+          if (busy || !userName.trim() || !email.includes('@') || password.length < 8) return
+          void doRegister()
+        }}
+      >
         <BackBtn onClick={() => go('welcome')} />
         <Eyebrow>Create account</Eyebrow>
         <Heading>Create your account</Heading>
         <Sub>{"You'll use this to sign in and manage your family."}</Sub>
         <ErrorText message={error} />
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Your name</label>
-          <Input placeholder="e.g. Kayode" value={userName} onChange={setUserName} autoFocus />
+          <label htmlFor="register-name" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Your name</label>
+          <Input
+            id="register-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            placeholder="e.g. Kayode"
+            value={userName}
+            onChange={setUserName}
+            autoFocus
+          />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Email</label>
-          <Input type="email" placeholder="you@email.com" value={email} onChange={setEmail} />
+          <label htmlFor="register-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Email</label>
+          <Input
+            id="register-email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            placeholder="you@email.com"
+            value={email}
+            onChange={setEmail}
+          />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Password</label>
-          <Input type="password" placeholder="At least 8 characters" value={password} onChange={setPassword} />
+          <label htmlFor="register-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Password</label>
+          <Input
+            id="register-password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={setPassword}
+          />
         </div>
         <PrimaryBtn
-          onClick={() => void doRegister()}
+          type="submit"
           disabled={busy || !userName.trim() || !email.includes('@') || password.length < 8}
         >
           {busy ? 'Creating…' : 'Continue'} <ArrowRight size={18} />
         </PrimaryBtn>
-      </div>
+      </form>
     </div>
   )
 

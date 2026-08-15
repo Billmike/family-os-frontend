@@ -12,7 +12,7 @@ import FamilyScreen from './screens/Family'
 import SettingsScreen from './screens/Settings'
 import Onboarding from './screens/Onboarding'
 import { SessionProvider, useSession } from './auth/session'
-import { ApiError, getAccessToken, wsBase } from './api/client'
+import { ApiError } from './api/client'
 import {
   addDays,
   dueDateToIso,
@@ -31,7 +31,7 @@ import * as tasksApi from './api/tasks'
 import * as shoppingApi from './api/shopping'
 import * as notificationsApi from './api/notifications'
 import * as familiesApi from './api/families'
-import type { ShoppingWsMessage } from './api/types'
+import { useFamilyRealtime } from './realtime/useFamilyRealtime'
 import {
   capturePendingInviteFromUrl,
   clearPendingInviteToken,
@@ -218,6 +218,16 @@ function MainApp() {
     void loadAll()
   }, [loadAll])
 
+  useFamilyRealtime({
+    familyId: family.id,
+    timeZone,
+    today,
+    loadAll,
+    setEvents,
+    setTasks,
+    setShopping,
+  })
+
   useEffect(() => {
     const on = () => setIsOffline(false)
     const off = () => setIsOffline(true)
@@ -228,41 +238,6 @@ function MainApp() {
       window.removeEventListener('offline', off)
     }
   }, [])
-
-  useEffect(() => {
-    const token = getAccessToken()
-    if (!token || !family.id) return
-    const url = `${wsBase()}/api/ws/families/${family.id}?token=${encodeURIComponent(token)}`
-    const ws = new WebSocket(url)
-    ws.onmessage = ev => {
-      try {
-        const msg = JSON.parse(ev.data as string) as ShoppingWsMessage
-        if ('deleted' in msg && msg.deleted) {
-          setShopping(prev => prev.filter(i => i.id !== msg.item_id))
-          return
-        }
-        if ('item' in msg && msg.item) {
-          const ui = toShoppingItem(msg.item)
-          setShopping(prev => {
-            const idx = prev.findIndex(i => i.id === ui.id)
-            if (idx === -1) return [...prev, ui]
-            const next = [...prev]
-            next[idx] = ui
-            return next
-          })
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    const ping = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) ws.send('ping')
-    }, 30000)
-    return () => {
-      clearInterval(ping)
-      ws.close()
-    }
-  }, [family.id])
 
   async function completeTask(id: string) {
     const task = tasks.find(tk => tk.id === id)

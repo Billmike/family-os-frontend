@@ -147,8 +147,17 @@ export interface ApiErrorBody {
   code?: string
 }
 
-export type ShoppingWsMessage =
+export type FamilyWsMessage =
   | { type: 'shopping.item.created'; item: ShoppingItemOut }
   | { type: 'shopping.item.updated'; item: ShoppingItemOut }
   | { type: 'shopping.item.completed'; item: ShoppingItemOut }
   | { type: 'shopping.item.updated'; item_id: string; deleted: true }
+  | { type: 'event.created'; event: EventOut }
+  | { type: 'event.updated'; event: EventOut }
+  | { type: 'event.deleted'; event_id: string }
+  | { type: 'task.created'; task: TaskOut }
+  | { type: 'task.updated'; task: TaskOut }
+  | { type: 'task.deleted'; task_id: string }
+
+/** @deprecated Use FamilyWsMessage */
+export type ShoppingWsMessage = Extract<FamilyWsMessage, { type: `shopping.${string}` }>

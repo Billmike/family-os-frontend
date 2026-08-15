@@ -1,0 +1,77 @@
+export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'notifications' | 'family' | 'settings'
+
+export interface Member {
+  id: string
+  name: string
+  role: 'admin' | 'parent' | 'child'
+  initials: string
+  color: string
+  bg: string
+  /** Linked auth user id when present */
+  userId?: string | null
+}
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  date: string // YYYY-MM-DD
+  startTime: string // HH:MM
+  endTime?: string
+  memberId: string
+  location?: string
+  reminder?: string
+  repeat?: string
+}
+
+export interface Task {
+  id: string
+  title: string
+  assigneeId: string
+  dueDate: 'today' | 'tomorrow' | string
+  priority: 'high' | 'medium' | 'low'
+  recurring: boolean
+  category: string
+  completed: boolean
+}
+
+export interface ShoppingItem {
+  id: string
+  name: string
+  category: string
+  quantity: number
+  unit?: string
+  completed: boolean
+  addedById: string
+}
+
+export interface Notification {
+  id: string
+  type: 'calendar' | 'task' | 'shopping' | 'family'
+  title: string
+  body: string
+  timestamp: string
+  read: boolean
+  targetScreen?: Screen
+}
+
+export type BottomSheetType =
+  | { type: 'addEvent' }
+  | { type: 'addTask' }
+  | { type: 'addShoppingItem' }
+  | { type: 'eventDetail'; eventId: string }
+  | { type: 'inviteMember' }
+  | { type: 'taskDetail'; taskId: string }
+
+export interface AppHandlers {
+  navigate: (screen: Screen) => void
+  openSheet: (sheet: BottomSheetType) => void
+  completeTask: (id: string) => void
+  completeShoppingItem: (id: string) => void
+  markNotificationRead: (id: string) => void
+  markAllNotificationsRead: () => void
+  addTask: (task: Omit<Task, 'id' | 'completed'>) => void
+  addEvent: (event: Omit<CalendarEvent, 'id'>) => void
+  addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => void
+  deleteTask: (id: string) => void
+  deleteEvent: (id: string) => void
+}

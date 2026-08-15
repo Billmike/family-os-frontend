@@ -21,6 +21,7 @@ import { toUiMember } from '../api/adapters'
 import type { FamilyOut, MemberOut, TokenPair, UserOut } from '../api/types'
 import type { Member } from '../types'
 import { setMembersCache } from '../data'
+import { resubscribeIfGranted, unsubscribeThisDevice } from '../lib/push/webPush'
 
 export type SessionStatus = 'loading' | 'unauthenticated' | 'needs_family' | 'ready'
 
@@ -100,6 +101,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const data = await loadSessionState()
       applyLoaded(data)
+      void resubscribeIfGranted()
     } catch {
       clearTokens()
       setUser(null)
@@ -112,6 +114,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setAuthFailureHandler(() => {
+      void unsubscribeThisDevice()
       clearTokens()
       setStoredFamilyId(null)
       setUser(null)
@@ -129,6 +132,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       storeTokens(tokens)
       const data = await loadSessionState()
       applyLoaded(data)
+      void resubscribeIfGranted()
     },
     [applyLoaded],
   )
@@ -152,13 +156,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(() => {
-    clearTokens()
-    setStoredFamilyId(null)
-    setUser(null)
-    setFamily(null)
-    setFamilies([])
-    setRawMembers([])
-    setStatus('unauthenticated')
+    void unsubscribeThisDevice().finally(() => {
+      clearTokens()
+      setStoredFamilyId(null)
+      setUser(null)
+      setFamily(null)
+      setFamilies([])
+      setRawMembers([])
+      setStatus('unauthenticated')
+    })
   }, [])
 
   const selectFamily = useCallback(async (familyId: string) => {

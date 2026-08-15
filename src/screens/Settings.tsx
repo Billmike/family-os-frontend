@@ -6,6 +6,13 @@ import { ApiError } from '../api/client'
 import { t, r, Toggle, MemberAvatar, BottomSheet } from '../ui'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
 import { usePwaInstall } from '../lib/pwa/usePwaInstall'
+import {
+  iosInstallRequired,
+  isPushEnabledOnThisDevice,
+  isPushSupported,
+  subscribeThisDevice,
+  unsubscribeThisDevice,
+} from '../lib/push/webPush'
 
 interface Props {
   navigate: AppHandlers['navigate']
@@ -31,13 +38,18 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
     shoppingUpdates: true,
     familyInvites: true,
   })
+  const [pushOnDevice, setPushOnDevice] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [vapidAvailable, setVapidAvailable] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showInstallSheet, setShowInstallSheet] = useState(false)
   const [installBusy, setInstallBusy] = useState(false)
   const pwa = usePwaInstall()
+  const needsIosInstall = iosInstallRequired()
 
   useEffect(() => {
+    setPushOnDevice(isPushEnabledOnThisDevice())
     void (async () => {
       try {
         const p = await notificationsApi.getNotificationPreferences()
@@ -50,6 +62,12 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
         })
       } catch {
         /* keep defaults */
+      }
+      try {
+        const { public_key } = await notificationsApi.getVapidPublicKey()
+        setVapidAvailable(Boolean(public_key))
+      } catch {
+        setVapidAvailable(false)
       }
     })()
   }, [])
@@ -75,6 +93,40 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
     }
   }
 
+  const togglePush = async () => {
+    if (needsIosInstall) {
+      setShowInstallSheet(true)
+      return
+    }
+    if (!isPushSupported() || !vapidAvailable) {
+      setError('Push notifications are not available on this device')
+      return
+    }
+    setPushBusy(true)
+    setError(null)
+    try {
+      if (pushOnDevice) {
+        await unsubscribeThisDevice()
+        setPushOnDevice(false)
+      } else {
+        const result = await subscribeThisDevice()
+        if (result === 'subscribed') {
+          setPushOnDevice(true)
+        } else if (result === 'denied') {
+          setError('Notification permission was denied. Enable it in browser settings.')
+        } else if (result === 'ios_install_required') {
+          setShowInstallSheet(true)
+        } else {
+          setError('Could not enable push on this device')
+        }
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to update push settings')
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   const onInstallRowClick = async () => {
     if (pwa.mode === 'installed') return
     if (pwa.mode === 'prompt') {
@@ -96,6 +148,8 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
         ? 'Installing…'
         : 'Install FamilyOS'
 
+  const showPushToggle = isPushSupported() && vapidAvailable
+
   return (
     <div style={{ minHeight: '100%', paddingBottom: 40 }}>
       <section style={{ margin: '16px 16px 20px' }}>
@@ -116,22 +170,34 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
 
       <section style={{ margin: '0 16px 20px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-          Notifications{saving ? '…' : ''}
+          Notifications{saving || pushBusy ? '…' : ''}
         </p>
         {error && <p style={{ fontSize: 12, color: 'var(--ds-error)', marginBottom: 8 }}>{error}</p>}
+        {needsIosInstall && (
+          <p style={{ fontSize: 12, color: t.textSec, marginBottom: 8, lineHeight: 1.45 }}>
+            On iPhone and iPad, install FamilyOS to your Home Screen to enable push notifications.
+          </p>
+        )}
         <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-          <PrefGroup label="Calendar">
-            <ToggleRow label="Event reminders" value={prefs.eventReminders} onChange={() => void toggle('eventReminders')} />
+          {showPushToggle && (
+            <ToggleRow
+              label="Push on this device"
+              value={pushOnDevice}
+              onChange={() => void togglePush()}
+            />
+          )}
+          <PrefGroup label="Calendar" divider={showPushToggle}>
+            <ToggleRow label="Events and reminders" value={prefs.eventReminders} onChange={() => void toggle('eventReminders')} />
           </PrefGroup>
           <PrefGroup label="Tasks" divider>
             <ToggleRow label="Task assigned to me" value={prefs.taskAssigned} onChange={() => void toggle('taskAssigned')} />
             <ToggleRow label="Task due soon" value={prefs.taskDueSoon} onChange={() => void toggle('taskDueSoon')} divider />
           </PrefGroup>
           <PrefGroup label="Shopping" divider>
-            <ToggleRow label="Someone adds an item" value={prefs.shoppingUpdates} onChange={() => void toggle('shoppingUpdates')} />
+            <ToggleRow label="Items added or bought" value={prefs.shoppingUpdates} onChange={() => void toggle('shoppingUpdates')} />
           </PrefGroup>
           <PrefGroup label="Family" divider>
-            <ToggleRow label="Family invitations" value={prefs.familyInvites} onChange={() => void toggle('familyInvites')} />
+            <ToggleRow label="Someone joins the family" value={prefs.familyInvites} onChange={() => void toggle('familyInvites')} />
           </PrefGroup>
         </div>
       </section>
@@ -159,7 +225,8 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
       {showInstallSheet && (
         <BottomSheet title="Install FamilyOS" onClose={() => setShowInstallSheet(false)}>
           <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, marginBottom: 16 }}>
-            Add FamilyOS to your home screen for a full-screen app experience.
+            Add FamilyOS to your home screen for a full-screen app experience
+            {needsIosInstall ? ' and to enable push notifications.' : '.'}
           </p>
           <InstallStepsList variant={pwa.isIos ? 'ios' : 'manual'} />
         </BottomSheet>

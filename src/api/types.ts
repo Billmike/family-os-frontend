@@ -130,6 +130,18 @@ export interface NotificationPreferencesOut {
   quiet_hours_end: string | null
 }
 
+export interface VapidPublicKeyOut {
+  public_key: string | null
+}
+
+export interface PushSubscriptionOut {
+  id: string
+  endpoint: string
+  user_agent: string | null
+  created_at: string
+  last_used_at: string | null
+}
+
 export interface DashboardOut {
   family_id: string
   family_name: string

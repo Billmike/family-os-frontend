@@ -6,6 +6,7 @@ import * as familiesApi from '../api/families'
 import type { FamilyOut } from '../api/types'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
 import { usePwaInstall } from '../lib/pwa/usePwaInstall'
+import { iosInstallRequired, subscribeThisDevice } from '../lib/push/webPush'
 import {
   clearPendingInviteToken,
   getPendingInviteToken,
@@ -812,11 +813,11 @@ export default function Onboarding({ handlers }: Props) {
           </div>
         </div>
         <Heading>Stay in the loop</Heading>
-        <Sub>{"Get notified when a family member completes a task, adds a shopping item, or creates an event. You can adjust this any time in Settings."}</Sub>
+        <Sub>{"Get notified when a family member assigns a task, adds a shopping item, or creates an event. You can adjust this any time in Settings."}</Sub>
 
         <div style={{ background: t.surfaceMuted, borderRadius: r.lg, border: `1px solid ${t.border}`, padding: '16px', marginBottom: 24, textAlign: 'left' }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{"You'll be notified for"}</p>
-          {['Event reminders', 'Task assigned to you', 'Task due soon', 'Shopping list updates', 'Family activity'].map((item, i) => (
+          {['Events and reminders', 'Task assigned to you', 'Task due soon', 'Items added or bought', 'Someone joins the family'].map((item, i) => (
             <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i > 0 ? `1px solid ${t.border}` : 'none' }}>
               <div style={{ width: 18, height: 18, borderRadius: 5, background: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Check size={11} color="#fff" strokeWidth={2.5} />
@@ -826,7 +827,31 @@ export default function Onboarding({ handlers }: Props) {
           ))}
         </div>
 
-        <PrimaryBtn onClick={() => go('install')}>
+        {iosInstallRequired() && (
+          <p style={{ fontSize: 13, color: t.textSec, lineHeight: 1.5, marginBottom: 16, textAlign: 'left' }}>
+            On iPhone and iPad, install FamilyOS to your Home Screen first, then enable notifications from Settings.
+          </p>
+        )}
+
+        <PrimaryBtn
+          disabled={busy}
+          onClick={() => {
+            void (async () => {
+              setBusy(true)
+              setError(null)
+              try {
+                if (!iosInstallRequired()) {
+                  await subscribeThisDevice()
+                }
+              } catch {
+                /* permission denied / unavailable — continue onboarding */
+              } finally {
+                setBusy(false)
+                go('install')
+              }
+            })()
+          }}
+        >
           <Bell size={18} /> Allow notifications
         </PrimaryBtn>
         <div style={{ marginTop: 10 }}>

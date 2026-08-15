@@ -147,7 +147,20 @@ function MainApp() {
   const currentUser = session.currentMember ?? members[0]
   const today = todayInTimezone(timeZone)
 
-  const [screen, setScreen] = useState<Screen>('dashboard')
+  const [screen, setScreen] = useState<Screen>(() => {
+    try {
+      const go = new URLSearchParams(window.location.search).get('go')
+      if (go === 'calendar' || go === 'tasks' || go === 'shopping' || go === 'notifications') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('go')
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+        return go
+      }
+    } catch {
+      /* ignore */
+    }
+    return 'dashboard'
+  })
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [shopping, setShopping] = useState<ShoppingItem[]>([])

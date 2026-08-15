@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         registerType: 'autoUpdate',
         includeAssets: [
           'icons/icon.svg',
@@ -73,8 +76,7 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          navigateFallback: '/index.html',
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         },
         devOptions: {

@@ -1,5 +1,10 @@
 import { apiRequest } from './client'
-import type { NotificationOut, NotificationPreferencesOut } from './types'
+import type {
+  NotificationOut,
+  NotificationPreferencesOut,
+  PushSubscriptionOut,
+  VapidPublicKeyOut,
+} from './types'
 
 export function listNotifications() {
   return apiRequest<NotificationOut[]>('/api/notifications')
@@ -24,4 +29,24 @@ export function updateNotificationPreferences(
     method: 'PATCH',
     body: patch,
   })
+}
+
+export function getVapidPublicKey() {
+  return apiRequest<VapidPublicKeyOut>('/api/push/vapid-public-key')
+}
+
+export function subscribePush(data: {
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_agent?: string
+}) {
+  return apiRequest<PushSubscriptionOut>('/api/push/subscribe', {
+    method: 'POST',
+    body: data,
+  })
+}
+
+export function unsubscribePush(subscriptionId: string) {
+  return apiRequest<void>(`/api/push/subscribe/${subscriptionId}`, { method: 'DELETE' })
 }

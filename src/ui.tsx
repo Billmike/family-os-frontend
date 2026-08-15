@@ -206,7 +206,7 @@ export function BottomSheet({ title, onClose, children }: {
         style={{ position: 'absolute', inset: 0, background: 'rgba(28,25,23,0.4)', animation: 'fadeIn 0.2s ease' }}
       />
       {/* Sheet */}
-      <div ref={sheetRef} style={{
+      <div ref={sheetRef} className="bottom-sheet-panel" style={{
         position: 'relative', background: t.surface,
         borderRadius: '20px 20px 0 0',
         boxShadow: sh.high,
@@ -247,7 +247,8 @@ export function Toast({ message, type = 'success', onClose }: {
       padding: '12px 16px', borderRadius: r.lg,
       background: '#1C1917', boxShadow: sh.high,
       animation: 'toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-      whiteSpace: 'nowrap',
+      maxWidth: 'min(92vw, 420px)',
+      boxSizing: 'border-box',
     }}>
       <div style={{ ...iconStyle, background: type === 'success' ? t.success : t.error }}>
         {type === 'success'
@@ -255,8 +256,8 @@ export function Toast({ message, type = 'success', onClose }: {
           : <X size={13} color="#fff" strokeWidth={2.5} />
         }
       </div>
-      <span style={{ fontSize: 14, color: '#fff' }}>{message}</span>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4, display: 'flex' }}>
+      <span style={{ fontSize: 14, color: '#fff', lineHeight: 1.4, wordBreak: 'break-word' }}>{message}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4, display: 'flex', flexShrink: 0 }}>
         <X size={15} color="rgba(255,255,255,0.5)" />
       </button>
     </div>
@@ -300,7 +301,7 @@ const inputBase: CSSProperties = {
   borderRadius: 'var(--ds-radius-md)',
   border: `1px solid var(--ds-border-strong)`,
   background: 'var(--ds-surface)',
-  fontSize: 15, fontFamily: 'var(--ds-font)',
+  fontSize: 16, fontFamily: 'var(--ds-font)',
   color: 'var(--ds-text-primary)',
   outline: 'none', boxSizing: 'border-box',
   transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -342,9 +343,8 @@ export function Select({ value, onChange, options }: {
 
 export function FAB({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className="fab" style={{
       position: 'fixed', right: 20,
-      bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
       width: 56, height: 56, borderRadius: 9999,
       background: t.primary, border: 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -361,17 +361,18 @@ export function SegmentedControl({ options, value, onChange }: {
   options: string[]; value: string; onChange: (v: string) => void
 }) {
   return (
-    <div style={{ display: 'inline-flex', background: t.surfaceMuted, borderRadius: r.md, padding: 3, gap: 2 }}>
+    <div style={{ display: 'flex', width: '100%', background: t.surfaceMuted, borderRadius: r.md, padding: 3, gap: 2, boxSizing: 'border-box' }}>
       {options.map(opt => {
         const active = opt === value
         return (
           <button key={opt} onClick={() => onChange(opt)} style={{
-            padding: '7px 16px', border: 'none', borderRadius: 'var(--ds-radius-sm)',
+            flex: 1, padding: '7px 10px', border: 'none', borderRadius: 'var(--ds-radius-sm)',
             background: active ? t.surface : 'transparent',
             color: active ? t.text : t.textSec,
             fontSize: 13, fontWeight: active ? 500 : 400,
             cursor: 'pointer', fontFamily: 'var(--ds-font)',
             boxShadow: active ? sh.low : 'none', transition: 'all 0.15s',
+            whiteSpace: 'nowrap', minWidth: 0,
           }}>
             {opt}
           </button>

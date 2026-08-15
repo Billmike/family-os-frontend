@@ -58,9 +58,9 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
 
   return (
     <div style={{ minHeight: '100%', paddingBottom: 80 }}>
-      <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <SegmentedControl options={['Agenda', 'Week']} value={view} onChange={v => setView(v as 'Agenda' | 'Week')} />
-        <span style={{ fontSize: 13, color: t.textSec }}>{monthLabel}</span>
+        <span style={{ fontSize: 13, color: t.textSec, alignSelf: 'flex-end' }}>{monthLabel}</span>
       </div>
 
       {view === 'Agenda' && (
@@ -101,7 +101,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
                   background: active ? t.primary : 'transparent',
                   transition: 'all 0.15s',
                 }}>
-                  <span style={{ fontSize: 10, fontWeight: 500, color: active ? 'rgba(255,255,255,0.7)' : t.textTer, marginBottom: 4 }}>{wd.day}</span>
+                  <span style={{ fontSize: 10, fontWeight: 500, color: active ? 'rgba(255,255,255,0.7)' : t.textTer, marginBottom: 4 }}>{wd.day.charAt(0)}</span>
                   <span style={{ fontSize: 15, fontWeight: active ? 600 : 400, color: active ? '#fff' : wd.date === today ? t.primary : t.text }}>{wd.label}</span>
                   {hasEvents && !active && (
                     <div style={{ width: 4, height: 4, borderRadius: 9999, background: t.primary, marginTop: 3 }} />
@@ -153,7 +153,7 @@ function EventRow({ event, divider, onClick }: { event: CalendarEvent; divider: 
       </div>
       <div style={{ width: 3, height: 40, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: t.text, marginBottom: 3 }}>{event.title}</p>
+        <p style={{ fontSize: 15, fontWeight: 500, color: t.text, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {event.endTime && (
             <span style={{ fontSize: 12, color: t.textTer }}>Until {formatTime(event.endTime)}</span>

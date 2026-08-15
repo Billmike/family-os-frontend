@@ -402,34 +402,36 @@ function MainApp() {
   function AppHeader() {
     return (
       <header style={{
-        height: 52, display: 'flex', alignItems: 'center',
-        padding: '0 16px', gap: 12, flexShrink: 0,
+        minHeight: 'calc(52px + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        display: 'flex', alignItems: 'center',
+        paddingLeft: 16, paddingRight: 16, gap: 12, flexShrink: 0,
         background: 'rgba(247,246,243,0.92)', backdropFilter: 'blur(12px)',
         borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 20,
       }}>
         {isSubScreen ? (
-          <button onClick={() => setScreen('dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: t.primary, padding: '4px 0', fontFamily: 'var(--ds-font)' }}>
+          <button onClick={() => setScreen('dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: t.primary, padding: '4px 0', fontFamily: 'var(--ds-font)', flexShrink: 0 }}>
             <ArrowLeft size={18} />
             <span style={{ fontSize: 15 }}>Back</span>
           </button>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Home size={14} color="#fff" />
             </div>
             {isDashboard && (
-              <span style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{familyName}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{familyName}</span>
             )}
           </div>
         )}
         {!isDashboard && !isSubScreen && (
-          <span style={{ fontSize: 17, fontWeight: 600, color: t.text, flex: 1 }}>{SCREEN_TITLES[screen]}</span>
+          <span style={{ fontSize: 17, fontWeight: 600, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{SCREEN_TITLES[screen]}</span>
         )}
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: 0 }} />
         <button
           onClick={() => setScreen('notifications')}
           aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
-          style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex' }}
+          style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', flexShrink: 0 }}
         >
           <Bell size={20} color={t.textSec} strokeWidth={1.75} />
           {unreadCount > 0 && (
@@ -441,7 +443,7 @@ function MainApp() {
             }}>{unreadCount}</span>
           )}
         </button>
-        <button onClick={() => setScreen('family')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <button onClick={() => setScreen('family')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
           {currentUser && <MemberAvatar member={currentUser} size={32} />}
         </button>
       </header>
@@ -551,7 +553,7 @@ function MainApp() {
       {isOffline && <OfflineBanner />}
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div className="hide-mobile" style={{ display: 'flex', alignSelf: 'stretch' }}>
+        <div className="hide-mobile" style={{ alignSelf: 'stretch' }}>
           <DesktopSidebar />
         </div>
 
@@ -774,18 +776,16 @@ function AddShoppingSheet({ onClose, onAdd }: {
       <FormField label="Item">
         <Input placeholder="What do you need?" value={name} onChange={setName} autoFocus />
       </FormField>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <FormField label="Category">
-          <Select value={category} onChange={setCat} options={cats.map(c => ({ value: c, label: c }))} />
-        </FormField>
-        <FormField label="Quantity">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 44, height: 44, borderRadius: 'var(--ds-radius-md)', border: `1px solid ${t.border}`, background: t.surface, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-            <span style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500 }}>{qty}</span>
-            <button onClick={() => setQty(q => q + 1)} style={{ width: 44, height: 44, borderRadius: 'var(--ds-radius-md)', border: `1px solid ${t.border}`, background: t.surface, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-          </div>
-        </FormField>
-      </div>
+      <FormField label="Category">
+        <Select value={category} onChange={setCat} options={cats.map(c => ({ value: c, label: c }))} />
+      </FormField>
+      <FormField label="Quantity">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 44, height: 44, borderRadius: 'var(--ds-radius-md)', border: `1px solid ${t.border}`, background: t.surface, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+          <span style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 500 }}>{qty}</span>
+          <button onClick={() => setQty(q => q + 1)} style={{ width: 44, height: 44, borderRadius: 'var(--ds-radius-md)', border: `1px solid ${t.border}`, background: t.surface, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+        </div>
+      </FormField>
       <PrimaryButton onClick={submit} fullWidth disabled={!name.trim()}>Add Item</PrimaryButton>
       <p style={{ fontSize: 12, color: t.textTer, textAlign: 'center', marginTop: 10 }}>Tap Add to continue adding items</p>
     </BottomSheet>
@@ -802,9 +802,9 @@ function EventDetailSheet({ event, onClose, onDelete, today }: {
   const member = getMember(event.memberId)
   return (
     <BottomSheet title="Event" onClose={onClose}>
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ width: 4, height: 32, borderRadius: 9999, background: member.color, display: 'inline-block', verticalAlign: 'middle', marginRight: 12 }} />
-        <span style={{ fontSize: 22, fontWeight: 600, color: t.text, verticalAlign: 'middle' }}>{event.title}</span>
+      <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0 }}>
+        <div style={{ width: 4, height: 32, borderRadius: 9999, background: member.color, flexShrink: 0, marginTop: 4 }} />
+        <span style={{ fontSize: 22, fontWeight: 600, color: t.text, minWidth: 0, wordBreak: 'break-word' }}>{event.title}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20, marginBottom: 24 }}>
         <DetailRow icon="📅" label={formatDate(event.date, today, addDays(today, 1))} />

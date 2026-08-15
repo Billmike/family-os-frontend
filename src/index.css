@@ -99,6 +99,29 @@ html, body, #root {
 .hide-desktop { display: block; }
 
 @media (min-width: 768px) {
-  .hide-mobile  { display: block; }
+  .hide-mobile  { display: flex; }
   .hide-desktop { display: none; }
+}
+
+/* FAB sits above bottom nav on mobile; lower on desktop when nav is hidden */
+.fab {
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .fab {
+    bottom: 20px;
+  }
+}
+
+/* Bottom sheets full-bleed on phone; capped + centered on desktop */
+.bottom-sheet-panel {
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .bottom-sheet-panel {
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 20px 20px 0 0;
+  }
 }

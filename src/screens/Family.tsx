@@ -37,25 +37,35 @@ export default function FamilyScreen({ members, familyName, currentMemberId, onR
   return (
     <div style={{ minHeight: '100%', paddingBottom: 40 }}>
       <div style={{ padding: '24px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex' }}>
-          {members.map((m, i) => (
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%' }}>
+          {members.slice(0, 6).map((m, i) => (
             <div key={m.id} style={{ marginLeft: i > 0 ? -12 : 0, border: `2px solid ${t.bg}`, borderRadius: 9999 }}>
               <MemberAvatar member={m} size={48} />
             </div>
           ))}
+          {members.length > 6 && (
+            <div style={{
+              marginLeft: -12, width: 48, height: 48, borderRadius: 9999,
+              border: `2px solid ${t.bg}`, background: t.surfaceMuted,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 600, color: t.textSec,
+            }}>
+              +{members.length - 6}
+            </div>
+          )}
         </div>
         {editingName ? (
           <input
             autoFocus
-            style={{ fontSize: 22, fontWeight: 700, color: t.text, textAlign: 'center', border: 'none', borderBottom: `2px solid ${t.primary}`, outline: 'none', background: 'transparent', fontFamily: 'var(--ds-font)', letterSpacing: '-0.01em', padding: '4px 8px' }}
+            style={{ fontSize: 22, fontWeight: 700, color: t.text, textAlign: 'center', border: 'none', borderBottom: `2px solid ${t.primary}`, outline: 'none', background: 'transparent', fontFamily: 'var(--ds-font)', letterSpacing: '-0.01em', padding: '4px 8px', width: '100%', maxWidth: 280, boxSizing: 'border-box' }}
             value={name}
             onChange={e => setName(e.target.value)}
             onBlur={commitName}
             onKeyDown={e => e.key === 'Enter' && commitName()}
           />
         ) : (
-          <button onClick={() => setEditingName(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: t.text, textAlign: 'center', letterSpacing: '-0.01em' }}>{name}</h1>
+          <button onClick={() => setEditingName(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, maxWidth: '100%' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: t.text, textAlign: 'center', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{name}</h1>
           </button>
         )}
         <span style={{ fontSize: 13, color: t.textTer }}>{members.length} members</span>
@@ -71,9 +81,9 @@ export default function FamilyScreen({ members, familyName, currentMemberId, onR
               borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
             }}>
               <MemberAvatar member={m} size={44} />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                  <span style={{ fontSize: 16, fontWeight: 500, color: t.text }}>{m.name}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 16, fontWeight: 500, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{m.name}</span>
                   <Badge label={ROLE_LABELS[m.role] ?? m.role} color={roleStyle.color} bg={roleStyle.bg} />
                 </div>
                 <span style={{ fontSize: 12, color: t.textTer }}>

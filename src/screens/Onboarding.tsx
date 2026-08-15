@@ -53,16 +53,18 @@ interface Props {
 
 const shell: CSSProperties = {
   minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'center',
-  background: t.bg, padding: '24px 20px',
+  alignItems: 'center', justifyContent: 'flex-start',
+  background: t.bg, padding: '24px 16px 40px',
+  overflowY: 'auto', boxSizing: 'border-box',
 }
 
 const card: CSSProperties = {
   width: '100%', maxWidth: 440,
   background: t.surface, borderRadius: r.xl,
   boxShadow: sh.md, border: `1px solid ${t.border}`,
-  padding: '32px 28px 28px',
+  padding: '24px 20px 24px',
   display: 'flex', flexDirection: 'column', gap: 0,
+  marginTop: 'auto', marginBottom: 'auto',
 }
 
 const inputStyle: CSSProperties = {
@@ -129,10 +131,11 @@ function GhostBtn({ onClick, children }: { onClick: () => void; children: React.
 function BackBtn({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} style={{
-      position: 'absolute', top: 20, left: 20,
+      alignSelf: 'flex-start',
       background: 'none', border: 'none', cursor: 'pointer',
       display: 'flex', alignItems: 'center', gap: 4,
-      color: t.textSec, fontFamily: 'var(--ds-font)', fontSize: 14, padding: 4,
+      color: t.textSec, fontFamily: 'var(--ds-font)', fontSize: 14,
+      padding: '0 0 16px', margin: 0,
     }}>
       <ChevronLeft size={18} /> Back
     </button>
@@ -372,7 +375,7 @@ export default function Onboarding({ handlers }: Props) {
   if (step === 'login') return (
     <div style={shell}>
       <form
-        style={{ ...card, position: 'relative' }}
+        style={{ ...card }}
         onSubmit={e => {
           e.preventDefault()
           if (busy || !email.includes('@') || password.length < 8) return
@@ -423,7 +426,7 @@ export default function Onboarding({ handlers }: Props) {
   if (step === 'register') return (
     <div style={shell}>
       <form
-        style={{ ...card, position: 'relative' }}
+        style={{ ...card }}
         onSubmit={e => {
           e.preventDefault()
           if (busy || !userName.trim() || !email.includes('@') || password.length < 8) return
@@ -485,7 +488,7 @@ export default function Onboarding({ handlers }: Props) {
   // Join with token (after login or from welcome)
   if (step === 'join') return (
     <div style={shell}>
-      <div style={{ ...card, position: 'relative' }}>
+      <div style={{ ...card }}>
         <BackBtn onClick={() => go(getAccessHint() ? 'login' : 'welcome')} />
         <Eyebrow>Join family</Eyebrow>
         <Heading>Have an invite?</Heading>
@@ -507,7 +510,7 @@ export default function Onboarding({ handlers }: Props) {
   // Create Family
   if (step === 'family') return (
     <div style={shell}>
-      <div style={{ ...card, position: 'relative' }}>
+      <div style={{ ...card }}>
         {!handlers.needsFamily && <BackBtn onClick={() => go('register')} />}
         <ProgressDots current="family" />
         <Eyebrow>Step 1 of 3</Eyebrow>
@@ -545,7 +548,7 @@ export default function Onboarding({ handlers }: Props) {
   // Add Family Members
   if (step === 'members') return (
     <div style={shell}>
-      <div style={{ ...card, position: 'relative' }}>
+      <div style={{ ...card }}>
         <ProgressDots current="members" />
         <Eyebrow>Step 2 of 3</Eyebrow>
         <Heading>{"Who else is in your family?"}</Heading>
@@ -604,7 +607,7 @@ export default function Onboarding({ handlers }: Props) {
     if (!inviteLink && createdFamilyId) void ensureInviteLink()
     return (
       <div style={shell}>
-        <div style={{ ...card, position: 'relative' }}>
+        <div style={{ ...card }}>
           <ProgressDots current="invite" />
           <Eyebrow>Step 3 of 3</Eyebrow>
           <Heading>Invite your partner</Heading>

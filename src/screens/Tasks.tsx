@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, MoreHorizontal, Repeat, CheckSquare } from 'lucide-react'
 import type { Task, Member, AppHandlers } from '../types'
 import { t, r, MemberAvatar, TaskCheckbox, FAB, SegmentedControl, SectionLabel, EmptyState, priorityColor } from '../ui'
@@ -39,7 +39,7 @@ export default function TasksScreen({ tasks, openSheet, completeTask, deleteTask
   const attention = active.filter(tk => tk.assigneeId === mineId).length
 
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100%', paddingBottom: 100 }}>
       <div style={{ padding: '16px 16px 4px' }}>
         {attention > 0
           ? <p style={{ fontSize: 13, color: t.textSec }}>{attention} task{attention !== 1 ? 's' : ''} need your attention</p>
@@ -126,9 +126,18 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
 }) {
   const member = getMember(task.assigneeId)
   const isToday = task.dueDate === 'today' || task.dueDate === today
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [menuUp, setMenuUp] = useState(false)
+
+  useEffect(() => {
+    if (!menuOpen || !rowRef.current) return
+    const rect = rowRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    setMenuUp(spaceBelow < 120)
+  }, [menuOpen])
 
   return (
-    <div style={{
+    <div ref={rowRef} style={{
       position: 'relative',
       padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12,
       borderTop: divider ? `1px solid ${t.border}` : 'none',
@@ -138,7 +147,7 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
     }}>
       <TaskCheckbox checked={task.completed} onChange={() => onComplete(task.id)} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 15, color: t.text, textDecoration: task.completed ? 'line-through' : 'none', marginBottom: 4 }}>{task.title}</p>
+        <p style={{ fontSize: 15, color: t.text, textDecoration: task.completed ? 'line-through' : 'none', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <MemberAvatar member={member} size={16} />
           <span style={{ fontSize: 12, color: t.textTer }}>{member.name}</span>
@@ -164,28 +173,35 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
       </div>
 
       {menuOpen && (
-        <div
-          style={{
-            position: 'absolute', right: 12, top: 36, zIndex: 50,
-            background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`,
-            boxShadow: 'var(--ds-shadow-md)', overflow: 'hidden', minWidth: 140,
-          }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button
-            onClick={() => { onComplete(task.id); onMenuOpen(false) }}
-            style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', textAlign: 'left', fontSize: 14, color: t.text, cursor: 'pointer', fontFamily: 'var(--ds-font)' }}
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+            onClick={() => onMenuOpen(false)}
+          />
+          <div
+            style={{
+              position: 'absolute', right: 12, zIndex: 50,
+              ...(menuUp ? { bottom: 36 } : { top: 36 }),
+              background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`,
+              boxShadow: 'var(--ds-shadow-md)', overflow: 'hidden', minWidth: 140,
+            }}
+            onClick={e => e.stopPropagation()}
           >
-            {task.completed ? 'Mark incomplete' : 'Mark complete'}
-          </button>
-          <div style={{ height: 1, background: t.border }} />
-          <button
-            onClick={() => { onDelete(task.id); onMenuOpen(false) }}
-            style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', textAlign: 'left', fontSize: 14, color: 'var(--ds-error)', cursor: 'pointer', fontFamily: 'var(--ds-font)' }}
-          >
-            Delete task
-          </button>
-        </div>
+            <button
+              onClick={() => { onComplete(task.id); onMenuOpen(false) }}
+              style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', textAlign: 'left', fontSize: 14, color: t.text, cursor: 'pointer', fontFamily: 'var(--ds-font)' }}
+            >
+              {task.completed ? 'Mark incomplete' : 'Mark complete'}
+            </button>
+            <div style={{ height: 1, background: t.border }} />
+            <button
+              onClick={() => { onDelete(task.id); onMenuOpen(false) }}
+              style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', textAlign: 'left', fontSize: 14, color: 'var(--ds-error)', cursor: 'pointer', fontFamily: 'var(--ds-font)' }}
+            >
+              Delete task
+            </button>
+          </div>
+        </>
       )}
     </div>
   )

@@ -116,7 +116,7 @@ function ShoppingRow({ item, divider, onToggle }: {
       transition: 'opacity 0.2s',
     }}>
       <ShoppingCheckbox checked={item.completed} onChange={() => onToggle(item.id)} />
-      <span style={{ flex: 1, fontSize: 15, color: t.text, textDecoration: item.completed ? 'line-through' : 'none' }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: t.text, textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {item.name}
       </span>
       {item.quantity > 1 && (

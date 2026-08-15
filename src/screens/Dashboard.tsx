@@ -154,7 +154,7 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
                 borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
               }}>
                 <ShoppingCheckbox checked={item.completed} onChange={() => completeShoppingItem(item.id)} />
-                <span style={{ fontSize: 15, color: t.text, flex: 1 }}>{item.name}</span>
+                <span style={{ fontSize: 15, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                 {item.quantity > 1 && (
                   <span style={{ fontSize: 13, color: t.textTer }}>×{item.quantity}</span>
                 )}
@@ -185,10 +185,10 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
                 {dayEvents.map(ev => {
                   const member = getMember(ev.memberId)
                   return (
-                    <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, color: t.textSec, minWidth: 60 }}>{formatTime(ev.startTime)}</span>
+                    <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, minWidth: 0 }}>
+                      <span style={{ fontSize: 13, color: t.textSec, minWidth: 60, flexShrink: 0 }}>{formatTime(ev.startTime)}</span>
                       <div style={{ width: 3, height: 20, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, color: t.text, flex: 1 }}>{ev.title}</span>
+                      <span style={{ fontSize: 14, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</span>
                       <MemberAvatar member={member} size={18} />
                     </div>
                   )

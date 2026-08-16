@@ -102,6 +102,42 @@ function ensureRefresh(): Promise<TokenPair | null> {
   return refreshPromise
 }
 
+/** True if JWT is missing `exp`, malformed, or expires within `skewSeconds`. */
+export function accessTokenExpired(token: string, skewSeconds = 30): boolean {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return true
+    const payload = parts[1]
+    const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4)
+    const json = atob(padded.replace(/-/g, '+').replace(/_/g, '/'))
+    const claims = JSON.parse(json) as { exp?: unknown }
+    if (typeof claims.exp !== 'number') return true
+    return claims.exp <= Date.now() / 1000 + skewSeconds
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Return a usable access token, refreshing via the same single-flight path as REST.
+ * On hard refresh failure, invokes the auth-failure handler (logout).
+ */
+export async function ensureAccessToken(options?: {
+  forceRefresh?: boolean
+}): Promise<string | null> {
+  const forceRefresh = options?.forceRefresh ?? false
+  const current = getAccessToken()
+  if (!forceRefresh && current && !accessTokenExpired(current)) {
+    return current
+  }
+  const refreshed = await ensureRefresh()
+  if (!refreshed) {
+    onAuthFailure?.()
+    return null
+  }
+  return getAccessToken()
+}
+
 export type ApiRequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown
   auth?: boolean

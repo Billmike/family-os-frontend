@@ -1,6 +1,6 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
 import { addDays, EVENT_FETCH_AHEAD_DAYS, toCalendarEvent, toNotification, toShoppingItem, toTask } from '../api/adapters'
-import { getAccessToken, wsBase } from '../api/client'
+import { ensureAccessToken, wsBase } from '../api/client'
 import * as eventsApi from '../api/events'
 import type { FamilyWsMessage } from '../api/types'
 import type { CalendarEvent, Notification, ShoppingItem, Task } from '../types'
@@ -51,6 +51,8 @@ export function useFamilyRealtime(opts: {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let attempt = 0
     let openedOnce = false
+    let forceRefreshNext = false
+    let connectGeneration = 0
 
     function clearPing() {
       if (pingTimer) {
@@ -123,15 +125,20 @@ export function useFamilyRealtime(opts: {
       attempt += 1
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null
-        connect()
+        void connect()
       }, delay)
     }
 
-    function connect() {
+    async function connect() {
       if (closed) return
-      const token = getAccessToken()
+      const generation = ++connectGeneration
+      const forceRefresh = forceRefreshNext
+      forceRefreshNext = false
+
+      const token = await ensureAccessToken({ forceRefresh })
+      if (closed || generation !== connectGeneration) return
       if (!token) {
-        scheduleReconnect()
+        // Session cleared by auth failure — do not reconnect
         return
       }
 
@@ -149,10 +156,13 @@ export function useFamilyRealtime(opts: {
       const url = `${wsBase()}/api/ws/families/${familyId}?token=${encodeURIComponent(token)}`
       const socket = new WebSocket(url)
       ws = socket
+      let sawOpen = false
 
       socket.onopen = () => {
         if (closed || ws !== socket) return
+        sawOpen = true
         attempt = 0
+        forceRefreshNext = false
         pingTimer = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) socket.send('ping')
         }, PING_MS)
@@ -177,7 +187,12 @@ export function useFamilyRealtime(opts: {
       socket.onclose = () => {
         clearPing()
         if (ws === socket) ws = null
-        if (!closed) scheduleReconnect()
+        if (closed) return
+        if (!sawOpen) {
+          // Handshake failed (e.g. expired/invalid token) — force refresh next connect
+          forceRefreshNext = true
+        }
+        scheduleReconnect()
       }
     }
 
@@ -186,7 +201,7 @@ export function useFamilyRealtime(opts: {
       attempt = 0
       clearReconnect()
       if (ws && ws.readyState === WebSocket.OPEN) return
-      connect()
+      void connect()
     }
 
     function onOnline() {
@@ -197,12 +212,13 @@ export function useFamilyRealtime(opts: {
       if (document.visibilityState === 'visible') reconnectNow()
     }
 
-    connect()
+    void connect()
     window.addEventListener('online', onOnline)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       closed = true
+      connectGeneration += 1
       clearPing()
       clearReconnect()
       window.removeEventListener('online', onOnline)

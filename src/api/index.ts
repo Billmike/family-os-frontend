@@ -1,4 +1,12 @@
-export { API_BASE, wsBase, ApiError, getAccessToken, getRefreshToken } from './client'
+export {
+  API_BASE,
+  wsBase,
+  ApiError,
+  getAccessToken,
+  getRefreshToken,
+  ensureAccessToken,
+  accessTokenExpired,
+} from './client'
 export * as authApi from './auth'
 export * as familiesApi from './families'
 export * as dashboardApi from './dashboard'

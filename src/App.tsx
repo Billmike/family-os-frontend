@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
-import type { Screen, CalendarEvent, Task, ShoppingItem, Notification, BottomSheetType, Member } from './types'
+import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, Notification, BottomSheetType, Member } from './types'
 import { getMember, formatDate, formatTime } from './data'
 import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl } from './ui'
 import Dashboard from './screens/Dashboard'
@@ -17,12 +17,14 @@ import { ApiError } from './api/client'
 import {
   addDays,
   dueDateToIso,
+  EVENT_FETCH_AHEAD_DAYS,
   formatLongDate,
   localDateTimeToIso,
   priorityToApi,
   toCalendarEvent,
   toNotification,
   toShoppingItem,
+  toShoppingLocation,
   toTask,
   todayInTimezone,
 } from './api/adapters'
@@ -30,6 +32,7 @@ import * as dashboardApi from './api/dashboard'
 import * as eventsApi from './api/events'
 import * as tasksApi from './api/tasks'
 import * as shoppingApi from './api/shopping'
+import * as shoppingLocationsApi from './api/shoppingLocations'
 import * as notificationsApi from './api/notifications'
 import * as familiesApi from './api/families'
 import { useFamilyRealtime } from './realtime/useFamilyRealtime'
@@ -39,7 +42,6 @@ import {
   getPendingInviteToken,
 } from './invite/pendingInvite'
 import { legacyGoRedirectPath, pathToScreen, screenToPath } from './routing'
-
 const BOTTOM_NAV = [
   { screen: 'dashboard' as Screen, icon: Home, label: 'Home' },
   { screen: 'calendar' as Screen, icon: Calendar, label: 'Calendar' },
@@ -178,6 +180,7 @@ function MainApp() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [shopping, setShopping] = useState<ShoppingItem[]>([])
   const [shoppingListId, setShoppingListId] = useState<string | null>(null)
+  const [shoppingLocations, setShoppingLocations] = useState<ShoppingLocation[]>([])
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? '')
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today))
@@ -205,13 +208,14 @@ function MainApp() {
     const familyId = family.id
     try {
       const from = `${addDays(today, -1)}T00:00:00Z`
-      const to = `${addDays(today, 14)}T23:59:59Z`
+      const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`
 
-      const [dash, evs, tsks, lists, ns] = await Promise.all([
+      const [dash, evs, tsks, lists, locs, ns] = await Promise.all([
         dashboardApi.getDashboard(familyId),
         eventsApi.listEvents(familyId, from, to),
         tasksApi.listTasks(familyId, 'all'),
         shoppingApi.listShoppingLists(familyId),
+        shoppingLocationsApi.listShoppingLocations(familyId),
         notificationsApi.listNotifications(),
       ])
 
@@ -222,6 +226,7 @@ function MainApp() {
       setEvents(evs.map(e => toCalendarEvent(e, timeZone)))
       setTasks(tsks.map(tk => toTask(tk, dash.date, timeZone)))
       setNotifs(ns.map(toNotification))
+      setShoppingLocations(locs.map(toShoppingLocation))
 
       const groceries =
         lists.find(l => l.name.toLowerCase() === 'groceries') ?? lists[0] ?? null
@@ -366,6 +371,7 @@ function MainApp() {
         quantity: item.quantity,
         unit: item.unit,
         category: item.category,
+        location_id: item.locationId ?? null,
       })
       setShopping(its => {
         if (its.some(i => i.id === created.id)) return its
@@ -374,6 +380,21 @@ function MainApp() {
       showToast('Item added')
     } catch (e) {
       handleError(e)
+    }
+  }
+
+  async function addShoppingLocation(name: string): Promise<ShoppingLocation | null> {
+    try {
+      const created = await shoppingLocationsApi.createShoppingLocation(family.id, name)
+      const ui = toShoppingLocation(created)
+      setShoppingLocations(locs => {
+        if (locs.some(l => l.id === ui.id)) return locs
+        return [...locs, ui].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+      })
+      return ui
+    } catch (e) {
+      handleError(e)
+      return null
     }
   }
 
@@ -648,7 +669,12 @@ function MainApp() {
               />
             )}
             {screen === 'shopping' && (
-              <ShoppingScreen shopping={shopping} members={members} {...handlers} />
+              <ShoppingScreen
+                shopping={shopping}
+                locations={shoppingLocations}
+                members={members}
+                {...handlers}
+              />
             )}
             {screen === 'notifications' && (
               <NotificationsScreen notifications={notifs} {...handlers} />
@@ -696,7 +722,12 @@ function MainApp() {
         />
       )}
       {sheet?.type === 'addShoppingItem' && (
-        <AddShoppingSheet onClose={() => setSheet(null)} onAdd={handlers.addShoppingItem} />
+        <AddShoppingSheet
+          onClose={() => setSheet(null)}
+          onAdd={handlers.addShoppingItem}
+          locations={shoppingLocations}
+          onCreateLocation={addShoppingLocation}
+        />
       )}
       {sheet?.type === 'eventDetail' && (
         <EventDetailSheet
@@ -818,18 +849,63 @@ function AddTaskSheet({ onClose, onAdd, members, defaultMemberId }: {
   )
 }
 
-function AddShoppingSheet({ onClose, onAdd }: {
+function AddShoppingSheet({ onClose, onAdd, locations, onCreateLocation }: {
   onClose: () => void
   onAdd: (i: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => void
+  locations: ShoppingLocation[]
+  onCreateLocation: (name: string) => Promise<ShoppingLocation | null>
 }) {
+  const NONE = ''
+  const ADD_NEW = '__add_new__'
   const [name, setName] = useState('')
   const [qty, setQty] = useState(1)
   const [category, setCat] = useState('Produce')
+  const [locationId, setLocationId] = useState(NONE)
+  const [addingStore, setAddingStore] = useState(false)
+  const [newStoreName, setNewStoreName] = useState('')
+  const [creatingStore, setCreatingStore] = useState(false)
   const cats = ['Produce', 'Meat', 'Dairy', 'Bakery', 'Baby', 'Other']
+
+  const storeOptions = [
+    { value: NONE, label: 'None' },
+    ...locations.map(l => ({ value: l.id, label: l.name })),
+    { value: ADD_NEW, label: '+ Add new store…' },
+  ]
+
+  const onStoreChange = (value: string) => {
+    if (value === ADD_NEW) {
+      setAddingStore(true)
+      setNewStoreName('')
+      return
+    }
+    setAddingStore(false)
+    setLocationId(value)
+  }
+
+  const saveNewStore = async () => {
+    const trimmed = newStoreName.trim()
+    if (!trimmed || creatingStore) return
+    setCreatingStore(true)
+    try {
+      const created = await onCreateLocation(trimmed)
+      if (created) {
+        setLocationId(created.id)
+        setAddingStore(false)
+        setNewStoreName('')
+      }
+    } finally {
+      setCreatingStore(false)
+    }
+  }
 
   const submit = () => {
     if (!name.trim()) return
-    onAdd({ name: name.trim(), quantity: qty, category })
+    onAdd({
+      name: name.trim(),
+      quantity: qty,
+      category,
+      locationId: locationId || null,
+    })
     setName('')
     setQty(1)
   }
@@ -842,6 +918,26 @@ function AddShoppingSheet({ onClose, onAdd }: {
       <FormField label="Category">
         <Select value={category} onChange={setCat} options={cats.map(c => ({ value: c, label: c }))} />
       </FormField>
+      <FormField label="Store">
+        <Select value={addingStore ? ADD_NEW : locationId} onChange={onStoreChange} options={storeOptions} />
+      </FormField>
+      {addingStore && (
+        <FormField label="New store name">
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Input
+                placeholder="e.g. JC Penney"
+                value={newStoreName}
+                onChange={setNewStoreName}
+                autoFocus
+              />
+            </div>
+            <PrimaryButton onClick={() => { void saveNewStore() }} disabled={!newStoreName.trim() || creatingStore}>
+              Save
+            </PrimaryButton>
+          </div>
+        </FormField>
+      )}
       <FormField label="Quantity">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 44, height: 44, borderRadius: 'var(--ds-radius-md)', border: `1px solid ${t.border}`, background: t.surface, fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>

@@ -21,6 +21,7 @@ export interface ShoppingItemCreate {
   quantity?: number | string
   unit?: string | null
   category?: string | null
+  location_id?: string | null
 }
 
 export function createShoppingItem(listId: string, data: ShoppingItemCreate) {

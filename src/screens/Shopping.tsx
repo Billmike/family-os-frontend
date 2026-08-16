@@ -1,30 +1,53 @@
 import { useState } from 'react'
 import { Plus, ShoppingCart } from 'lucide-react'
-import type { ShoppingItem, Member, AppHandlers } from '../types'
-import { t, r, ShoppingCheckbox, FAB, SectionLabel, EmptyState } from '../ui'
-import { getMember, CATEGORY_ORDER } from '../data'
+import type { ShoppingItem, ShoppingLocation, Member, AppHandlers } from '../types'
+import { t, r, ShoppingCheckbox, FAB, SectionLabel, EmptyState, SegmentedControl } from '../ui'
+import { CATEGORY_ORDER } from '../data'
+
+const UNASSIGNED = 'Unassigned'
 
 interface Props {
   shopping: ShoppingItem[]
+  locations: ShoppingLocation[]
   members: Member[]
   openSheet: AppHandlers['openSheet']
   completeShoppingItem: AppHandlers['completeShoppingItem']
 }
 
-export default function ShoppingScreen({ shopping, openSheet, completeShoppingItem }: Props) {
-  const active    = shopping.filter(i => !i.completed)
+export default function ShoppingScreen({
+  shopping,
+  locations,
+  openSheet,
+  completeShoppingItem,
+}: Props) {
+  const [groupBy, setGroupBy] = useState<'Category' | 'Store'>('Category')
+  const active = shopping.filter(i => !i.completed)
   const completed = shopping.filter(i => i.completed)
 
-  // Group by category in a defined order
-  const categories: Record<string, ShoppingItem[]> = {}
+  const locationNameById = new Map(locations.map(l => [l.id, l.name]))
+
+  const storeNameFor = (item: ShoppingItem) =>
+    item.locationId ? (locationNameById.get(item.locationId) ?? UNASSIGNED) : UNASSIGNED
+
+  const groups: Record<string, ShoppingItem[]> = {}
   active.forEach(item => {
-    ;(categories[item.category] ??= []).push(item)
+    const key = groupBy === 'Category' ? item.category : storeNameFor(item)
+    ;(groups[key] ??= []).push(item)
   })
 
-  const orderedCats = [
-    ...CATEGORY_ORDER.filter(c => categories[c]),
-    ...Object.keys(categories).filter(c => !CATEGORY_ORDER.includes(c)),
-  ]
+  const orderedKeys =
+    groupBy === 'Category'
+      ? [
+          ...CATEGORY_ORDER.filter(c => groups[c]),
+          ...Object.keys(groups).filter(c => !CATEGORY_ORDER.includes(c)),
+        ]
+      : [
+          ...locations.map(l => l.name).filter(name => groups[name]),
+          ...(groups[UNASSIGNED] ? [UNASSIGNED] : []),
+          ...Object.keys(groups).filter(
+            name => name !== UNASSIGNED && !locations.some(l => l.name === name),
+          ),
+        ]
 
   const totalActive = active.length
 
@@ -39,6 +62,14 @@ export default function ShoppingScreen({ shopping, openSheet, completeShoppingIt
         {completed.length > 0 && (
           <span style={{ fontSize: 12, color: t.textTer }}>{completed.length} done</span>
         )}
+      </div>
+
+      <div style={{ padding: '8px 16px 4px' }}>
+        <SegmentedControl
+          options={['Category', 'Store']}
+          value={groupBy}
+          onChange={v => setGroupBy(v as 'Category' | 'Store')}
+        />
       </div>
 
       {/* Collaboration note */}
@@ -58,17 +89,19 @@ export default function ShoppingScreen({ shopping, openSheet, completeShoppingIt
         />
       )}
 
-      {/* Active items grouped by category */}
-      {orderedCats.map(cat => (
-        <div key={cat}>
-          <SectionLabel>{cat}</SectionLabel>
+      {/* Active items grouped by category or store */}
+      {orderedKeys.map(key => (
+        <div key={key}>
+          <SectionLabel>{key}</SectionLabel>
           <div style={{ margin: '0 16px 6px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-            {categories[cat].map((item, i) => (
+            {groups[key].map((item, i) => (
               <ShoppingRow
                 key={item.id}
                 item={item}
                 divider={i > 0}
                 onToggle={completeShoppingItem}
+                secondary={groupBy === 'Category' ? storeNameFor(item) : item.category}
+                hideSecondary={groupBy === 'Category' && !item.locationId}
               />
             ))}
           </div>
@@ -102,12 +135,13 @@ export default function ShoppingScreen({ shopping, openSheet, completeShoppingIt
 
 // ─── ShoppingRow ──────────────────────────────────────────────────────────────
 
-function ShoppingRow({ item, divider, onToggle }: {
+function ShoppingRow({ item, divider, onToggle, secondary, hideSecondary }: {
   item: ShoppingItem
   divider: boolean
   onToggle: (id: string) => void
+  secondary?: string
+  hideSecondary?: boolean
 }) {
-  const addedBy = getMember(item.addedById)
   return (
     <div style={{
       padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
@@ -116,9 +150,16 @@ function ShoppingRow({ item, divider, onToggle }: {
       transition: 'opacity 0.2s',
     }}>
       <ShoppingCheckbox checked={item.completed} onChange={() => onToggle(item.id)} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: t.text, textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {item.name}
-      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, color: t.text, textDecoration: item.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {item.name}
+        </div>
+        {secondary && !hideSecondary && (
+          <div style={{ fontSize: 12, color: t.textTer, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {secondary}
+          </div>
+        )}
+      </div>
       {item.quantity > 1 && (
         <div style={{
           minWidth: 28, height: 22, borderRadius: r.pill, border: `1px solid ${t.border}`,

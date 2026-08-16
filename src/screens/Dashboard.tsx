@@ -23,7 +23,7 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
     return d.toISOString().slice(0, 10)
   })()
   const todayEvents = events.filter(e => e.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime))
-  const upcomingEvents = events.filter(e => e.date > today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)).slice(0, 4)
+  const upcomingEvents = events.filter(e => e.date > today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
   const openTasks = tasks.filter(tk => !tk.completed)
   const dashTasks = openTasks.slice(0, 4)
   const dashShopping = shopping.filter(i => !i.completed).slice(0, 5)
@@ -33,7 +33,7 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
     if (dateStr === today || dateStr === TODAY) return 'Today'
     if (dateStr === tomorrow || dateStr === TOMORROW) return 'Tomorrow'
     const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('en-GB', { weekday: 'long' })
+    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
   }
 
   const upcomingGrouped: Record<string, CalendarEvent[]> = {}

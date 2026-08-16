@@ -92,6 +92,15 @@ export interface ShoppingListOut {
   updated_at: string
 }
 
+export interface ShoppingLocationOut {
+  id: string
+  family_id: string
+  name: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 export interface ShoppingItemOut {
   id: string
   shopping_list_id: string
@@ -99,6 +108,7 @@ export interface ShoppingItemOut {
   quantity: string | null
   unit: string | null
   category: string | null
+  location_id: string | null
   completed_at: string | null
   created_by: string
   completed_by: string | null

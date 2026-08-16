@@ -40,8 +40,15 @@ export interface ShoppingItem {
   category: string
   quantity: number
   unit?: string
+  locationId?: string | null
   completed: boolean
   addedById: string
+}
+
+export interface ShoppingLocation {
+  id: string
+  name: string
+  sortOrder: number
 }
 
 export interface Notification {

@@ -320,7 +320,14 @@ function MainApp() {
         due_at: dueDateToIso(task.dueDate, today, timeZone),
         recurrence_rule: task.recurring ? 'weekly' : null,
       })
-      setTasks(ts => [toTask(created, today, timeZone), ...ts])
+      setTasks(ts => {
+        const ui = toTask(created, today, timeZone)
+        // Realtime may already have applied task.created; avoid a duplicate row.
+        if (ts.some(t => t.id === ui.id)) {
+          return ts.map(t => (t.id === ui.id ? ui : t))
+        }
+        return [ui, ...ts]
+      })
       setSheet(null)
       showToast('Task created')
     } catch (e) {
@@ -383,7 +390,14 @@ function MainApp() {
         ends_at: ends,
         member_ids: event.memberId ? [event.memberId] : [],
       })
-      setEvents(es => [...es, toCalendarEvent(created, timeZone)])
+      setEvents(es => {
+        const ui = toCalendarEvent(created, timeZone)
+        // Realtime may already have applied event.created; avoid a duplicate row.
+        if (es.some(e => e.id === ui.id)) {
+          return es.map(e => (e.id === ui.id ? ui : e))
+        }
+        return [...es, ui]
+      })
       setSheet(null)
       showToast('Event created')
     } catch (e) {

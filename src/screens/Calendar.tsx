@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { CalendarEvent, Member, AppHandlers } from '../types'
 import { t, r, MemberAvatar, FAB, SegmentedControl, SectionLabel } from '../ui'
 import { getMember, formatTime } from '../data'
+
+const EVENT_DOT = '#D97706'
+const WEEKDAY_HEADERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 interface Props {
   events: CalendarEvent[]
@@ -11,18 +14,45 @@ interface Props {
   openSheet: AppHandlers['openSheet']
 }
 
-function getWeekDays(anchor: string): { date: string; label: string; day: string }[] {
-  const d = new Date(anchor + 'T00:00:00')
-  const monday = new Date(d)
-  monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-  return Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(monday)
-    day.setDate(monday.getDate() + i)
-    const iso = day.toISOString().split('T')[0]
+function monthFromDate(isoDate: string): string {
+  return isoDate.slice(0, 7)
+}
+
+function shiftMonth(yearMonth: string, delta: number): string {
+  const [y, m] = yearMonth.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+function formatMonthTitle(yearMonth: string): string {
+  const [y, m] = yearMonth.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+}
+
+function firstOfMonth(yearMonth: string): string {
+  return `${yearMonth}-01`
+}
+
+function getMonthGrid(yearMonth: string): { date: string; dayNum: number; inMonth: boolean }[] {
+  const [y, m] = yearMonth.split('-').map(Number)
+  const first = new Date(y, m - 1, 1)
+  const startOffset = (first.getDay() + 6) % 7 // Monday = 0
+  const gridStart = new Date(first)
+  gridStart.setDate(first.getDate() - startOffset)
+
+  return Array.from({ length: 42 }, (_, i) => {
+    const day = new Date(gridStart)
+    day.setDate(gridStart.getDate() + i)
+    const year = day.getFullYear()
+    const month = String(day.getMonth() + 1).padStart(2, '0')
+    const dateNum = String(day.getDate()).padStart(2, '0')
+    const date = `${year}-${month}-${dateNum}`
     return {
-      date: iso,
-      label: day.toLocaleDateString('en-GB', { day: 'numeric' }),
-      day: day.toLocaleDateString('en-GB', { weekday: 'short' }),
+      date,
+      dayNum: day.getDate(),
+      inMonth: monthFromDate(date) === yearMonth,
     }
   })
 }
@@ -41,26 +71,46 @@ function formatDayLabel(dateStr: string, today: string): string {
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
 }
 
-export default function CalendarScreen({ events, openSheet, today }: Props) {
-  const [view, setView] = useState<'Agenda' | 'Week'>('Agenda')
-  const [selectedDate, setSelected] = useState(today)
+function defaultSelectedForMonth(yearMonth: string, today: string): string {
+  return monthFromDate(today) === yearMonth ? today : firstOfMonth(yearMonth)
+}
 
-  const monthLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+export default function CalendarScreen({ events, openSheet, today }: Props) {
+  const [view, setView] = useState<'Agenda' | 'Month'>('Agenda')
+  const [visibleMonth, setVisibleMonth] = useState(() => monthFromDate(today))
+  const [selectedDate, setSelected] = useState(today)
 
   const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
   const grouped = groupEventsByDate(sorted)
-  const weekDays = getWeekDays(today)
-  const weekEvents = grouped[selectedDate] ?? []
+  const monthCells = getMonthGrid(visibleMonth)
+  const dayEvents = grouped[selectedDate] ?? []
 
   const agendaDates = Object.keys(grouped)
     .filter(d => d >= today)
     .sort()
 
+  function goToMonth(nextMonth: string) {
+    setVisibleMonth(nextMonth)
+    setSelected(defaultSelectedForMonth(nextMonth, today))
+  }
+
+  function selectDay(date: string) {
+    setSelected(date)
+    const dayMonth = monthFromDate(date)
+    if (dayMonth !== visibleMonth) setVisibleMonth(dayMonth)
+  }
+
+  function goToToday() {
+    setVisibleMonth(monthFromDate(today))
+    setSelected(today)
+  }
+
+  const showingToday = selectedDate === today && visibleMonth === monthFromDate(today)
+
   return (
     <div style={{ minHeight: '100%', paddingBottom: 80 }}>
       <div style={{ padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <SegmentedControl options={['Agenda', 'Week']} value={view} onChange={v => setView(v as 'Agenda' | 'Week')} />
-        <span style={{ fontSize: 13, color: t.textSec, alignSelf: 'flex-end' }}>{monthLabel}</span>
+        <SegmentedControl options={['Agenda', 'Month']} value={view} onChange={v => setView(v as 'Agenda' | 'Month')} />
       </div>
 
       {view === 'Agenda' && (
@@ -88,37 +138,108 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
         </div>
       )}
 
-      {view === 'Week' && (
+      {view === 'Month' && (
         <div>
-          <div style={{ margin: '4px 16px 12px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, padding: '12px 4px', display: 'flex', gap: 2 }}>
-            {weekDays.map(wd => {
-              const active = wd.date === selectedDate
-              const hasEvents = (grouped[wd.date]?.length ?? 0) > 0
-              return (
-                <button key={wd.date} onClick={() => setSelected(wd.date)} style={{
-                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  padding: '6px 0', border: 'none', borderRadius: r.md, cursor: 'pointer',
-                  background: active ? t.primary : 'transparent',
-                  transition: 'all 0.15s',
-                }}>
-                  <span style={{ fontSize: 10, fontWeight: 500, color: active ? 'rgba(255,255,255,0.7)' : t.textTer, marginBottom: 4 }}>{wd.day.charAt(0)}</span>
-                  <span style={{ fontSize: 15, fontWeight: active ? 600 : 400, color: active ? '#fff' : wd.date === today ? t.primary : t.text }}>{wd.label}</span>
-                  {hasEvents && !active && (
-                    <div style={{ width: 4, height: 4, borderRadius: 9999, background: t.primary, marginTop: 3 }} />
-                  )}
-                </button>
-              )
-            })}
+          <div style={{ margin: '4px 16px 12px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, padding: '12px 8px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '0 4px' }}>
+              <button
+                type="button"
+                aria-label="Previous month"
+                onClick={() => goToMonth(shiftMonth(visibleMonth, -1))}
+                style={{
+                  width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', background: 'transparent', borderRadius: r.md, cursor: 'pointer', color: t.text,
+                }}
+              >
+                <ChevronLeft size={20} strokeWidth={1.75} />
+              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 40, gap: 2 }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{formatMonthTitle(visibleMonth)}</span>
+                {!showingToday && (
+                  <button
+                    type="button"
+                    onClick={goToToday}
+                    style={{
+                      border: 'none', background: 'transparent', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, color: t.primary, padding: '2px 8px',
+                      fontFamily: 'var(--ds-font)',
+                    }}
+                  >
+                    Today
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Next month"
+                onClick={() => goToMonth(shiftMonth(visibleMonth, 1))}
+                style={{
+                  width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: 'none', background: 'transparent', borderRadius: r.md, cursor: 'pointer', color: t.text,
+                }}
+              >
+                <ChevronRight size={20} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+              {WEEKDAY_HEADERS.map((label, i) => (
+                <div key={`${label}-${i}`} style={{ textAlign: 'center', fontSize: 11, fontWeight: 500, color: t.textTer, padding: '4px 0' }}>
+                  {label}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {monthCells.map(cell => {
+                const active = cell.date === selectedDate
+                const hasEvents = (grouped[cell.date]?.length ?? 0) > 0
+                const isToday = cell.date === today
+                return (
+                  <button
+                    key={cell.date}
+                    type="button"
+                    onClick={() => selectDay(cell.date)}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      minHeight: 44, padding: '6px 0', border: 'none', borderRadius: r.md, cursor: 'pointer',
+                      background: active ? t.primary : 'transparent',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 14,
+                      fontWeight: active || isToday ? 600 : 400,
+                      color: active
+                        ? '#fff'
+                        : !cell.inMonth
+                          ? t.textTer
+                          : isToday
+                            ? t.primary
+                            : t.text,
+                    }}>
+                      {cell.dayNum}
+                    </span>
+                    <div style={{
+                      width: 4, height: 4, borderRadius: 9999, marginTop: 3,
+                      background: hasEvents
+                        ? (active ? 'rgba(255,255,255,0.85)' : EVENT_DOT)
+                        : 'transparent',
+                    }} />
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div>
-            {weekEvents.length === 0 ? (
+            {dayEvents.length === 0 ? (
               <div style={{ padding: '32px 24px', textAlign: 'center' }}>
                 <p style={{ fontSize: 15, color: t.textSec }}>No events on this day.</p>
               </div>
             ) : (
               <div style={{ margin: '0 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-                {weekEvents.map((ev, i) => (
+                {dayEvents.map((ev, i) => (
                   <EventRow
                     key={ev.id}
                     event={ev}

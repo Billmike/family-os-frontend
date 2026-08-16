@@ -110,11 +110,12 @@ function dueLabel(
 }
 
 /**
- * Days ahead when listing events.
- * With from = (today - 1)T00:00:00Z and to = (today + N)T23:59:59Z,
- * N must be ≤ 364 so the span stays within the API max of 366 days.
+ * Event list window relative to today.
+ * With from = (today - BACK)T00:00:00Z and to = (today + AHEAD)T23:59:59Z,
+ * BACK + AHEAD must stay within the API max of 366 days.
  */
-export const EVENT_FETCH_AHEAD_DAYS = 364;
+export const EVENT_FETCH_BACK_DAYS = 180;
+export const EVENT_FETCH_AHEAD_DAYS = 185;
 
 export function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T12:00:00");

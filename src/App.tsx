@@ -19,6 +19,7 @@ import {
   addDays,
   dueDateToIso,
   EVENT_FETCH_AHEAD_DAYS,
+  EVENT_FETCH_BACK_DAYS,
   formatLongDate,
   localDateTimeToIso,
   priorityToApi,
@@ -208,7 +209,7 @@ function MainApp() {
   const loadAll = useCallback(async () => {
     const familyId = family.id
     try {
-      const from = `${addDays(today, -1)}T00:00:00Z`
+      const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`
 
       const [dash, evs, tsks, lists, locs, ns] = await Promise.all([

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
-import { addDays, EVENT_FETCH_AHEAD_DAYS, toCalendarEvent, toNotification, toShoppingItem, toTask } from '../api/adapters'
+import { addDays, EVENT_FETCH_AHEAD_DAYS, EVENT_FETCH_BACK_DAYS, toCalendarEvent, toNotification, toShoppingItem, toTask } from '../api/adapters'
 import { ensureAccessToken, wsBase } from '../api/client'
 import * as eventsApi from '../api/events'
 import type { FamilyWsMessage } from '../api/types'
@@ -69,7 +69,7 @@ export function useFamilyRealtime(opts: {
     }
 
     async function refetchEvents() {
-      const from = `${addDays(todayRef.current, -1)}T00:00:00Z`
+      const from = `${addDays(todayRef.current, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`
       const to = `${addDays(todayRef.current, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`
       const evs = await eventsApi.listEvents(familyId, from, to)
       setEvents(evs.map(e => toCalendarEvent(e, timeZoneRef.current)))

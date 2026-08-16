@@ -1,19 +1,28 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core'
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare let self: ServiceWorkerGlobalScope
 
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// SPA deep links: serve index.html for navigations to /tasks, /calendar, etc.
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('index.html'), {
+    denylist: [/^\/api\//, /^\/assets\//],
+  }),
+)
+
 void self.skipWaiting()
 clientsClaim()
 
 const TYPE_TO_URL: Record<string, string> = {
-  calendar: '/?go=calendar',
-  task: '/?go=tasks',
-  shopping: '/?go=shopping',
-  family: '/?go=notifications',
+  calendar: '/calendar',
+  task: '/tasks',
+  shopping: '/shopping',
+  family: '/notifications',
 }
 
 interface PushPayload {

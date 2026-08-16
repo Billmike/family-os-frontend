@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
 import type { Screen, CalendarEvent, Task, ShoppingItem, Notification, BottomSheetType, Member } from './types'
 import { getMember, formatDate, formatTime } from './data'
@@ -37,6 +38,7 @@ import {
   clearPendingInviteToken,
   getPendingInviteToken,
 } from './invite/pendingInvite'
+import { legacyGoRedirectPath, pathToScreen, screenToPath } from './routing'
 
 const BOTTOM_NAV = [
   { screen: 'dashboard' as Screen, icon: Home, label: 'Home' },
@@ -141,26 +143,37 @@ function AppRoot() {
 
 function MainApp() {
   const session = useSession()
+  const location = useLocation()
+  const routerNavigate = useNavigate()
   const family = session.family!
   const timeZone = family.timezone || 'UTC'
   const members = session.members
   const currentUser = session.currentMember ?? members[0]
   const today = todayInTimezone(timeZone)
 
-  const [screen, setScreen] = useState<Screen>(() => {
-    try {
-      const go = new URLSearchParams(window.location.search).get('go')
-      if (go === 'calendar' || go === 'tasks' || go === 'shopping' || go === 'notifications') {
-        const url = new URL(window.location.href)
-        url.searchParams.delete('go')
-        window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-        return go
-      }
-    } catch {
-      /* ignore */
-    }
-    return 'dashboard'
-  })
+  // Legacy push deep links: /?go=tasks → /tasks
+  useEffect(() => {
+    const legacyPath = legacyGoRedirectPath(location.search)
+    if (!legacyPath) return
+    routerNavigate(legacyPath, { replace: true })
+  }, [location.search, routerNavigate])
+
+  // Unknown paths → home (invite paths are stripped before MainApp mounts)
+  useEffect(() => {
+    if (legacyGoRedirectPath(location.search)) return
+    if (pathToScreen(location.pathname) !== null) return
+    routerNavigate('/', { replace: true })
+  }, [location.pathname, location.search, routerNavigate])
+
+  const screen = pathToScreen(location.pathname) ?? 'dashboard'
+
+  const navigateToScreen = useCallback(
+    (next: Screen) => {
+      routerNavigate(screenToPath(next))
+    },
+    [routerNavigate],
+  )
+
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [shopping, setShopping] = useState<ShoppingItem[]>([])
@@ -446,7 +459,7 @@ function MainApp() {
         borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 20,
       }}>
         {isSubScreen ? (
-          <button onClick={() => setScreen('dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: t.primary, padding: '4px 0', fontFamily: 'var(--ds-font)', flexShrink: 0 }}>
+          <button onClick={() => navigateToScreen('dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: t.primary, padding: '4px 0', fontFamily: 'var(--ds-font)', flexShrink: 0 }}>
             <ArrowLeft size={18} />
             <span style={{ fontSize: 15 }}>Back</span>
           </button>
@@ -465,7 +478,7 @@ function MainApp() {
         )}
         <div style={{ flex: 1, minWidth: 0 }} />
         <button
-          onClick={() => setScreen('notifications')}
+          onClick={() => navigateToScreen('notifications')}
           aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
           style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', flexShrink: 0 }}
         >
@@ -479,7 +492,7 @@ function MainApp() {
             }}>{unreadCount}</span>
           )}
         </button>
-        <button onClick={() => setScreen('family')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+        <button onClick={() => navigateToScreen('family')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
           {currentUser && <MemberAvatar member={currentUser} size={32} />}
         </button>
       </header>
@@ -503,7 +516,7 @@ function MainApp() {
           const Icon = item.icon
           const active = screen === item.screen
           return (
-            <button key={item.screen} onClick={() => setScreen(item.screen)} style={{
+            <button key={item.screen} onClick={() => navigateToScreen(item.screen)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 16px', border: 'none', background: active ? t.primarySubtle : 'transparent',
               color: active ? t.primary : t.textSec,
@@ -521,14 +534,14 @@ function MainApp() {
         })}
         <div style={{ flex: 1 }} />
         <div style={{ padding: '12px 16px', borderTop: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setScreen('family')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <button onClick={() => navigateToScreen('family')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             {currentUser && <MemberAvatar member={currentUser} size={32} />}
           </button>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 13, fontWeight: 500, color: t.text }}>{currentUser?.name ?? session.user?.name}</p>
             <p style={{ fontSize: 11, color: t.textTer }}>{familyName}</p>
           </div>
-          <button onClick={() => setScreen('settings')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4 }}>
+          <button onClick={() => navigateToScreen('settings')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4 }}>
             <Settings size={16} color={t.textTer} />
           </button>
         </div>
@@ -547,7 +560,7 @@ function MainApp() {
           const Icon = item.icon
           const active = screen === item.screen
           return (
-            <button key={item.screen} onClick={() => setScreen(item.screen)} style={{
+            <button key={item.screen} onClick={() => navigateToScreen(item.screen)} style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               padding: '8px 0', border: 'none', background: 'none',
               color: active ? t.primary : t.textTer, cursor: 'pointer', gap: 3,
@@ -563,7 +576,7 @@ function MainApp() {
   }
 
   const handlers = {
-    navigate: setScreen,
+    navigate: navigateToScreen,
     openSheet: setSheet,
     completeTask: (id: string) => { void completeTask(id) },
     completeShoppingItem: (id: string) => { void completeShoppingItem(id) },
@@ -637,7 +650,7 @@ function MainApp() {
             )}
             {screen === 'settings' && (
               <SettingsScreen
-                navigate={setScreen}
+                navigate={navigateToScreen}
                 user={session.user}
                 currentMember={currentUser}
                 onSignOut={session.logout}

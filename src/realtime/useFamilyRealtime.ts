@@ -29,16 +29,19 @@ export function useFamilyRealtime(opts: {
   timeZone: string
   today: string
   loadAll: () => Promise<void>
+  onMembershipRevoked?: () => void
   setEvents: Dispatch<SetStateAction<CalendarEvent[]>>
   setTasks: Dispatch<SetStateAction<Task[]>>
   setShopping: Dispatch<SetStateAction<ShoppingItem[]>>
   setNotifs: Dispatch<SetStateAction<Notification[]>>
 }) {
-  const { familyId, timeZone, today, loadAll, setEvents, setTasks, setShopping, setNotifs } = opts
+  const { familyId, timeZone, today, loadAll, onMembershipRevoked, setEvents, setTasks, setShopping, setNotifs } = opts
   const loadAllRef = useRef(loadAll)
+  const onMembershipRevokedRef = useRef(onMembershipRevoked)
   const timeZoneRef = useRef(timeZone)
   const todayRef = useRef(today)
   loadAllRef.current = loadAll
+  onMembershipRevokedRef.current = onMembershipRevoked
   timeZoneRef.current = timeZone
   todayRef.current = today
 
@@ -184,10 +187,16 @@ export function useFamilyRealtime(opts: {
         /* onclose handles reconnect */
       }
 
-      socket.onclose = () => {
+      socket.onclose = (ev) => {
         clearPing()
         if (ws === socket) ws = null
         if (closed) return
+        // 4403 = membership revoked (kicked / family deleted / left)
+        if (ev.code === 4403) {
+          closed = true
+          onMembershipRevokedRef.current?.()
+          return
+        }
         if (!sawOpen) {
           // Handshake failed (e.g. expired/invalid token) — force refresh next connect
           forceRefreshNext = true

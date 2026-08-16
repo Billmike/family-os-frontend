@@ -241,11 +241,15 @@ function MainApp() {
         setShopping([])
       }
     } catch (e) {
+      if (e instanceof ApiError && e.status === 404) {
+        void session.recoverFromLostFamily()
+        return
+      }
       handleError(e, 'Failed to load family data')
     } finally {
       setLoading(false)
     }
-  }, [family.id, timeZone, today])
+  }, [family.id, timeZone, today, session.recoverFromLostFamily])
 
   useEffect(() => {
     void loadAll()
@@ -256,6 +260,9 @@ function MainApp() {
     timeZone,
     today,
     loadAll,
+    onMembershipRevoked: () => {
+      void session.recoverFromLostFamily()
+    },
     setEvents,
     setTasks,
     setShopping,
@@ -463,6 +470,32 @@ function MainApp() {
       setFamilyName(updated.name)
       await session.refreshFamily()
       showToast('Family name updated')
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function removeFamilyMember(memberId: string) {
+    try {
+      await familiesApi.removeMember(family.id, memberId)
+      await session.refreshFamily()
+      showToast('Member removed')
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function leaveFamily() {
+    try {
+      await session.leaveCurrentFamily()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function deleteFamily() {
+    try {
+      await session.deleteCurrentFamily()
     } catch (e) {
       handleError(e)
     }
@@ -686,7 +719,11 @@ function MainApp() {
                 members={members}
                 familyName={familyName}
                 currentMemberId={currentUser?.id}
+                currentMemberRole={currentUser?.role}
                 onRename={renameFamily}
+                onRemoveMember={removeFamilyMember}
+                onLeaveFamily={leaveFamily}
+                onDeleteFamily={deleteFamily}
                 {...handlers}
               />
             )}
@@ -695,7 +732,11 @@ function MainApp() {
                 navigate={navigateToScreen}
                 user={session.user}
                 currentMember={currentUser}
+                familyName={familyName}
+                isOwner={currentUser?.role === 'admin'}
                 onSignOut={session.logout}
+                onLeaveFamily={leaveFamily}
+                onDeleteFamily={deleteFamily}
               />
             )}
           </main>

@@ -40,6 +40,9 @@ interface SessionContextValue {
   selectFamily: (familyId: string) => Promise<void>
   refreshFamily: () => Promise<void>
   setFamilyFromCreate: (family: FamilyOut) => Promise<void>
+  leaveCurrentFamily: () => Promise<void>
+  deleteCurrentFamily: () => Promise<void>
+  recoverFromLostFamily: () => Promise<void>
   clearError: () => void
 }
 
@@ -200,6 +203,38 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('ready')
   }, [])
 
+  const recoverFromLostFamily = useCallback(async () => {
+    const familiesList = await familiesApi.listMyFamilies()
+    setFamilies(familiesList)
+    if (familiesList.length === 0) {
+      setStoredFamilyId(null)
+      setFamily(null)
+      setRawMembers([])
+      setStatus('needs_family')
+      return
+    }
+    const preferred = getStoredFamilyId()
+    const next =
+      familiesList.find(f => f.id === preferred) ?? familiesList[0]
+    await selectFamily(next.id)
+  }, [selectFamily])
+
+  const leaveCurrentFamily = useCallback(async () => {
+    if (!family) return
+    const leftId = family.id
+    await familiesApi.leaveFamily(leftId)
+    setFamilies(prev => prev.filter(f => f.id !== leftId))
+    await recoverFromLostFamily()
+  }, [family, recoverFromLostFamily])
+
+  const deleteCurrentFamily = useCallback(async () => {
+    if (!family) return
+    const deletedId = family.id
+    await familiesApi.deleteFamily(deletedId)
+    setFamilies(prev => prev.filter(f => f.id !== deletedId))
+    await recoverFromLostFamily()
+  }, [family, recoverFromLostFamily])
+
   const value: SessionContextValue = {
     status,
     user,
@@ -215,6 +250,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     selectFamily,
     refreshFamily,
     setFamilyFromCreate,
+    leaveCurrentFamily,
+    deleteCurrentFamily,
+    recoverFromLostFamily,
     clearError: () => setError(null),
   }
 

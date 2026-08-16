@@ -3,7 +3,7 @@ import type { AppHandlers, Member } from '../types'
 import type { UserOut } from '../api/types'
 import * as notificationsApi from '../api/notifications'
 import { ApiError } from '../api/client'
-import { t, r, Toggle, MemberAvatar, BottomSheet } from '../ui'
+import { t, r, Toggle, MemberAvatar, BottomSheet, FormField, Input } from '../ui'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
 import { usePwaInstall } from '../lib/pwa/usePwaInstall'
 import {
@@ -18,10 +18,23 @@ interface Props {
   navigate: AppHandlers['navigate']
   user: UserOut | null
   currentMember?: Member | null
+  familyName?: string
+  isOwner?: boolean
   onSignOut: () => void
+  onLeaveFamily: () => void | Promise<void>
+  onDeleteFamily: () => void | Promise<void>
 }
 
-export default function SettingsScreen({ navigate, user, currentMember, onSignOut }: Props) {
+export default function SettingsScreen({
+  navigate,
+  user,
+  currentMember,
+  familyName = '',
+  isOwner = false,
+  onSignOut,
+  onLeaveFamily,
+  onDeleteFamily,
+}: Props) {
   const displayMember: Member = currentMember ?? {
     id: user?.id ?? 'me',
     name: user?.name ?? 'You',
@@ -45,6 +58,9 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
   const [error, setError] = useState<string | null>(null)
   const [showInstallSheet, setShowInstallSheet] = useState(false)
   const [installBusy, setInstallBusy] = useState(false)
+  const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null)
+  const [deleteName, setDeleteName] = useState('')
+  const [familyActionBusy, setFamilyActionBusy] = useState(false)
   const pwa = usePwaInstall()
   const needsIosInstall = iosInstallRequired()
 
@@ -171,6 +187,34 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
 
   const showPushToggle = isPushSupported() && vapidAvailable
 
+  const handleCloseConfirm = () => {
+    if (familyActionBusy) return
+    setConfirm(null)
+    setDeleteName('')
+  }
+
+  const handleConfirmLeave = async () => {
+    setFamilyActionBusy(true)
+    try {
+      await onLeaveFamily()
+      setConfirm(null)
+    } finally {
+      setFamilyActionBusy(false)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (deleteName.trim() !== familyName) return
+    setFamilyActionBusy(true)
+    try {
+      await onDeleteFamily()
+      setConfirm(null)
+      setDeleteName('')
+    } finally {
+      setFamilyActionBusy(false)
+    }
+  }
+
   return (
     <div style={{ minHeight: '100%', paddingBottom: 40 }}>
       <section style={{ margin: '16px 16px 20px' }}>
@@ -237,6 +281,10 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
         <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           <SettingsRow label="Manage family" onClick={() => navigate('family')} />
           <SettingsRow label="Invite a member" onClick={() => navigate('family')} divider />
+          <SettingsRow label="Leave family" danger divider onClick={() => setConfirm('leave')} />
+          {isOwner && (
+            <SettingsRow label="Delete family" danger divider onClick={() => setConfirm('delete')} />
+          )}
         </div>
       </section>
 
@@ -259,6 +307,89 @@ export default function SettingsScreen({ navigate, user, currentMember, onSignOu
             {needsIosInstall ? ' and to enable push notifications.' : '.'}
           </p>
           <InstallStepsList variant={pwa.isIos ? 'ios' : 'manual'} />
+        </BottomSheet>
+      )}
+
+      {confirm === 'leave' && (
+        <BottomSheet title="Leave family" onClose={handleCloseConfirm}>
+          <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.55, marginBottom: 20 }}>
+            {isOwner
+              ? 'If you are the last adult, this family and all its data will be deleted. Otherwise another parent becomes the admin.'
+              : 'You will lose access to this family’s tasks, events, and shopping.'}
+          </p>
+          <button
+            onClick={() => void handleConfirmLeave()}
+            disabled={familyActionBusy}
+            style={{
+              width: '100%', padding: '12px 20px', marginBottom: 10,
+              background: familyActionBusy ? 'var(--ds-disabled-bg)' : 'var(--ds-error)',
+              color: familyActionBusy ? 'var(--ds-disabled-text)' : '#fff',
+              border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
+              cursor: familyActionBusy ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
+            }}
+          >
+            {familyActionBusy ? 'Leaving…' : 'Leave family'}
+          </button>
+          <button
+            onClick={handleCloseConfirm}
+            disabled={familyActionBusy}
+            style={{
+              width: '100%', padding: '12px 20px', border: 'none', background: 'none',
+              color: t.textSec, fontSize: 15, fontFamily: 'var(--ds-font)',
+              cursor: familyActionBusy ? 'default' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+        </BottomSheet>
+      )}
+
+      {confirm === 'delete' && (
+        <BottomSheet title="Delete family" onClose={handleCloseConfirm}>
+          <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.55, marginBottom: 16 }}>
+            This permanently deletes the family and all tasks, events, shopping lists, and members. Type{' '}
+            <strong style={{ color: t.text }}>{familyName}</strong> to confirm.
+          </p>
+          <FormField label="Family name">
+            <Input
+              value={deleteName}
+              onChange={setDeleteName}
+              placeholder={familyName}
+              autoFocus
+            />
+          </FormField>
+          <button
+            onClick={() => void handleConfirmDelete()}
+            disabled={familyActionBusy || deleteName.trim() !== familyName}
+            style={{
+              width: '100%', padding: '12px 20px', marginBottom: 10, marginTop: 8,
+              background:
+                familyActionBusy || deleteName.trim() !== familyName
+                  ? 'var(--ds-disabled-bg)'
+                  : 'var(--ds-error)',
+              color:
+                familyActionBusy || deleteName.trim() !== familyName
+                  ? 'var(--ds-disabled-text)'
+                  : '#fff',
+              border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
+              cursor:
+                familyActionBusy || deleteName.trim() !== familyName ? 'not-allowed' : 'pointer',
+              fontFamily: 'var(--ds-font)',
+            }}
+          >
+            {familyActionBusy ? 'Deleting…' : 'Delete family'}
+          </button>
+          <button
+            onClick={handleCloseConfirm}
+            disabled={familyActionBusy}
+            style={{
+              width: '100%', padding: '12px 20px', border: 'none', background: 'none',
+              color: t.textSec, fontSize: 15, fontFamily: 'var(--ds-font)',
+              cursor: familyActionBusy ? 'default' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
         </BottomSheet>
       )}
     </div>

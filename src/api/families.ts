@@ -32,6 +32,16 @@ export function leaveFamily(familyId: string) {
   return apiRequest<void>(`/api/families/${familyId}/leave`, { method: 'POST' })
 }
 
+export function removeMember(familyId: string, memberId: string) {
+  return apiRequest<void>(`/api/families/${familyId}/members/${memberId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function deleteFamily(familyId: string) {
+  return apiRequest<void>(`/api/families/${familyId}`, { method: 'DELETE' })
+}
+
 export function listMembers(familyId: string) {
   return apiRequest<MemberOut[]>(`/api/families/${familyId}/members`)
 }

@@ -58,7 +58,7 @@ export function addMember(
 
 export function createInvitation(
   familyId: string,
-  data: { email?: string; role?: 'Owner' | 'Parent' | 'Child' } = {},
+  data: { email?: string } = {},
 ) {
   return apiRequest<InvitationOut>(`/api/families/${familyId}/invitations`, {
     method: 'POST',

@@ -370,7 +370,7 @@ export default function Onboarding({ handlers }: Props) {
     const familyId = createdFamilyId
     if (!familyId || inviteLink) return
     try {
-      const inv = await familiesApi.createInvitation(familyId, { role: 'Parent' })
+      const inv = await familiesApi.createInvitation(familyId, {})
       setInviteLink(inv.invite_url)
       setInviteToken(inv.invite_token)
     } catch {
@@ -390,7 +390,6 @@ export default function Onboarding({ handlers }: Props) {
       if (inviteEmail.includes('@')) {
         const inv = await familiesApi.createInvitation(familyId, {
           email: inviteEmail.trim(),
-          role: 'Parent',
         })
         setInviteLink(inv.invite_url)
         setInviteToken(inv.invite_token)

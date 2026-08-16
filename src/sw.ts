@@ -60,9 +60,18 @@ self.addEventListener('push', event => {
   )
 })
 
+/** Only allow same-origin relative paths (reject absolute URLs and protocol-relative). */
+const safeNotificationUrl = (url: string): string => {
+  if (!url.startsWith('/') || url.startsWith('//')) {
+    return '/'
+  }
+  return url
+}
+
 self.addEventListener('notificationclick', event => {
   event.notification.close()
-  const url = (event.notification.data?.url as string | undefined) || '/'
+  const rawUrl = (event.notification.data?.url as string | undefined) || '/'
+  const url = safeNotificationUrl(rawUrl)
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
@@ -76,3 +85,4 @@ self.addEventListener('notificationclick', event => {
     })(),
   )
 })
+

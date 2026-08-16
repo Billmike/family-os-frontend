@@ -505,7 +505,6 @@ function MainApp() {
     try {
       const inv = await familiesApi.createInvitation(family.id, {
         email: email || undefined,
-        role: 'Parent',
       })
       showToast('Invite link ready')
       return { invite_url: inv.invite_url, invite_token: inv.invite_token }

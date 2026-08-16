@@ -57,6 +57,7 @@ export default function SettingsScreen({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showInstallSheet, setShowInstallSheet] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [installBusy, setInstallBusy] = useState(false)
   const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null)
   const [deleteName, setDeleteName] = useState('')
@@ -295,7 +296,7 @@ export default function SettingsScreen({
             label={installLabel}
             onClick={pwa.mode === 'installed' ? undefined : () => void onInstallRowClick()}
           />
-          <SettingsRow label="About" divider />
+          <SettingsRow label="About" divider onClick={() => setShowAbout(true)} />
           <SettingsRow label="Sign out" danger divider onClick={onSignOut} />
         </div>
       </section>
@@ -307,6 +308,38 @@ export default function SettingsScreen({
             {needsIosInstall ? ' and to enable push notifications.' : '.'}
           </p>
           <InstallStepsList variant={pwa.isIos ? 'ios' : 'manual'} />
+        </BottomSheet>
+      )}
+
+      {showAbout && (
+        <BottomSheet title="About FamilyOS" onClose={() => setShowAbout(false)}>
+          <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, marginBottom: 16 }}>
+            FamilyOS is a shared household coordination app — one place for your family to see
+            what is happening today, what needs to be done, what needs to be bought, and what
+            needs your attention.
+          </p>
+          <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, marginBottom: 16 }}>
+            Everything your family needs to coordinate today, in one place.
+          </p>
+          <ul
+            style={{
+              margin: '0 0 20px',
+              padding: '0 0 0 18px',
+              fontSize: 14,
+              color: t.textSec,
+              lineHeight: 1.7,
+            }}
+          >
+            <li>Dashboard for today’s overview</li>
+            <li>Shared calendar and reminders</li>
+            <li>Family tasks and assignments</li>
+            <li>Shopping lists everyone can update</li>
+            <li>Notifications that keep the household in sync</li>
+          </ul>
+          <p style={{ fontSize: 13, color: t.textTer, marginBottom: 4 }}>Version 0.1</p>
+          <p style={{ fontSize: 13, color: t.textTer, lineHeight: 1.5 }}>
+            Built as a mobile-first progressive web app for the whole household.
+          </p>
         </BottomSheet>
       )}
 

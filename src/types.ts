@@ -23,6 +23,17 @@ export interface CalendarEvent {
   repeat?: string
 }
 
+export const TASK_CATEGORIES = [
+  'Household',
+  'Child',
+  'Shopping',
+  'Personal',
+  'Admin',
+  'Other',
+] as const
+
+export type TaskCategory = (typeof TASK_CATEGORIES)[number]
+
 export interface Task {
   id: string
   title: string

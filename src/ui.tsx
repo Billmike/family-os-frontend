@@ -1,6 +1,11 @@
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react'
-import { Check, CheckSquare, X } from 'lucide-react'
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Check, CheckSquare, Baby, ChevronDown, ChevronsDown, ChevronsUp, Equal, Home, MoreHorizontal, Settings2, ShoppingCart, User, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { Member } from './types'
+import { TASK_CATEGORIES } from './types'
+
+export type TaskPriority = 'high' | 'medium' | 'low'
 
 // ─── Design token shorthands ─────────────────────────────────────────────────
 
@@ -404,4 +409,287 @@ export const priorityColor: Record<string, string> = {
   high: 'var(--ds-error)',
   medium: 'var(--ds-warning)',
   low: 'var(--ds-success)',
+}
+
+const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  high: 'High priority',
+  medium: 'Medium priority',
+  low: 'Low priority',
+}
+
+export function PriorityIcon({ priority, size = 14 }: {
+  priority: TaskPriority
+  size?: number
+}) {
+  const triggerRef = useRef<HTMLSpanElement>(null)
+  const [showTip, setShowTip] = useState(false)
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
+  const color = priorityColor[priority]
+  const label = PRIORITY_LABEL[priority]
+  const Icon = priority === 'high' ? ChevronsUp : priority === 'low' ? ChevronsDown : Equal
+
+  useLayoutEffect(() => {
+    if (!showTip || !triggerRef.current) {
+      setCoords(null)
+      return
+    }
+    const rect = triggerRef.current.getBoundingClientRect()
+    setCoords({
+      top: rect.bottom + 6,
+      left: rect.left + rect.width / 2,
+    })
+  }, [showTip])
+
+  return (
+    <span
+      ref={triggerRef}
+      role="img"
+      aria-label={label}
+      onMouseEnter={() => setShowTip(true)}
+      onMouseLeave={() => setShowTip(false)}
+      onFocus={() => setShowTip(true)}
+      onBlur={() => setShowTip(false)}
+      tabIndex={0}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        lineHeight: 0,
+        outline: 'none',
+        cursor: 'default',
+      }}
+    >
+      <Icon size={size} color={color} strokeWidth={2.25} aria-hidden />
+      {showTip && coords && createPortal(
+        <span
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            transform: 'translateX(-50%)',
+            padding: '5px 8px',
+            borderRadius: r.sm,
+            background: t.text,
+            color: t.surface,
+            fontSize: 11,
+            fontWeight: 500,
+            fontFamily: 'var(--ds-font)',
+            lineHeight: 1.3,
+            whiteSpace: 'nowrap',
+            boxShadow: sh.md,
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          {label}
+        </span>,
+        document.body,
+      )}
+    </span>
+  )
+}
+
+// ─── Shared: category icons ───────────────────────────────────────────────────
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Household: Home,
+  Child: Baby,
+  Shopping: ShoppingCart,
+  Personal: User,
+  Admin: Settings2,
+  Other: MoreHorizontal,
+}
+
+export function categoryLucideIcon(category: string): LucideIcon {
+  return CATEGORY_ICONS[category] ?? MoreHorizontal
+}
+
+export function categoryDisplayName(category: string): string {
+  return CATEGORY_ICONS[category] ? category : (category || 'Other')
+}
+
+export function CategoryIcon({ category, size = 14 }: {
+  category: string
+  size?: number
+}) {
+  const triggerRef = useRef<HTMLSpanElement>(null)
+  const [showTip, setShowTip] = useState(false)
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null)
+  const label = categoryDisplayName(category)
+  const Icon = categoryLucideIcon(category)
+
+  useLayoutEffect(() => {
+    if (!showTip || !triggerRef.current) {
+      setCoords(null)
+      return
+    }
+    const rect = triggerRef.current.getBoundingClientRect()
+    setCoords({
+      top: rect.bottom + 6,
+      left: rect.left + rect.width / 2,
+    })
+  }, [showTip])
+
+  return (
+    <span
+      ref={triggerRef}
+      role="img"
+      aria-label={label}
+      onMouseEnter={() => setShowTip(true)}
+      onMouseLeave={() => setShowTip(false)}
+      onFocus={() => setShowTip(true)}
+      onBlur={() => setShowTip(false)}
+      tabIndex={0}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        lineHeight: 0,
+        outline: 'none',
+        cursor: 'default',
+      }}
+    >
+      <Icon size={size} color={t.textTer} strokeWidth={2} aria-hidden />
+      {showTip && coords && createPortal(
+        <span
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            transform: 'translateX(-50%)',
+            padding: '5px 8px',
+            borderRadius: r.sm,
+            background: t.text,
+            color: t.surface,
+            fontSize: 11,
+            fontWeight: 500,
+            fontFamily: 'var(--ds-font)',
+            lineHeight: 1.3,
+            whiteSpace: 'nowrap',
+            boxShadow: sh.md,
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          {label}
+        </span>,
+        document.body,
+      )}
+    </span>
+  )
+}
+
+export function CategorySelect({ value, onChange }: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const SelectedIcon = categoryLucideIcon(value)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative', width: '100%' }}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(v => !v)}
+        style={{
+          ...inputBase,
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          cursor: 'pointer',
+          paddingRight: 36,
+          textAlign: 'left',
+        }}
+      >
+        <SelectedIcon size={16} color={t.textSec} strokeWidth={2} aria-hidden />
+        <span style={{ flex: 1, fontSize: 16, color: t.text }}>{categoryDisplayName(value)}</span>
+        <ChevronDown
+          size={16}
+          color={t.textTer}
+          strokeWidth={2}
+          aria-hidden
+          style={{
+            position: 'absolute',
+            right: 12,
+            transition: 'transform 0.15s',
+            transform: open ? 'rotate(180deg)' : 'none',
+          }}
+        />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Category"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 'calc(100% + 4px)',
+            background: t.surface,
+            borderRadius: r.md,
+            border: `1px solid ${t.border}`,
+            boxShadow: sh.md,
+            overflow: 'hidden',
+            zIndex: 40,
+          }}
+        >
+          {TASK_CATEGORIES.map(cat => {
+            const Icon = categoryLucideIcon(cat)
+            const selected = cat === value
+            return (
+              <button
+                key={cat}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onChange(cat)
+                  setOpen(false)
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  border: 'none',
+                  background: selected ? t.primarySubtle : 'transparent',
+                  color: t.text,
+                  fontSize: 15,
+                  fontFamily: 'var(--ds-font)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <Icon size={16} color={selected ? t.primary : t.textSec} strokeWidth={2} aria-hidden />
+                <span style={{ fontWeight: selected ? 500 : 400 }}>{cat}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }

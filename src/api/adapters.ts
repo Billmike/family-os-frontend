@@ -136,7 +136,7 @@ export function toTask(task: TaskOut, today: string, timeZone = "UTC"): Task {
     dueDate: dueLabel(task.due_at, today, timeZone),
     priority,
     recurring: Boolean(task.recurrence_rule),
-    category: task.category ?? "General",
+    category: task.category ?? "Other",
     completed: task.completed_at != null,
   };
 }

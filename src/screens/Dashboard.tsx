@@ -1,6 +1,6 @@
 import type { CalendarEvent, Task, ShoppingItem, AppHandlers } from '../types'
 import { Calendar, CheckSquare, ShoppingCart, ArrowRight, Plus } from 'lucide-react'
-import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox } from '../ui'
+import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
 
 interface Props extends Partial<AppHandlers> {
@@ -122,7 +122,7 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
                       <span style={{ fontSize: 12, color: t.textTer }}>{member.name}</span>
                     </div>
                   </div>
-                  <div style={{ width: 6, height: 6, borderRadius: 9999, background: task.priority === 'high' ? 'var(--ds-error)' : task.priority === 'medium' ? 'var(--ds-warning)' : 'var(--ds-success)', flexShrink: 0 }} />
+                  <PriorityIcon priority={task.priority} size={14} />
                 </div>
               )
             })}

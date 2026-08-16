@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, MoreHorizontal, Repeat, CheckSquare } from 'lucide-react'
 import type { Task, Member, AppHandlers } from '../types'
-import { t, r, MemberAvatar, TaskCheckbox, FAB, SegmentedControl, SectionLabel, EmptyState, priorityColor } from '../ui'
+import { t, r, MemberAvatar, TaskCheckbox, FAB, SegmentedControl, SectionLabel, EmptyState, PriorityIcon, CategoryIcon } from '../ui'
 import { getMember } from '../data'
 
 interface Props {
@@ -152,7 +152,7 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
           <MemberAvatar member={member} size={16} />
           <span style={{ fontSize: 12, color: t.textTer }}>{member.name}</span>
           {task.category && (
-            <span style={{ fontSize: 11, color: t.textTer, background: t.surfaceMuted, padding: '1px 7px', borderRadius: 9999 }}>{task.category}</span>
+            <CategoryIcon category={task.category} size={14} />
           )}
           {!task.completed && (
             <span style={{ fontSize: 12, color: isToday ? t.textSec : t.textTer }}>
@@ -163,7 +163,7 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <div style={{ width: 6, height: 6, borderRadius: 9999, background: priorityColor[task.priority] }} />
+        <PriorityIcon priority={task.priority} size={14} />
         <button
           onClick={e => { e.stopPropagation(); onMenuOpen(!menuOpen) }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}

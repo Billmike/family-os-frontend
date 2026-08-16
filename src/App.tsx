@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
 import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, Notification, BottomSheetType, Member } from './types'
+import { TASK_CATEGORIES } from './types'
 import { getMember, formatDate, formatTime } from './data'
-import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl } from './ui'
+import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl, CategorySelect } from './ui'
 import Dashboard from './screens/Dashboard'
 import CalendarScreen from './screens/Calendar'
 import TasksScreen from './screens/Tasks'
@@ -810,11 +811,12 @@ function AddTaskSheet({ onClose, onAdd, members, defaultMemberId }: {
   const [assigneeId, setAssignee] = useState(defaultMemberId)
   const [dueDate, setDue] = useState<'today' | 'tomorrow'>('today')
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium')
+  const [category, setCategory] = useState<string>(TASK_CATEGORIES[0])
   const [recurring, setRecurring] = useState(false)
 
   const submit = () => {
     if (!title.trim()) return
-    onAdd({ title: title.trim(), assigneeId, dueDate, priority, recurring, category: 'General' })
+    onAdd({ title: title.trim(), assigneeId, dueDate, priority, recurring, category })
   }
 
   return (
@@ -829,7 +831,14 @@ function AddTaskSheet({ onClose, onAdd, members, defaultMemberId }: {
         <SegmentedControl options={['today', 'tomorrow']} value={dueDate} onChange={v => setDue(v as 'today' | 'tomorrow')} />
       </FormField>
       <FormField label="Priority">
-        <SegmentedControl options={['low', 'medium', 'high']} value={priority} onChange={v => setPriority(v as 'high' | 'medium' | 'low')} />
+        <SegmentedControl
+          options={['Low', 'Medium', 'High']}
+          value={priority === 'high' ? 'High' : priority === 'low' ? 'Low' : 'Medium'}
+          onChange={v => setPriority(v.toLowerCase() as 'high' | 'medium' | 'low')}
+        />
+      </FormField>
+      <FormField label="Category">
+        <CategorySelect value={category} onChange={setCategory} />
       </FormField>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, padding: '12px 0', borderTop: `1px solid ${t.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

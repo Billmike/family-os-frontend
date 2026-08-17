@@ -1,9 +1,18 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
-import { addDays, EVENT_FETCH_AHEAD_DAYS, EVENT_FETCH_BACK_DAYS, toCalendarEvent, toNotification, toShoppingItem, toTask } from '../api/adapters'
+import {
+  addDays,
+  EVENT_FETCH_AHEAD_DAYS,
+  EVENT_FETCH_BACK_DAYS,
+  toCalendarEvent,
+  toNotification,
+  toShoppingItem,
+  toShoppingSession,
+  toTask,
+} from '../api/adapters'
 import { ensureAccessToken, wsBase } from '../api/client'
 import * as eventsApi from '../api/events'
 import type { FamilyWsMessage } from '../api/types'
-import type { CalendarEvent, Notification, ShoppingItem, Task } from '../types'
+import type { CalendarEvent, Notification, ShoppingItem, ShoppingSession, Task } from '../types'
 
 const PING_MS = 30_000
 const BACKOFF_START_MS = 1_000
@@ -33,9 +42,23 @@ export function useFamilyRealtime(opts: {
   setEvents: Dispatch<SetStateAction<CalendarEvent[]>>
   setTasks: Dispatch<SetStateAction<Task[]>>
   setShopping: Dispatch<SetStateAction<ShoppingItem[]>>
+  setActiveSession: Dispatch<SetStateAction<ShoppingSession | null>>
+  setSessionHistory: Dispatch<SetStateAction<ShoppingSession[]>>
   setNotifs: Dispatch<SetStateAction<Notification[]>>
 }) {
-  const { familyId, timeZone, today, loadAll, onMembershipRevoked, setEvents, setTasks, setShopping, setNotifs } = opts
+  const {
+    familyId,
+    timeZone,
+    today,
+    loadAll,
+    onMembershipRevoked,
+    setEvents,
+    setTasks,
+    setShopping,
+    setActiveSession,
+    setSessionHistory,
+    setNotifs,
+  } = opts
   const loadAllRef = useRef(loadAll)
   const onMembershipRevokedRef = useRef(onMembershipRevoked)
   const timeZoneRef = useRef(timeZone)
@@ -95,6 +118,35 @@ export function useFamilyRealtime(opts: {
         setShopping(prev => prev.filter(i => i.id !== msg.item_id))
         return
       }
+      if (msg.type === 'shopping.session.started') {
+        setActiveSession(toShoppingSession(msg.session))
+        return
+      }
+      if (msg.type === 'shopping.session.item.added') {
+        setActiveSession(toShoppingSession(msg.session))
+        if ('removed_item_id' in msg) {
+          setShopping(prev => prev.filter(i => i.id !== msg.removed_item_id))
+        }
+        return
+      }
+      if (msg.type === 'shopping.session.item.removed') {
+        if (msg.restored_item) {
+          const ui = toShoppingItem(msg.restored_item)
+          setShopping(prev => upsertById(prev, ui))
+        }
+        setActiveSession(prev => {
+          if (!prev || prev.id !== msg.session_id) return prev
+          const items = prev.items?.filter(i => i.id !== msg.item_id) ?? []
+          return { ...prev, itemCount: items.length, items }
+        })
+        return
+      }
+      if (msg.type === 'shopping.session.completed') {
+        const ui = toShoppingSession(msg.session)
+        setActiveSession(null)
+        setSessionHistory(prev => [ui, ...prev.filter(s => s.id !== ui.id)])
+        return
+      }
       if (msg.type === 'event.created' || msg.type === 'event.updated') {
         if (msg.event.recurrence_rule) {
           void refetchEvents().catch(() => {
@@ -141,7 +193,6 @@ export function useFamilyRealtime(opts: {
       const token = await ensureAccessToken({ forceRefresh })
       if (closed || generation !== connectGeneration) return
       if (!token) {
-        // Session cleared by auth failure — do not reconnect
         return
       }
 
@@ -191,14 +242,12 @@ export function useFamilyRealtime(opts: {
         clearPing()
         if (ws === socket) ws = null
         if (closed) return
-        // 4403 = membership revoked (kicked / family deleted / left)
         if (ev.code === 4403) {
           closed = true
           onMembershipRevokedRef.current?.()
           return
         }
         if (!sawOpen) {
-          // Handshake failed (e.g. expired/invalid token) — force refresh next connect
           forceRefreshNext = true
         }
         scheduleReconnect()
@@ -241,5 +290,5 @@ export function useFamilyRealtime(opts: {
         ws = null
       }
     }
-  }, [familyId, setEvents, setNotifs, setShopping, setTasks])
+  }, [familyId, setActiveSession, setEvents, setNotifs, setSessionHistory, setShopping, setTasks])
 }

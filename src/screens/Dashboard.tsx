@@ -1,4 +1,4 @@
-import type { CalendarEvent, Task, ShoppingItem, AppHandlers } from '../types'
+import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, AppHandlers } from '../types'
 import { Calendar, CheckSquare, ShoppingCart, ArrowRight, Plus } from 'lucide-react'
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
@@ -7,16 +7,17 @@ interface Props extends Partial<AppHandlers> {
   events: CalendarEvent[]
   tasks: Task[]
   shopping: ShoppingItem[]
+  activeSession: ShoppingSession | null
   memberName: string
   dateLabel: string
   today: string
   navigate: AppHandlers['navigate']
   openSheet: AppHandlers['openSheet']
   completeTask: AppHandlers['completeTask']
-  completeShoppingItem: AppHandlers['completeShoppingItem']
+  addToBasket: AppHandlers['addToBasket']
 }
 
-export default function Dashboard({ events, tasks, shopping, memberName, dateLabel, today, navigate, openSheet, completeTask, completeShoppingItem }: Props) {
+export default function Dashboard({ events, tasks, shopping, activeSession, memberName, dateLabel, today, navigate, openSheet, completeTask, addToBasket }: Props) {
   const tomorrow = (() => {
     const d = new Date(today + 'T12:00:00')
     d.setDate(d.getDate() + 1)
@@ -27,7 +28,7 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
   const openTasks = tasks.filter(tk => !tk.completed)
   const dashTasks = openTasks.slice(0, 4)
   const dashShopping = shopping.filter(i => !i.completed).slice(0, 5)
-  const completedShopping = shopping.filter(i => i.completed).length
+  const basketCount = activeSession?.itemCount ?? 0
 
   const daySection = (dateStr: string) => {
     if (dateStr === today || dateStr === TODAY) return 'Today'
@@ -139,13 +140,19 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
       <DashSection
         icon={<ShoppingCart size={16} color={t.primary} strokeWidth={1.75} />}
         title="Shopping"
-        count={`${dashShopping.length} item${dashShopping.length !== 1 ? 's' : ''}`}
+        count={
+          basketCount > 0
+            ? `${dashShopping.length} item${dashShopping.length !== 1 ? 's' : ''} · ${basketCount} in basket`
+            : `${dashShopping.length} item${dashShopping.length !== 1 ? 's' : ''}`
+        }
         onViewAll={() => navigate('shopping')}
         viewLabel="View list"
         onAdd={() => openSheet({ type: 'addShoppingItem' })}
       >
-        {dashShopping.length === 0 && completedShopping === 0 ? (
-          <div style={{ padding: '16px 20px', color: t.textTer, fontSize: 14 }}>Nothing to buy.</div>
+        {dashShopping.length === 0 ? (
+          <div style={{ padding: '16px 20px', color: t.textTer, fontSize: 14 }}>
+            {basketCount > 0 ? `${basketCount} item${basketCount !== 1 ? 's' : ''} in basket.` : 'Nothing to buy.'}
+          </div>
         ) : (
           <div>
             {dashShopping.map((item, i) => (
@@ -153,18 +160,13 @@ export default function Dashboard({ events, tasks, shopping, memberName, dateLab
                 padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
                 borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
               }}>
-                <ShoppingCheckbox checked={item.completed} onChange={() => completeShoppingItem(item.id)} />
+                <ShoppingCheckbox checked={false} onChange={() => addToBasket(item.id)} />
                 <span style={{ fontSize: 15, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
                 {item.quantity > 1 && (
                   <span style={{ fontSize: 13, color: t.textTer }}>×{item.quantity}</span>
                 )}
               </div>
             ))}
-            {completedShopping > 0 && (
-              <div style={{ padding: '8px 20px 4px' }}>
-                <span style={{ fontSize: 12, color: t.textTer }}>{completedShopping} item{completedShopping !== 1 ? 's' : ''} completed</span>
-              </div>
-            )}
           </div>
         )}
       </DashSection>

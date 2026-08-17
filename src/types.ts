@@ -62,6 +62,30 @@ export interface ShoppingLocation {
   sortOrder: number
 }
 
+export interface ShoppingSessionItem {
+  id: string
+  sessionId: string
+  name: string
+  category: string
+  quantity: number
+  unit?: string
+  locationId?: string | null
+  locationName?: string | null
+  addedAt: string
+  addedById: string
+}
+
+export interface ShoppingSession {
+  id: string
+  status: 'active' | 'completed'
+  startedAt: string
+  completedAt?: string
+  totalCost?: number
+  currency: string
+  itemCount: number
+  items?: ShoppingSessionItem[]
+}
+
 export interface Notification {
   id: string
   type: 'calendar' | 'task' | 'shopping' | 'family'
@@ -76,6 +100,7 @@ export type BottomSheetType =
   | { type: 'addEvent' }
   | { type: 'addTask' }
   | { type: 'addShoppingItem' }
+  | { type: 'completeShopping' }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
   | { type: 'taskDetail'; taskId: string }
@@ -84,7 +109,9 @@ export interface AppHandlers {
   navigate: (screen: Screen) => void
   openSheet: (sheet: BottomSheetType) => void
   completeTask: (id: string) => void
-  completeShoppingItem: (id: string) => void
+  addToBasket: (id: string) => void
+  removeFromBasket: (sessionItemId: string) => void
+  completeShoppingSession: (totalCost: number) => void
   markNotificationRead: (id: string) => void
   markAllNotificationsRead: () => void
   addTask: (task: Omit<Task, 'id' | 'completed'>) => void

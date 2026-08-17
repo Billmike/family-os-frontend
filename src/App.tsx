@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
-import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, Notification, BottomSheetType, Member } from './types'
+import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, Notification, BottomSheetType, Member } from './types'
 import { TASK_CATEGORIES } from './types'
 import { getMember, formatDate, formatTime } from './data'
 import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl, CategorySelect } from './ui'
@@ -27,6 +27,7 @@ import {
   toNotification,
   toShoppingItem,
   toShoppingLocation,
+  toShoppingSession,
   toTask,
   todayInTimezone,
 } from './api/adapters'
@@ -35,6 +36,7 @@ import * as eventsApi from './api/events'
 import * as tasksApi from './api/tasks'
 import * as shoppingApi from './api/shopping'
 import * as shoppingLocationsApi from './api/shoppingLocations'
+import * as shoppingSessionsApi from './api/shoppingSessions'
 import * as notificationsApi from './api/notifications'
 import * as familiesApi from './api/families'
 import { useFamilyRealtime } from './realtime/useFamilyRealtime'
@@ -183,6 +185,8 @@ function MainApp() {
   const [shopping, setShopping] = useState<ShoppingItem[]>([])
   const [shoppingListId, setShoppingListId] = useState<string | null>(null)
   const [shoppingLocations, setShoppingLocations] = useState<ShoppingLocation[]>([])
+  const [activeSession, setActiveSession] = useState<ShoppingSession | null>(null)
+  const [sessionHistory, setSessionHistory] = useState<ShoppingSession[]>([])
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? '')
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today))
@@ -212,13 +216,15 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`
 
-      const [dash, evs, tsks, lists, locs, ns] = await Promise.all([
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history] = await Promise.all([
         dashboardApi.getDashboard(familyId),
         eventsApi.listEvents(familyId, from, to),
         tasksApi.listTasks(familyId, 'all'),
         shoppingApi.listShoppingLists(familyId),
         shoppingLocationsApi.listShoppingLocations(familyId),
         notificationsApi.listNotifications(),
+        shoppingSessionsApi.getActiveSession(familyId),
+        shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
       ])
 
       setFamilyName(dash.family_name)
@@ -229,6 +235,8 @@ function MainApp() {
       setTasks(tsks.map(tk => toTask(tk, dash.date, timeZone)))
       setNotifs(ns.map(toNotification))
       setShoppingLocations(locs.map(toShoppingLocation))
+      setActiveSession(activeSess ? toShoppingSession(activeSess) : null)
+      setSessionHistory(history.map(toShoppingSession))
 
       const groceries =
         lists.find(l => l.name.toLowerCase() === 'groceries') ?? lists[0] ?? null
@@ -266,6 +274,8 @@ function MainApp() {
     setEvents,
     setTasks,
     setShopping,
+    setActiveSession,
+    setSessionHistory,
     setNotifs,
   })
 
@@ -349,14 +359,61 @@ function MainApp() {
     }
   }
 
-  async function completeShoppingItem(id: string) {
+  async function addToBasket(id: string) {
     const item = shopping.find(i => i.id === id)
-    if (!item) return
+    if (!item || item.completed) return
     try {
-      const updated = await shoppingApi.updateShoppingItem(id, { completed: !item.completed })
-      setShopping(its => its.map(i => (i.id === id ? toShoppingItem(updated) : i)))
+      const result = await shoppingSessionsApi.addToBasket(family.id, id)
+      setShopping(its => its.filter(i => i.id !== id))
+      setActiveSession(toShoppingSession(result.session))
     } catch (e) {
       handleError(e)
+    }
+  }
+
+  async function removeFromBasket(sessionItemId: string) {
+    try {
+      const result = await shoppingSessionsApi.removeFromBasket(sessionItemId)
+      if (result.restored_item) {
+        const ui = toShoppingItem(result.restored_item)
+        setShopping(its => {
+          if (its.some(i => i.id === ui.id)) return its
+          return [...its, ui]
+        })
+      }
+      setActiveSession(prev => {
+        if (!prev) return null
+        const items = prev.items?.filter(i => i.id !== sessionItemId) ?? []
+        if (items.length === 0) return { ...prev, itemCount: 0, items: [] }
+        return { ...prev, itemCount: items.length, items }
+      })
+    } catch (e) {
+      handleError(e)
+      const active = await shoppingSessionsApi.getActiveSession(family.id)
+      setActiveSession(active ? toShoppingSession(active) : null)
+    }
+  }
+
+  async function completeShoppingSession(totalCost: number) {
+    try {
+      const completed = await shoppingSessionsApi.completeSession(family.id, totalCost)
+      const ui = toShoppingSession(completed)
+      setActiveSession(null)
+      setSessionHistory(prev => [ui, ...prev.filter(s => s.id !== ui.id)])
+      setSheet(null)
+      showToast('Shopping trip completed')
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function loadSessionDetail(sessionId: string): Promise<ShoppingSession | null> {
+    try {
+      const detail = await shoppingSessionsApi.getSession(sessionId)
+      return toShoppingSession(detail)
+    } catch (e) {
+      handleError(e)
+      return null
     }
   }
 
@@ -648,7 +705,9 @@ function MainApp() {
     navigate: navigateToScreen,
     openSheet: setSheet,
     completeTask: (id: string) => { void completeTask(id) },
-    completeShoppingItem: (id: string) => { void completeShoppingItem(id) },
+    addToBasket: (id: string) => { void addToBasket(id) },
+    removeFromBasket: (sessionItemId: string) => { void removeFromBasket(sessionItemId) },
+    completeShoppingSession: (totalCost: number) => { void completeShoppingSession(totalCost) },
     markNotificationRead: (id: string) => { void markNotificationRead(id) },
     markAllNotificationsRead: () => { void markAllNotificationsRead() },
     addTask: (task: Omit<Task, 'id' | 'completed'>) => { void addTask(task) },
@@ -684,6 +743,7 @@ function MainApp() {
                 events={events}
                 tasks={tasks}
                 shopping={shopping}
+                activeSession={activeSession}
                 memberName={dashGreeting}
                 dateLabel={dashDateLabel}
                 today={today}
@@ -707,6 +767,9 @@ function MainApp() {
                 shopping={shopping}
                 locations={shoppingLocations}
                 members={members}
+                activeSession={activeSession}
+                sessionHistory={sessionHistory}
+                loadSessionDetail={loadSessionDetail}
                 {...handlers}
               />
             )}
@@ -769,6 +832,13 @@ function MainApp() {
           onAdd={handlers.addShoppingItem}
           locations={shoppingLocations}
           onCreateLocation={addShoppingLocation}
+        />
+      )}
+      {sheet?.type === 'completeShopping' && (
+        <CompleteShoppingSheet
+          onClose={() => setSheet(null)}
+          onComplete={handlers.completeShoppingSession}
+          itemCount={activeSession?.itemCount ?? 0}
         />
       )}
       {sheet?.type === 'eventDetail' && (
@@ -895,6 +965,42 @@ function AddTaskSheet({ onClose, onAdd, members, defaultMemberId }: {
         </button>
       </div>
       <PrimaryButton onClick={submit} fullWidth disabled={!title.trim()}>Create Task</PrimaryButton>
+    </BottomSheet>
+  )
+}
+
+function CompleteShoppingSheet({ onClose, onComplete, itemCount }: {
+  onClose: () => void
+  onComplete: (totalCost: number) => void
+  itemCount: number
+}) {
+  const [cost, setCost] = useState('')
+
+  const parsed = Number.parseFloat(cost.replace(',', '.'))
+  const valid = Number.isFinite(parsed) && parsed > 0
+
+  const submit = () => {
+    if (!valid) return
+    onComplete(parsed)
+  }
+
+  return (
+    <BottomSheet title="Complete shopping" onClose={onClose}>
+      <p style={{ fontSize: 14, color: t.textSec, marginBottom: 16 }}>
+        {itemCount} item{itemCount !== 1 ? 's' : ''} in your basket
+      </p>
+      <FormField label="Total cost (€)">
+        <Input
+          placeholder="0.00"
+          value={cost}
+          onChange={setCost}
+          autoFocus
+          inputMode="decimal"
+        />
+      </FormField>
+      <PrimaryButton onClick={submit} fullWidth disabled={!valid}>
+        Complete shopping
+      </PrimaryButton>
     </BottomSheet>
   )
 }

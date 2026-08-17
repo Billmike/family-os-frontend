@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type InputHTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, CheckSquare, Baby, ChevronDown, ChevronsDown, ChevronsUp, Equal, Home, MoreHorizontal, Settings2, ShoppingCart, User, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -312,13 +312,14 @@ const inputBase: CSSProperties = {
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 
-export function Input({ placeholder, value, onChange, autoFocus, type = 'text' }: {
+export function Input({ placeholder, value, onChange, autoFocus, type = 'text', inputMode }: {
   placeholder?: string; value?: string; onChange?: (v: string) => void;
-  autoFocus?: boolean; type?: string
+  autoFocus?: boolean; type?: string; inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode']
 }) {
   return (
     <input
       type={type}
+      inputMode={inputMode}
       style={inputBase}
       placeholder={placeholder}
       value={value}

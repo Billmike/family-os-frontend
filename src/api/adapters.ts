@@ -5,6 +5,8 @@ import type {
   Screen,
   ShoppingItem,
   ShoppingLocation,
+  ShoppingSession,
+  ShoppingSessionItem,
   Task,
 } from "../types";
 import type {
@@ -13,6 +15,8 @@ import type {
   NotificationOut,
   ShoppingItemOut,
   ShoppingLocationOut,
+  ShoppingSessionItemOut,
+  ShoppingSessionOut,
   TaskOut,
 } from "./types";
 
@@ -164,11 +168,57 @@ export function toShoppingLocation(loc: ShoppingLocationOut): ShoppingLocation {
   };
 }
 
+function parseQuantity(qty: string | null): number {
+  const n = qty != null ? Number(qty) : 1;
+  return Number.isFinite(n) ? n : 1;
+}
+
+export function toShoppingSessionItem(item: ShoppingSessionItemOut): ShoppingSessionItem {
+  return {
+    id: item.id,
+    sessionId: item.session_id,
+    name: item.name,
+    category: item.category ?? "Other",
+    quantity: parseQuantity(item.quantity),
+    unit: item.unit ?? undefined,
+    locationId: item.location_id,
+    locationName: item.location_name,
+    addedAt: item.added_at,
+    addedById: item.added_by,
+  };
+}
+
+export function toShoppingSession(session: ShoppingSessionOut): ShoppingSession {
+  return {
+    id: session.id,
+    status: session.status,
+    startedAt: session.started_at,
+    completedAt: session.completed_at ?? undefined,
+    totalCost: session.total_cost != null ? Number(session.total_cost) : undefined,
+    currency: session.currency,
+    itemCount: session.item_count,
+    items: session.items?.map(toShoppingSessionItem),
+  };
+}
+
+export function formatSessionCost(session: ShoppingSession): string {
+  if (session.totalCost == null) return "";
+  const symbol = session.currency === "EUR" ? "€" : session.currency;
+  return `${symbol}${session.totalCost.toFixed(2)}`;
+}
+
+export function formatSessionDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function entityToScreen(entityType: string | null): Screen | undefined {
   if (!entityType) return undefined;
   if (entityType === "event" || entityType === "calendar") return "calendar";
   if (entityType === "task") return "tasks";
-  if (entityType === "shopping" || entityType === "shopping_item")
+  if (entityType === "shopping" || entityType === "shopping_item" || entityType === "shopping_session")
     return "shopping";
   if (entityType === "family" || entityType === "invitation") return "family";
   return undefined;

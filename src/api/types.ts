@@ -116,6 +116,35 @@ export interface ShoppingItemOut {
   updated_at: string
 }
 
+export interface ShoppingSessionItemOut {
+  id: string
+  session_id: string
+  name: string
+  quantity: string | null
+  unit: string | null
+  category: string | null
+  location_id: string | null
+  location_name: string | null
+  added_at: string
+  added_by: string
+}
+
+export interface ShoppingSessionOut {
+  id: string
+  family_id: string
+  status: 'active' | 'completed'
+  started_at: string
+  started_by: string
+  completed_at: string | null
+  completed_by: string | null
+  total_cost: string | null
+  currency: string
+  created_at: string
+  updated_at: string
+  item_count: number
+  items: ShoppingSessionItemOut[]
+}
+
 export interface NotificationOut {
   id: string
   family_id: string
@@ -174,6 +203,10 @@ export type FamilyWsMessage =
   | { type: 'shopping.item.updated'; item: ShoppingItemOut }
   | { type: 'shopping.item.completed'; item: ShoppingItemOut }
   | { type: 'shopping.item.updated'; item_id: string; deleted: true }
+  | { type: 'shopping.session.started'; session: ShoppingSessionOut }
+  | { type: 'shopping.session.item.added'; session: ShoppingSessionOut; item: ShoppingSessionItemOut; removed_item_id: string }
+  | { type: 'shopping.session.item.removed'; session_id: string; item_id: string; restored_item?: ShoppingItemOut }
+  | { type: 'shopping.session.completed'; session: ShoppingSessionOut }
   | { type: 'event.created'; event: EventOut }
   | { type: 'event.updated'; event: EventOut }
   | { type: 'event.deleted'; event_id: string }

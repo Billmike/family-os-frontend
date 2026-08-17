@@ -361,13 +361,15 @@ function MainApp() {
 
   async function addToBasket(id: string) {
     const item = shopping.find(i => i.id === id)
-    if (!item || item.completed) return
+    if (!item || item.completed) return false
     try {
       const result = await shoppingSessionsApi.addToBasket(family.id, id)
       setShopping(its => its.filter(i => i.id !== id))
       setActiveSession(toShoppingSession(result.session))
+      return true
     } catch (e) {
       handleError(e)
+      return false
     }
   }
 
@@ -705,7 +707,7 @@ function MainApp() {
     navigate: navigateToScreen,
     openSheet: setSheet,
     completeTask: (id: string) => { void completeTask(id) },
-    addToBasket: (id: string) => { void addToBasket(id) },
+    addToBasket: (id: string) => addToBasket(id),
     removeFromBasket: (sessionItemId: string) => { void removeFromBasket(sessionItemId) },
     completeShoppingSession: (totalCost: number) => { void completeShoppingSession(totalCost) },
     markNotificationRead: (id: string) => { void markNotificationRead(id) },

@@ -109,7 +109,7 @@ export interface AppHandlers {
   navigate: (screen: Screen) => void
   openSheet: (sheet: BottomSheetType) => void
   completeTask: (id: string) => void
-  addToBasket: (id: string) => void
+  addToBasket: (id: string) => void | Promise<boolean>
   removeFromBasket: (sessionItemId: string) => void
   completeShoppingSession: (totalCost: number) => void
   markNotificationRead: (id: string) => void

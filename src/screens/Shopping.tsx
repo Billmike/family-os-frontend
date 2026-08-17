@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, ShoppingCart, ArrowLeft, Undo2 } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Plus, ShoppingCart, ArrowLeft, Undo2, Check } from 'lucide-react'
 import type {
   ShoppingItem,
   ShoppingLocation,
@@ -12,8 +12,22 @@ import { CATEGORY_ORDER } from '../data'
 import { formatSessionCost, formatSessionDate } from '../api/adapters'
 
 const UNASSIGNED = 'Unassigned'
+const FLY_MS = 520
+const COLLAPSE_MS = 280
+const CART_ICON_PX = 18
+/** Final chip width — visibly smaller than the cart icon so it reads as entering the basket */
+const FLY_TARGET_WIDTH_RATIO = 0.5
 
 type ShoppingView = 'list' | 'basket' | 'session-detail'
+
+interface Flyer {
+  key: string
+  itemId: string
+  name: string
+  quantity: number
+  from: DOMRect
+  to: { x: number; y: number; iconSize: number }
+}
 
 interface Props {
   shopping: ShoppingItem[]
@@ -26,6 +40,9 @@ interface Props {
   addToBasket: AppHandlers['addToBasket']
   removeFromBasket: AppHandlers['removeFromBasket']
 }
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export default function ShoppingScreen({
   shopping,
@@ -41,10 +58,22 @@ export default function ShoppingScreen({
   const [groupBy, setGroupBy] = useState<'Category' | 'Store'>('Category')
   const [selectedSession, setSelectedSession] = useState<ShoppingSession | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [departing, setDeparting] = useState<ShoppingItem[]>([])
+  const [flyers, setFlyers] = useState<Flyer[]>([])
+  const [displayCount, setDisplayCount] = useState(activeSession?.itemCount ?? 0)
+  const [cartPulse, setCartPulse] = useState(false)
 
-  const active = shopping.filter(i => !i.completed)
+  const cartRef = useRef<HTMLButtonElement>(null)
+  const rowRefs = useRef(new Map<string, HTMLElement>())
+  const flyerCountRef = useRef(0)
   const basketCount = activeSession?.itemCount ?? 0
 
+  useEffect(() => {
+    if (flyerCountRef.current > 0) return
+    setDisplayCount(basketCount)
+  }, [basketCount])
+
+  const active = shopping.filter(i => !i.completed)
   const locationNameById = new Map(locations.map(l => [l.id, l.name]))
 
   const storeNameFor = (item: { locationId?: string | null; locationName?: string | null }) =>
@@ -60,6 +89,69 @@ export default function ShoppingScreen({
       setSelectedSession(detail)
       setView('session-detail')
     }
+  }
+
+  const pulseCart = () => {
+    setCartPulse(false)
+    requestAnimationFrame(() => setCartPulse(true))
+  }
+
+  const handleAddToBasket = (item: ShoppingItem) => {
+    if (departing.some(d => d.id === item.id)) return
+
+    if (prefersReducedMotion()) {
+      void Promise.resolve(addToBasket(item.id))
+      return
+    }
+
+    const row = rowRefs.current.get(item.id)
+    const cart = cartRef.current
+    if (!row || !cart) {
+      void Promise.resolve(addToBasket(item.id))
+      return
+    }
+
+    const from = row.getBoundingClientRect()
+    const cartBox = cart.getBoundingClientRect()
+    const key = `${item.id}-${Date.now()}`
+    flyerCountRef.current += 1
+    setDeparting(prev => (prev.some(d => d.id === item.id) ? prev : [...prev, item]))
+    setFlyers(prev => [
+      ...prev,
+      {
+        key,
+        itemId: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        from,
+        to: {
+          x: cartBox.left + cartBox.width / 2,
+          y: cartBox.top + cartBox.height / 2,
+          iconSize: CART_ICON_PX,
+        },
+      },
+    ])
+
+    const pending = Promise.resolve(addToBasket(item.id)).then(ok => {
+      if (ok === false) throw new Error('add-to-basket-failed')
+    })
+    let failed = false
+    let landed = false
+    pending.catch(() => {
+      failed = true
+      if (landed) setDisplayCount(c => Math.max(0, c - 1))
+    })
+
+    window.setTimeout(() => {
+      landed = true
+      flyerCountRef.current = Math.max(0, flyerCountRef.current - 1)
+      setFlyers(prev => prev.filter(f => f.key !== key))
+      setDeparting(prev => prev.filter(d => d.id !== item.id))
+      if (!failed) {
+        setDisplayCount(c => c + 1)
+        pulseCart()
+      }
+    }, FLY_MS)
   }
 
   if (view === 'basket') {
@@ -135,8 +227,11 @@ export default function ShoppingScreen({
     )
   }
 
+  const departingVisible = departing.filter(d => !active.some(a => a.id === d.id))
+  const listItems = [...active, ...departingVisible]
+
   const groups: Record<string, ShoppingItem[]> = {}
-  active.forEach(item => {
+  listItems.forEach(item => {
     const key = groupBy === 'Category' ? item.category : storeNameFor(item)
     ;(groups[key] ??= []).push(item)
   })
@@ -156,6 +251,7 @@ export default function ShoppingScreen({
         ]
 
   const totalActive = active.length
+  const departingIds = new Set(departing.map(d => d.id))
 
   return (
     <div style={{ minHeight: '100%', paddingBottom: 80 }}>
@@ -164,26 +260,35 @@ export default function ShoppingScreen({
           <h2 style={{ fontSize: 20, fontWeight: 600, color: t.text, letterSpacing: '-0.01em', marginBottom: 2 }}>Groceries</h2>
           <p style={{ fontSize: 13, color: t.textSec }}>{totalActive} item{totalActive !== 1 ? 's' : ''} remaining</p>
         </div>
-        {basketCount > 0 && (
-          <button
-            onClick={() => setView('basket')}
-            aria-label={`Open basket with ${basketCount} items`}
-            style={{
-              position: 'relative',
-              background: t.primarySubtle,
-              border: 'none',
-              borderRadius: r.md,
-              padding: '8px 12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <ShoppingCart size={18} color={t.primary} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: t.primary }}>{basketCount}</span>
-          </button>
-        )}
+        <button
+          ref={cartRef}
+          onClick={() => setView('basket')}
+          aria-label={displayCount > 0 ? `Open basket with ${displayCount} items` : 'Open basket'}
+          className={`basket-target${cartPulse ? ' is-pulsing' : ''}`}
+          onAnimationEnd={() => setCartPulse(false)}
+          style={{
+            position: 'relative',
+            background: displayCount > 0 || flyers.length > 0 ? t.primarySubtle : t.surface,
+            border: `1px solid ${displayCount > 0 || flyers.length > 0 ? 'transparent' : t.border}`,
+            borderRadius: r.md,
+            padding: '8px 12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            minHeight: 38,
+          }}
+        >
+          <ShoppingCart size={18} color={displayCount > 0 || flyers.length > 0 ? t.primary : t.textSec} />
+          {displayCount > 0 && (
+            <span
+              aria-live="polite"
+              style={{ fontSize: 13, fontWeight: 600, color: t.primary, minWidth: 10, textAlign: 'center' }}
+            >
+              {displayCount}
+            </span>
+          )}
+        </button>
       </div>
 
       <div style={{ padding: '8px 16px 4px' }}>
@@ -199,7 +304,7 @@ export default function ShoppingScreen({
         <span style={{ fontSize: 13, color: t.primary }}>Live sync with your family</span>
       </div>
 
-      {totalActive === 0 && basketCount === 0 && sessionHistory.length === 0 && (
+      {totalActive === 0 && departing.length === 0 && basketCount === 0 && sessionHistory.length === 0 && (
         <EmptyState
           icon={ShoppingCart}
           title="Nothing to buy"
@@ -218,7 +323,12 @@ export default function ShoppingScreen({
                 key={item.id}
                 item={item}
                 divider={i > 0}
-                onToggle={addToBasket}
+                departing={departingIds.has(item.id)}
+                onToggle={() => handleAddToBasket(item)}
+                rowRef={el => {
+                  if (el) rowRefs.current.set(item.id, el)
+                  else rowRefs.current.delete(item.id)
+                }}
                 secondary={groupBy === 'Category' ? storeNameFor(item) : item.category}
                 hideSecondary={groupBy === 'Category' && !item.locationId}
               />
@@ -272,6 +382,132 @@ export default function ShoppingScreen({
       <FAB onClick={() => openSheet({ type: 'addShoppingItem' })}>
         <Plus size={24} color="#fff" />
       </FAB>
+
+      {flyers.map(flyer => (
+        <FlyingChip key={flyer.key} flyer={flyer} />
+      ))}
+    </div>
+  )
+}
+
+function FlyingChip({ flyer }: { flyer: Flyer }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    const label = labelRef.current
+    if (!el) return
+
+    const startW = flyer.from.width
+    const startH = flyer.from.height
+    const targetW = Math.min(startW * 0.08, flyer.to.iconSize * FLY_TARGET_WIDTH_RATIO)
+    const targetH = Math.max(targetW, startH * 0.2)
+    const squeezeW = flyer.to.iconSize * 0.72
+    const midW = startW * 0.48
+    const midH = startH * 0.58
+    const lateW = Math.max(squeezeW, targetW * 2.2)
+
+    const startX = flyer.from.left
+    const startY = flyer.from.top
+    const endX = flyer.to.x - targetW / 2
+    const endY = flyer.to.y - targetH / 2
+    const lift = Math.min(72, Math.abs(endY - startY) * 0.35 + 36)
+    const midX = startX + (endX - startX) * 0.42
+    const midY = startY + (endY - startY) * 0.26 - lift
+    const lateX = startX + (endX - startX) * 0.78
+    const lateY = startY + (endY - startY) * 0.82
+
+    const easing = 'cubic-bezier(0.22, 1, 0.36, 1)'
+    el.style.willChange = 'transform, width, height, opacity, border-radius'
+
+    const motion = el.animate(
+      [
+        {
+          transform: `translate(${startX}px, ${startY}px)`,
+          width: `${startW}px`,
+          height: `${startH}px`,
+          borderRadius: `${r.lg}px`,
+          opacity: 1,
+          offset: 0,
+        },
+        {
+          transform: `translate(${midX}px, ${midY}px)`,
+          width: `${midW}px`,
+          height: `${midH}px`,
+          borderRadius: `${r.md}px`,
+          opacity: 1,
+          offset: 0.4,
+        },
+        {
+          transform: `translate(${lateX}px, ${lateY}px)`,
+          width: `${lateW}px`,
+          height: `${targetH * 1.35}px`,
+          borderRadius: `${r.pill}px`,
+          opacity: 1,
+          offset: 0.72,
+        },
+        {
+          transform: `translate(${endX}px, ${endY}px)`,
+          width: `${targetW}px`,
+          height: `${targetH}px`,
+          borderRadius: `${r.pill}px`,
+          opacity: 0,
+          offset: 1,
+        },
+      ],
+      { duration: FLY_MS, easing, fill: 'forwards' },
+    )
+
+    const labelAnim = label?.animate(
+      [{ opacity: 1, offset: 0 }, { opacity: 0, offset: 0.32 }],
+      { duration: FLY_MS * 0.32, easing: 'ease-out', fill: 'forwards' },
+    )
+
+    return () => {
+      motion.cancel()
+      labelAnim?.cancel()
+      el.style.willChange = 'auto'
+    }
+  }, [flyer])
+
+  return (
+    <div
+      ref={ref}
+      aria-hidden
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 80,
+        pointerEvents: 'none',
+        width: flyer.from.width,
+        height: flyer.from.height,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '0 16px',
+        background: t.surface,
+        borderRadius: r.lg,
+        boxShadow: 'var(--ds-shadow-md)',
+        border: `1px solid ${t.border}`,
+        overflow: 'hidden',
+        transform: `translate(${flyer.from.left}px, ${flyer.from.top}px)`,
+        fontFamily: 'var(--ds-font)',
+      }}
+    >
+      <div style={{
+        width: 22, height: 22, borderRadius: 9999, flexShrink: 0,
+        background: t.success, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Check size={13} color="#fff" strokeWidth={2.5} />
+      </div>
+      <span
+        ref={labelRef}
+        style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
+      >
+        {flyer.name}
+      </span>
     </div>
   )
 }
@@ -294,37 +530,54 @@ function BasketHeader({ count, onBack }: { count: number; onBack: () => void }) 
   )
 }
 
-function ShoppingRow({ item, divider, onToggle, secondary, hideSecondary }: {
+function ShoppingRow({ item, divider, departing, onToggle, rowRef, secondary, hideSecondary }: {
   item: ShoppingItem
   divider: boolean
-  onToggle: (id: string) => void
+  departing: boolean
+  onToggle: () => void
+  rowRef: (el: HTMLElement | null) => void
   secondary?: string
   hideSecondary?: boolean
 }) {
   return (
-    <div style={{
-      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
-      borderTop: divider ? `1px solid ${t.border}` : 'none',
-    }}>
-      <ShoppingCheckbox checked={false} onChange={() => onToggle(item.id)} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {item.name}
-        </div>
-        {secondary && !hideSecondary && (
-          <div style={{ fontSize: 12, color: t.textTer, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {secondary}
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateRows: departing ? '0fr' : '1fr',
+        transition: `grid-template-rows ${COLLAPSE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+      }}
+    >
+      <div style={{ overflow: 'hidden' }}>
+        <div
+          ref={rowRef}
+          style={{
+            padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+            borderTop: divider ? `1px solid ${t.border}` : 'none',
+            opacity: departing ? 0 : 1,
+            transition: 'opacity 0.16s ease',
+          }}
+        >
+          <ShoppingCheckbox checked={departing} onChange={onToggle} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {item.name}
+            </div>
+            {secondary && !hideSecondary && (
+              <div style={{ fontSize: 12, color: t.textTer, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {secondary}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      {item.quantity > 1 && (
-        <div style={{
-          minWidth: 28, height: 22, borderRadius: r.pill, border: `1px solid ${t.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px',
-        }}>
-          <span style={{ fontSize: 12, fontWeight: 500, color: t.textSec }}>×{item.quantity}</span>
+          {item.quantity > 1 && (
+            <div style={{
+              minWidth: 28, height: 22, borderRadius: r.pill, border: `1px solid ${t.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px',
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: t.textSec }}>×{item.quantity}</span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -93,6 +93,22 @@ html, body, #root {
 @keyframes toastIn  { from { opacity: 0; transform: translateX(-50%) translateY(12px) } to { opacity: 1; transform: translateX(-50%) translateY(0) } }
 @keyframes shimmer  { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
 @keyframes spin     { to { transform: rotate(360deg) } }
+@keyframes basketPulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+.basket-target {
+  transform-origin: center;
+}
+.basket-target.is-pulsing {
+  animation: basketPulse 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .basket-target.is-pulsing { animation: none; }
+}
 
 /* Responsive layout helpers */
 .hide-mobile  { display: none; }

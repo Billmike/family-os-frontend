@@ -4,7 +4,7 @@ import type { CalendarEvent, Member, AppHandlers } from '../types'
 import { t, r, MemberAvatar, FAB, SegmentedControl, SectionLabel } from '../ui'
 import { getMember, formatTime } from '../data'
 
-const EVENT_DOT = '#D97706'
+const EVENT_DOT = t.warning
 const WEEKDAY_HEADERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 interface Props {
@@ -211,7 +211,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
                       fontSize: 14,
                       fontWeight: active || isToday ? 600 : 400,
                       color: active
-                        ? '#fff'
+                        ? t.onPrimary
                         : !cell.inMonth
                           ? t.textTer
                           : isToday
@@ -223,7 +223,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
                     <div style={{
                       width: 4, height: 4, borderRadius: 9999, marginTop: 3,
                       background: hasEvents
-                        ? (active ? 'rgba(255,255,255,0.85)' : EVENT_DOT)
+                        ? (active ? 'color-mix(in srgb, var(--ds-on-primary) 85%, transparent)' : EVENT_DOT)
                         : 'transparent',
                     }} />
                   </button>
@@ -254,7 +254,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
       )}
 
       <FAB onClick={() => openSheet({ type: 'addEvent' })}>
-        <Plus size={24} color="#fff" />
+        <Plus size={24} color={t.onPrimary} />
       </FAB>
     </div>
   )

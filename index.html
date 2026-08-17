@@ -4,10 +4,27 @@
     <!-- figma:head-start -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#4338CA" />
+    <meta name="theme-color" content="#F7F6F3" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="FamilyOS" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('familyos_theme')
+          if (stored !== 'light' && stored !== 'dark') stored = 'system'
+          var dark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+          document.documentElement.style.backgroundColor = dark ? '#1C1917' : '#F7F6F3'
+          document.documentElement.style.color = dark ? '#F5F2ED' : '#1C1917'
+          var themeColor = document.querySelector('meta[name="theme-color"]')
+          if (themeColor) themeColor.setAttribute('content', dark ? '#1C1917' : '#F7F6F3')
+          var statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+          if (statusBar) statusBar.setAttribute('content', dark ? 'black-translucent' : 'default')
+        } catch (e) {}
+      })()
+    </script>
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <title><!-- figma:title --></title>

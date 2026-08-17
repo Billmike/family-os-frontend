@@ -13,6 +13,7 @@ export const t = {
   bg:           'var(--ds-bg)',
   surface:      'var(--ds-surface)',
   surfaceMuted: 'var(--ds-surface-muted)',
+  bgGlass:      'var(--ds-bg-glass)',
   text:         'var(--ds-text-primary)',
   textSec:      'var(--ds-text-secondary)',
   textTer:      'var(--ds-text-tertiary)',
@@ -21,6 +22,7 @@ export const t = {
   primary:      'var(--ds-primary)',
   primaryHover: 'var(--ds-primary-hover)',
   primarySubtle:'var(--ds-primary-subtle)',
+  onPrimary:    'var(--ds-on-primary)',
   success:      'var(--ds-success)',
   successSub:   'var(--ds-success-subtle)',
   warning:      'var(--ds-warning)',
@@ -29,6 +31,10 @@ export const t = {
   errorSub:     'var(--ds-error-subtle)',
   info:         'var(--ds-info)',
   infoSub:      'var(--ds-info-subtle)',
+  inverse:      'var(--ds-inverse)',
+  onInverse:    'var(--ds-on-inverse)',
+  overlay:      'var(--ds-overlay)',
+  toggleKnob:   'var(--ds-toggle-knob)',
 } as const
 
 export const r = {
@@ -78,7 +84,7 @@ export function TaskCheckbox({ checked, onChange, size = 22 }: {
         transition: 'all 0.15s',
       }}
     >
-      {checked && <Check size={size * 0.6} color="#fff" strokeWidth={2.5} />}
+      {checked && <Check size={size * 0.6} color={t.onPrimary} strokeWidth={2.5} />}
     </button>
   )
 }
@@ -98,7 +104,7 @@ export function ShoppingCheckbox({ checked, onChange }: { checked: boolean; onCh
         transition: 'all 0.15s',
       }}
     >
-      {checked && <Check size={13} color="#fff" strokeWidth={2.5} />}
+      {checked && <Check size={13} color={t.onPrimary} strokeWidth={2.5} />}
     </button>
   )
 }
@@ -119,7 +125,7 @@ export function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) 
       <div style={{
         position: 'absolute', top: 3,
         left: on ? 21 : 3, width: 20, height: 20,
-        borderRadius: 9999, background: '#fff',
+        borderRadius: 9999, background: t.toggleKnob,
         boxShadow: sh.low, transition: 'left 0.2s',
       }} />
     </button>
@@ -165,7 +171,7 @@ export function EmptyState({ icon: Icon, title, body, action, onAction }: {
       {action && onAction && (
         <button onClick={onAction} style={{
           marginTop: 8, padding: '9px 20px',
-          background: t.primary, color: '#fff', border: 'none',
+          background: t.primary, color: t.onPrimary, border: 'none',
           borderRadius: r.md, fontSize: 14, fontWeight: 500,
           cursor: 'pointer', fontFamily: 'var(--ds-font)',
         }}>{action}</button>
@@ -177,7 +183,7 @@ export function EmptyState({ icon: Icon, title, body, action, onAction }: {
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const skelStyle: CSSProperties = {
-  background: 'linear-gradient(90deg, #E7E4DF 25%, #F0EDE8 50%, #E7E4DF 75%)',
+  background: 'linear-gradient(90deg, var(--ds-skeleton-from) 25%, var(--ds-skeleton-to) 50%, var(--ds-skeleton-from) 75%)',
   backgroundSize: '400px 100%',
   animation: 'shimmer 1.4s ease-in-out infinite',
   borderRadius: 6,
@@ -215,7 +221,7 @@ export function BottomSheet({ title, onClose, children, zIndex = 200, header, ar
       {/* Backdrop */}
       <div
         onClick={onClose}
-        style={{ position: 'absolute', inset: 0, background: 'rgba(28,25,23,0.4)', animation: 'fadeIn 0.2s ease' }}
+        style={{ position: 'absolute', inset: 0, background: t.overlay, animation: 'fadeIn 0.2s ease' }}
       />
       {/* Sheet */}
       <div ref={sheetRef} className="bottom-sheet-panel" style={{
@@ -258,20 +264,20 @@ export function Toast({ message, type = 'success', onClose }: {
       position: 'fixed', bottom: 96, left: '50%', transform: 'translateX(-50%)',
       display: 'flex', alignItems: 'center', gap: 10, zIndex: 300,
       padding: '12px 16px', borderRadius: r.lg,
-      background: '#1C1917', boxShadow: sh.high,
+      background: t.inverse, boxShadow: sh.high,
       animation: 'toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
       maxWidth: 'min(92vw, 420px)',
       boxSizing: 'border-box',
     }}>
       <div style={{ ...iconStyle, background: type === 'success' ? t.success : t.error }}>
         {type === 'success'
-          ? <Check size={13} color="#fff" strokeWidth={2.5} />
-          : <X size={13} color="#fff" strokeWidth={2.5} />
+          ? <Check size={13} color={t.onPrimary} strokeWidth={2.5} />
+          : <X size={13} color={t.onPrimary} strokeWidth={2.5} />
         }
       </div>
-      <span style={{ fontSize: 14, color: '#fff', lineHeight: 1.4, wordBreak: 'break-word' }}>{message}</span>
+      <span style={{ fontSize: 14, color: t.onInverse, lineHeight: 1.4, wordBreak: 'break-word' }}>{message}</span>
       <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4, display: 'flex', flexShrink: 0 }}>
-        <X size={15} color="rgba(255,255,255,0.5)" />
+        <X size={15} color="var(--ds-on-inverse-muted)" />
       </button>
     </div>
   )
@@ -286,7 +292,7 @@ export function PrimaryButton({ onClick, children, fullWidth, disabled }: {
     <button onClick={onClick} disabled={disabled} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
       padding: '12px 20px', background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
-      color: disabled ? 'var(--ds-disabled-text)' : '#fff',
+      color: disabled ? 'var(--ds-disabled-text)' : t.onPrimary,
       border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
       cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
       width: fullWidth ? '100%' : undefined,
@@ -343,13 +349,22 @@ export function Select({ value, onChange, options }: {
   value: string; onChange: (v: string) => void; options: { value: string; label: string }[]
 }) {
   return (
-    <select
-      style={{ ...inputBase, cursor: 'pointer', paddingRight: 32, appearance: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-    >
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <select
+        style={{ ...inputBase, cursor: 'pointer', paddingRight: 32, appearance: 'none' }}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <ChevronDown
+        size={16}
+        color={t.textTer}
+        strokeWidth={2}
+        aria-hidden
+        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+      />
+    </div>
   )
 }
 

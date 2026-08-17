@@ -379,7 +379,7 @@ function DangerButton({
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         width: '100%', padding: '12px 20px',
         background: disabled ? 'var(--ds-disabled-bg)' : 'var(--ds-error)',
-        color: disabled ? 'var(--ds-disabled-text)' : '#fff',
+        color: disabled ? 'var(--ds-disabled-text)' : t.onPrimary,
         border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
         cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
       }}

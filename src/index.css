@@ -2,11 +2,14 @@
 @import 'tailwindcss';
 
 :root {
+  color-scheme: light;
+
   /* ── Surfaces ─────────────────────────────────── */
   --ds-bg:               #F7F6F3;
   --ds-surface:          #FFFFFF;
   --ds-surface-elevated: #FFFFFF;
   --ds-surface-muted:    #F0EDE8;
+  --ds-bg-glass:         rgba(247, 246, 243, 0.92);
 
   /* ── Text ─────────────────────────────────────── */
   --ds-text-primary:   #1C1917;
@@ -22,6 +25,7 @@
   --ds-primary-hover:   #4338CA;
   --ds-primary-pressed: #3730A3;
   --ds-primary-subtle:  #EEF2FF;
+  --ds-on-primary:      #FFFFFF;
 
   /* ── Semantic ─────────────────────────────────── */
   --ds-success:        #16A34A;
@@ -43,6 +47,17 @@
   --ds-disabled-bg:    #F3F4F6;
   --ds-disabled-text:  #9CA3AF;
   --ds-disabled-border:#E5E7EB;
+
+  /* ── Inverse (toast) ──────────────────────────── */
+  --ds-inverse:           #1C1917;
+  --ds-on-inverse:        #FFFFFF;
+  --ds-on-inverse-muted:  rgba(255, 255, 255, 0.5);
+
+  /* ── Overlay, skeleton, toggle ────────────────── */
+  --ds-overlay:        rgba(28, 25, 23, 0.4);
+  --ds-skeleton-from:  #E7E4DF;
+  --ds-skeleton-to:    #F0EDE8;
+  --ds-toggle-knob:    #FFFFFF;
 
   /* ── Family Member Colors ─────────────────────── */
   --ds-member-1:    #6366F1; --ds-member-1-bg: #EEF2FF;
@@ -67,6 +82,68 @@
 
   /* ── Typography ───────────────────────────────── */
   --ds-font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --ds-bg:               #1C1917;
+  --ds-surface:          #2E2A26;
+  --ds-surface-elevated: #3A3530;
+  --ds-surface-muted:    #241F1C;
+  --ds-bg-glass:         rgba(28, 25, 23, 0.92);
+
+  --ds-text-primary:   #F5F2ED;
+  --ds-text-secondary: #A8A29E;
+  --ds-text-tertiary:  #78716C;
+
+  --ds-border:        #3D3833;
+  --ds-border-strong: #57534E;
+
+  --ds-primary:         #818CF8;
+  --ds-primary-hover:   #A5B4FC;
+  --ds-primary-pressed: #6366F1;
+  --ds-primary-subtle:  #25235A;
+  --ds-on-primary:      #FFFFFF;
+
+  --ds-success:        #22C55E;
+  --ds-success-subtle: #163022;
+  --ds-success-text:   #86EFAC;
+  --ds-warning:        #F59E0B;
+  --ds-warning-subtle: #2A1F0A;
+  --ds-warning-text:   #FCD34D;
+  --ds-error:          #F87171;
+  --ds-error-subtle:   #3F1515;
+  --ds-error-text:     #FCA5A5;
+  --ds-info:           #60A5FA;
+  --ds-info-subtle:    #1A2744;
+  --ds-info-text:      #93C5FD;
+
+  --ds-focus:          rgba(129, 140, 248, 0.4);
+  --ds-focus-ring:     #818CF8;
+  --ds-disabled-bg:    #292524;
+  --ds-disabled-text:  #78716C;
+  --ds-disabled-border:#3D3833;
+
+  --ds-inverse:           #F5F2ED;
+  --ds-on-inverse:        #1C1917;
+  --ds-on-inverse-muted:  rgba(28, 25, 23, 0.5);
+
+  --ds-overlay:        rgba(0, 0, 0, 0.55);
+  --ds-skeleton-from:  #292524;
+  --ds-skeleton-to:    #3D3833;
+  --ds-toggle-knob:    #F5F2ED;
+
+  --ds-member-1:    #818CF8; --ds-member-1-bg: #22204A;
+  --ds-member-2:    #38BDF8; --ds-member-2-bg: #0C3A52;
+  --ds-member-3:    #34D399; --ds-member-3-bg: #0F3D32;
+  --ds-member-4:    #FBBF24; --ds-member-4-bg: #3D2A0A;
+  --ds-member-5:    #FB7185; --ds-member-5-bg: #3F1520;
+  --ds-member-6:    #A78BFA; --ds-member-6-bg: #2E1A5C;
+
+  --ds-shadow-low:  0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.28);
+  --ds-shadow-md:   0 4px 12px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.3);
+  --ds-shadow-high: 0 8px 24px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.35);
 }
 
 html, body, #root {

@@ -3,7 +3,9 @@ import type { AppHandlers, Member } from '../types'
 import type { UserOut } from '../api/types'
 import * as notificationsApi from '../api/notifications'
 import { ApiError } from '../api/client'
-import { t, r, Toggle, MemberAvatar, BottomSheet, FormField, Input } from '../ui'
+import { t, r, Toggle, MemberAvatar, BottomSheet, FormField, Input, SegmentedControl } from '../ui'
+import { useTheme } from '../lib/theme/ThemeProvider'
+import type { ThemePreference } from '../lib/theme/theme'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
 import { usePwaInstall } from '../lib/pwa/usePwaInstall'
 import {
@@ -35,13 +37,21 @@ export default function SettingsScreen({
   onLeaveFamily,
   onDeleteFamily,
 }: Props) {
+  const { preference, setPreference } = useTheme()
+  const appearanceLabel =
+    preference === 'light' ? 'Light' : preference === 'dark' ? 'Dark' : 'System'
+
+  const handleAppearanceChange = (label: string) => {
+    setPreference(label.toLowerCase() as ThemePreference)
+  }
+
   const displayMember: Member = currentMember ?? {
     id: user?.id ?? 'me',
     name: user?.name ?? 'You',
     role: 'admin',
     initials: (user?.name ?? 'Y').slice(0, 1).toUpperCase(),
-    color: '#6366F1',
-    bg: '#EEF2FF',
+    color: 'var(--ds-member-1)',
+    bg: 'var(--ds-member-1-bg)',
   }
 
   const [prefs, setPrefs] = useState({
@@ -235,6 +245,24 @@ export default function SettingsScreen({
       </section>
 
       <section style={{ margin: '0 16px 20px' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Appearance</p>
+        <div
+          role="group"
+          aria-label="Appearance"
+          style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, padding: 12 }}
+        >
+          <SegmentedControl
+            options={['Light', 'Dark', 'System']}
+            value={appearanceLabel}
+            onChange={handleAppearanceChange}
+          />
+          {preference === 'system' && (
+            <p style={{ fontSize: 12, color: t.textTer, marginTop: 10, padding: '0 4px' }}>Matches this device</p>
+          )}
+        </div>
+      </section>
+
+      <section style={{ margin: '0 16px 20px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
           Notifications{saving || pushBusy ? '…' : ''}
         </p>
@@ -356,7 +384,7 @@ export default function SettingsScreen({
             style={{
               width: '100%', padding: '12px 20px', marginBottom: 10,
               background: familyActionBusy ? 'var(--ds-disabled-bg)' : 'var(--ds-error)',
-              color: familyActionBusy ? 'var(--ds-disabled-text)' : '#fff',
+              color: familyActionBusy ? 'var(--ds-disabled-text)' : t.onPrimary,
               border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
               cursor: familyActionBusy ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
             }}
@@ -403,7 +431,7 @@ export default function SettingsScreen({
               color:
                 familyActionBusy || deleteName.trim() !== familyName
                   ? 'var(--ds-disabled-text)'
-                  : '#fff',
+                  : t.onPrimary,
               border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
               cursor:
                 familyActionBusy || deleteName.trim() !== familyName ? 'not-allowed' : 'pointer',

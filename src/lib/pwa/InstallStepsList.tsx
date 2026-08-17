@@ -33,7 +33,7 @@ export function InstallStepsList({ variant }: { variant: 'ios' | 'manual' }) {
               height: 28,
               borderRadius: 9999,
               background: t.primary,
-              color: '#fff',
+              color: t.onPrimary,
               fontSize: 13,
               fontWeight: 700,
               display: 'flex',

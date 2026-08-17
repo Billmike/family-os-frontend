@@ -28,12 +28,12 @@ type Step =
   | 'install'
 
 const MEMBER_COLORS = [
-  { color: '#6366F1', bg: '#EEF2FF', label: 'Indigo' },
-  { color: '#0284C7', bg: '#E0F2FE', label: 'Sky' },
-  { color: '#059669', bg: '#ECFDF5', label: 'Emerald' },
-  { color: '#D97706', bg: '#FEF3C7', label: 'Amber' },
-  { color: '#E11D48', bg: '#FFF1F2', label: 'Rose' },
-  { color: '#7C3AED', bg: '#F5F3FF', label: 'Violet' },
+  { color: 'var(--ds-member-1)', bg: 'var(--ds-member-1-bg)', label: 'Indigo' },
+  { color: 'var(--ds-member-2)', bg: 'var(--ds-member-2-bg)', label: 'Sky' },
+  { color: 'var(--ds-member-3)', bg: 'var(--ds-member-3-bg)', label: 'Emerald' },
+  { color: 'var(--ds-member-4)', bg: 'var(--ds-member-4-bg)', label: 'Amber' },
+  { color: 'var(--ds-member-5)', bg: 'var(--ds-member-5-bg)', label: 'Rose' },
+  { color: 'var(--ds-member-6)', bg: 'var(--ds-member-6-bg)', label: 'Violet' },
 ]
 
 const PROGRESS_STEPS: Step[] = ['family', 'members', 'invite']
@@ -113,7 +113,7 @@ function PrimaryBtn({ onClick, disabled, children, type = 'button' }: {
     <button type={type} onClick={onClick} disabled={disabled} style={{
       width: '100%', padding: '14px', borderRadius: r.md, border: 'none',
       background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
-      color: disabled ? 'var(--ds-disabled-text)' : '#fff',
+      color: disabled ? 'var(--ds-disabled-text)' : t.onPrimary,
       fontSize: 16, fontWeight: 500, cursor: disabled ? 'not-allowed' : 'pointer',
       fontFamily: 'var(--ds-font)', display: 'flex', alignItems: 'center',
       justifyContent: 'center', gap: 8, transition: 'background 0.15s',
@@ -681,7 +681,7 @@ export default function Onboarding({ handlers }: Props) {
             style={{
               width: 48, height: 48, borderRadius: r.md, border: 'none',
               background: childName.trim() ? t.primary : t.surfaceMuted,
-              color: childName.trim() ? '#fff' : t.textTer,
+              color: childName.trim() ? t.onPrimary : t.textTer,
               cursor: childName.trim() ? 'pointer' : 'not-allowed',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
@@ -779,9 +779,9 @@ export default function Onboarding({ handlers }: Props) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           {[
-            { icon: <CheckSquare size={20} color="#6366F1" strokeWidth={1.75} />, bg: '#EEF2FF', title: 'Add your first task', body: 'Assign chores, errands, and reminders to family members.' },
-            { icon: <Plus size={20} color="#059669" strokeWidth={1.75} />, bg: '#ECFDF5', title: 'Create a calendar event', body: 'Keep everyone on the same schedule.' },
-            { icon: <ShoppingCart size={20} color="#D97706" strokeWidth={1.75} />, bg: '#FEF3C7', title: 'Start a shopping list', body: 'Add items and check them off as you shop.' },
+            { icon: <CheckSquare size={20} color={t.primary} strokeWidth={1.75} />, bg: t.primarySubtle, title: 'Add your first task', body: 'Assign chores, errands, and reminders to family members.' },
+            { icon: <Plus size={20} color={t.success} strokeWidth={1.75} />, bg: t.successSub, title: 'Create a calendar event', body: 'Keep everyone on the same schedule.' },
+            { icon: <ShoppingCart size={20} color={t.warning} strokeWidth={1.75} />, bg: t.warningSub, title: 'Start a shopping list', body: 'Add items and check them off as you shop.' },
           ].map(f => (
             <div key={f.title} style={{ display: 'flex', gap: 14, padding: '14px', borderRadius: r.lg, border: `1px solid ${t.border}`, background: t.surface }}>
               <div style={{ width: 40, height: 40, borderRadius: r.md, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -819,7 +819,7 @@ export default function Onboarding({ handlers }: Props) {
           {['Events and reminders', 'Task assigned to you', 'Task due soon', 'Items added or bought', 'Someone joins the family'].map((item, i) => (
             <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i > 0 ? `1px solid ${t.border}` : 'none' }}>
               <div style={{ width: 18, height: 18, borderRadius: 5, background: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Check size={11} color="#fff" strokeWidth={2.5} />
+                <Check size={11} color={t.onPrimary} strokeWidth={2.5} />
               </div>
               <span style={{ fontSize: 14, color: t.text }}>{item}</span>
             </div>

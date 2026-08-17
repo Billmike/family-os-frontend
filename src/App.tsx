@@ -626,7 +626,7 @@ function MainApp() {
         paddingTop: 'env(safe-area-inset-top, 0px)',
         display: 'flex', alignItems: 'center',
         paddingLeft: 16, paddingRight: 16, gap: 12, flexShrink: 0,
-        background: 'rgba(247,246,243,0.92)', backdropFilter: 'blur(12px)',
+        background: t.bgGlass, backdropFilter: 'blur(12px)',
         borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 20,
       }}>
         {isSubScreen ? (
@@ -637,7 +637,7 @@ function MainApp() {
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Home size={14} color="#fff" />
+              <Home size={14} color={t.onPrimary} />
             </div>
             {isDashboard && (
               <span style={{ fontSize: 15, fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{familyName}</span>
@@ -657,7 +657,7 @@ function MainApp() {
           {unreadCount > 0 && (
             <span style={{
               position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16,
-              borderRadius: 9999, background: t.error, color: '#fff',
+              borderRadius: 9999, background: t.error, color: t.onPrimary,
               fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `1.5px solid ${t.bg}`, padding: '0 3px',
             }}>{unreadCount}</span>
@@ -679,7 +679,7 @@ function MainApp() {
       }}>
         <div style={{ padding: '4px 16px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: t.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Home size={14} color="#fff" />
+            <Home size={14} color={t.onPrimary} />
           </div>
           <span style={{ fontSize: 15, fontWeight: 600, color: t.text }}>FamilyOS</span>
         </div>
@@ -698,7 +698,7 @@ function MainApp() {
               <Icon size={18} strokeWidth={active ? 2 : 1.75} />
               {item.label}
               {item.screen === 'notifications' && unreadCount > 0 && (
-                <span style={{ marginLeft: 'auto', minWidth: 18, height: 18, borderRadius: 9999, background: t.error, color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{unreadCount}</span>
+                <span style={{ marginLeft: 'auto', minWidth: 18, height: 18, borderRadius: 9999, background: t.error, color: t.onPrimary, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{unreadCount}</span>
               )}
             </button>
           )
@@ -724,7 +724,7 @@ function MainApp() {
     return (
       <nav style={{
         display: 'flex', borderTop: `1px solid ${t.border}`,
-        background: 'rgba(247,246,243,0.95)', backdropFilter: 'blur(12px)',
+        background: t.bgGlass, backdropFilter: 'blur(12px)',
         paddingBottom: 'env(safe-area-inset-bottom)', flexShrink: 0,
       }}>
         {BOTTOM_NAV.map(item => {
@@ -1019,7 +1019,7 @@ function AddTaskSheet({ onClose, onAdd, members, defaultMemberId }: {
           background: recurring ? t.primary : t.border, cursor: 'pointer',
           position: 'relative', transition: 'background 0.2s', padding: 0,
         }}>
-          <div style={{ position: 'absolute', top: 3, left: recurring ? 21 : 3, width: 20, height: 20, borderRadius: 9999, background: '#fff', boxShadow: 'var(--ds-shadow-low)', transition: 'left 0.2s' }} />
+          <div style={{ position: 'absolute', top: 3, left: recurring ? 21 : 3, width: 20, height: 20, borderRadius: 9999, background: t.toggleKnob, boxShadow: 'var(--ds-shadow-low)', transition: 'left 0.2s' }} />
         </button>
       </div>
       <PrimaryButton onClick={submit} fullWidth disabled={!title.trim()}>Create Task</PrimaryButton>

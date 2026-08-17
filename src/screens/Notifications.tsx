@@ -77,7 +77,7 @@ function NotifGroup({ title, notifs, onTap }: { title: string; notifs: Notificat
             <button key={n.id} onClick={() => onTap(n)} style={{
               display: 'flex', alignItems: 'flex-start', gap: 12,
               padding: '13px 16px', width: '100%', border: 'none', cursor: 'pointer',
-              background: n.read ? t.surface : 'rgba(247,246,243,0.6)',
+              background: n.read ? t.surface : t.surfaceMuted,
               borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
               borderLeft: n.read ? '3px solid transparent' : `3px solid ${color}`,
               textAlign: 'left', fontFamily: 'var(--ds-font)',

@@ -26,7 +26,7 @@ const QUICK_PICKS = [
   { id: 'today', label: 'Today', icon: Calendar, color: t.success, getDate: (today: string) => today },
   { id: 'tomorrow', label: 'Tomorrow', icon: Sun, color: t.warning, getDate: (today: string) => addDays(today, 1) },
   { id: 'weekend', label: 'This Weekend', icon: Sofa, color: t.info, getDate: thisWeekendDate },
-  { id: 'nextWeek', label: 'Next Week', icon: Calendar, color: '#7C3AED', getDate: nextWeekMonday },
+  { id: 'nextWeek', label: 'Next Week', icon: Calendar, color: 'var(--ds-member-6)', getDate: nextWeekMonday },
 ] as const
 
 export default function TaskDateSheet({ today, initialDate, onClose, onConfirm }: Props) {
@@ -187,7 +187,7 @@ function CalendarMonth({
               style={{
                 width: '100%', aspectRatio: '1', border: 'none', borderRadius: 9999,
                 background: isSelected ? t.primary : isToday ? t.errorSub : 'transparent',
-                color: isSelected ? '#fff' : disabled ? t.textTer : isToday ? t.error : t.text,
+                color: isSelected ? t.onPrimary : disabled ? t.textTer : isToday ? t.error : t.text,
                 fontSize: 14, fontWeight: isToday || isSelected ? 600 : 400,
                 cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1,
                 fontFamily: 'var(--ds-font)',

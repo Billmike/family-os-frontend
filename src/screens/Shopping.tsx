@@ -380,7 +380,7 @@ export default function ShoppingScreen({
       )}
 
       <FAB onClick={() => openSheet({ type: 'addShoppingItem' })}>
-        <Plus size={24} color="#fff" />
+        <Plus size={24} color={t.onPrimary} />
       </FAB>
 
       {flyers.map(flyer => (
@@ -500,7 +500,7 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
         width: 22, height: 22, borderRadius: 9999, flexShrink: 0,
         background: t.success, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Check size={13} color="#fff" strokeWidth={2.5} />
+        <Check size={13} color={t.onPrimary} strokeWidth={2.5} />
       </div>
       <span
         ref={labelRef}

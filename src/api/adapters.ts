@@ -21,12 +21,12 @@ import type {
 } from "./types";
 
 const MEMBER_PALETTE = [
-  { color: "#6366F1", bg: "#EEF2FF" },
-  { color: "#0284C7", bg: "#E0F2FE" },
-  { color: "#059669", bg: "#ECFDF5" },
-  { color: "#D97706", bg: "#FEF3C7" },
-  { color: "#E11D48", bg: "#FFF1F2" },
-  { color: "#7C3AED", bg: "#F5F3FF" },
+  { color: "var(--ds-member-1)", bg: "var(--ds-member-1-bg)" },
+  { color: "var(--ds-member-2)", bg: "var(--ds-member-2-bg)" },
+  { color: "var(--ds-member-3)", bg: "var(--ds-member-3-bg)" },
+  { color: "var(--ds-member-4)", bg: "var(--ds-member-4-bg)" },
+  { color: "var(--ds-member-5)", bg: "var(--ds-member-5-bg)" },
+  { color: "var(--ds-member-6)", bg: "var(--ds-member-6-bg)" },
 ];
 
 function hashId(id: string): number {

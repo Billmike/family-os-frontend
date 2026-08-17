@@ -83,7 +83,7 @@ export default function TasksScreen({ tasks, openSheet, completeTask, deleteTask
       )}
 
       <FAB onClick={() => openSheet({ type: 'addTask' })}>
-        <Plus size={24} color="#fff" />
+        <Plus size={24} color={t.onPrimary} />
       </FAB>
     </div>
   )

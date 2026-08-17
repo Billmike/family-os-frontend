@@ -39,8 +39,8 @@ export function getMember(id: string): Member {
     name: 'Unknown',
     role: 'parent',
     initials: '?',
-    color: '#78716C',
-    bg: '#F5F5F4',
+    color: 'var(--ds-text-secondary)',
+    bg: 'var(--ds-surface-muted)',
   }
 }
 

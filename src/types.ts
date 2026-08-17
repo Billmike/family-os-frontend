@@ -37,13 +37,19 @@ export type TaskCategory = (typeof TASK_CATEGORIES)[number]
 export interface Task {
   id: string
   title: string
+  description: string | null
   assigneeId: string
   dueDate: 'today' | 'tomorrow' | string
+  dueAt: string | null
   priority: 'high' | 'medium' | 'low'
   recurring: boolean
   category: string
   completed: boolean
 }
+
+export type TaskUpdatePatch = Partial<
+  Pick<Task, 'title' | 'description' | 'dueDate' | 'dueAt' | 'priority' | 'category' | 'assigneeId'>
+>
 
 export interface ShoppingItem {
   id: string
@@ -119,4 +125,5 @@ export interface AppHandlers {
   addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => void
   deleteTask: (id: string) => void
   deleteEvent: (id: string) => void
+  updateTask: (id: string, patch: TaskUpdatePatch) => void
 }

@@ -110,7 +110,13 @@ export default function Dashboard({ events, tasks, shopping, activeSession, memb
                   opacity: task.completed ? 0.4 : 1, transition: 'opacity 0.2s',
                 }}>
                   <TaskCheckbox checked={task.completed} onChange={() => completeTask(task.id)} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <button
+                    onClick={() => openSheet({ type: 'taskDetail', taskId: task.id })}
+                    style={{
+                      flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none',
+                      cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+                    }}
+                  >
                     <p style={{ fontSize: 15, color: t.text, textDecoration: task.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {task.title}
                     </p>
@@ -122,7 +128,7 @@ export default function Dashboard({ events, tasks, shopping, activeSession, memb
                       <MemberAvatar member={member} size={14} />
                       <span style={{ fontSize: 12, color: t.textTer }}>{member.name}</span>
                     </div>
-                  </div>
+                  </button>
                   <PriorityIcon priority={task.priority} size={14} />
                 </div>
               )

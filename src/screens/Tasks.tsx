@@ -64,21 +64,21 @@ export default function TasksScreen({ tasks, openSheet, completeTask, deleteTask
       {todayTasks.length > 0 && (
         <div>
           <SectionLabel>Today</SectionLabel>
-          <TaskList tasks={todayTasks} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} />
+          <TaskList tasks={todayTasks} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} openSheet={openSheet} />
         </div>
       )}
 
       {upcomingTasks.length > 0 && (
         <div>
           <SectionLabel>Upcoming</SectionLabel>
-          <TaskList tasks={upcomingTasks} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} />
+          <TaskList tasks={upcomingTasks} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} openSheet={openSheet} />
         </div>
       )}
 
       {completedShown.length > 0 && (
         <div>
           <SectionLabel>Completed</SectionLabel>
-          <TaskList tasks={completedShown} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} />
+          <TaskList tasks={completedShown} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} openSheet={openSheet} />
         </div>
       )}
 
@@ -89,13 +89,14 @@ export default function TasksScreen({ tasks, openSheet, completeTask, deleteTask
   )
 }
 
-function TaskList({ tasks, today, onComplete, onDelete, menuOpen, onMenuOpen }: {
+function TaskList({ tasks, today, onComplete, onDelete, menuOpen, onMenuOpen, openSheet }: {
   tasks: Task[]
   today: string
   onComplete: (id: string) => void
   onDelete: (id: string) => void
   menuOpen: string | null
   onMenuOpen: (id: string | null) => void
+  openSheet: AppHandlers['openSheet']
 }) {
   return (
     <div style={{ margin: '0 16px 8px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'visible' }}>
@@ -109,13 +110,14 @@ function TaskList({ tasks, today, onComplete, onDelete, menuOpen, onMenuOpen }: 
           onDelete={onDelete}
           menuOpen={menuOpen === task.id}
           onMenuOpen={open => onMenuOpen(open ? task.id : null)}
+          onOpen={() => openSheet({ type: 'taskDetail', taskId: task.id })}
         />
       ))}
     </div>
   )
 }
 
-function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuOpen }: {
+function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuOpen, onOpen }: {
   task: Task
   today: string
   divider: boolean
@@ -123,6 +125,7 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
   onDelete: (id: string) => void
   menuOpen: boolean
   onMenuOpen: (open: boolean) => void
+  onOpen: () => void
 }) {
   const member = getMember(task.assigneeId)
   const isToday = task.dueDate === 'today' || task.dueDate === today
@@ -146,7 +149,13 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
       background: t.surface,
     }}>
       <TaskCheckbox checked={task.completed} onChange={() => onComplete(task.id)} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <button
+        onClick={onOpen}
+        style={{
+          flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none',
+          cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+        }}
+      >
         <p style={{ fontSize: 15, color: t.text, textDecoration: task.completed ? 'line-through' : 'none', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <MemberAvatar member={member} size={16} />
@@ -161,7 +170,7 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
           )}
           {task.recurring && <Repeat size={11} color={t.textTer} />}
         </div>
-      </div>
+      </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         <PriorityIcon priority={task.priority} size={14} />
         <button

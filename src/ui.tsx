@@ -189,21 +189,28 @@ export function Skeleton({ w = '100%', h = 14 }: { w?: string | number; h?: numb
 
 // ─── BottomSheet ─────────────────────────────────────────────────────────────
 
-export function BottomSheet({ title, onClose, children }: {
-  title: string; onClose: () => void; children: ReactNode
+export function BottomSheet({ title, onClose, children, zIndex = 200, header, ariaLabel, listenEscape = true }: {
+  title?: string
+  onClose: () => void
+  children: ReactNode
+  zIndex?: number
+  header?: ReactNode
+  ariaLabel?: string
+  listenEscape?: boolean
 }) {
   const sheetRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (!listenEscape) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [onClose, listenEscape])
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
-      role="dialog" aria-modal="true" aria-label={title}
+      style={{ position: 'fixed', inset: 0, zIndex, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+      role="dialog" aria-modal="true" aria-label={ariaLabel ?? title ?? 'Sheet'}
     >
       {/* Backdrop */}
       <div
@@ -224,13 +231,14 @@ export function BottomSheet({ title, onClose, children }: {
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
           <div style={{ width: 36, height: 4, borderRadius: 9999, background: t.border }} />
         </div>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
-          <span style={{ fontSize: 17, fontWeight: 600, color: t.text }}>{title}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
-            <X size={20} color={t.textSec} />
-          </button>
-        </div>
+        {header ?? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
+            <span style={{ fontSize: 17, fontWeight: 600, color: t.text }}>{title}</span>
+            <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <X size={20} color={t.textSec} />
+            </button>
+          </div>
+        )}
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 24px' }}>
           {children}
         </div>

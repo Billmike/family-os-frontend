@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
-import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, Notification, BottomSheetType, Member } from './types'
+import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, Notification, BottomSheetType, Member, TaskUpdatePatch } from './types'
 import { TASK_CATEGORIES } from './types'
 import { getMember, formatDate, formatTime } from './data'
 import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl, CategorySelect } from './ui'
@@ -40,6 +40,7 @@ import * as shoppingSessionsApi from './api/shoppingSessions'
 import * as notificationsApi from './api/notifications'
 import * as familiesApi from './api/families'
 import { useFamilyRealtime } from './realtime/useFamilyRealtime'
+import TaskDetailSheet from './components/TaskDetailSheet'
 import {
   capturePendingInviteFromUrl,
   clearPendingInviteToken,
@@ -328,7 +329,49 @@ function MainApp() {
     try {
       await tasksApi.deleteTask(id)
       setTasks(ts => ts.filter(tk => tk.id !== id))
+      setSheet(s => (s?.type === 'taskDetail' && s.taskId === id ? null : s))
       showToast('Task deleted')
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function updateTask(id: string, patch: TaskUpdatePatch) {
+    const task = tasks.find(tk => tk.id === id)
+    if (!task) return
+
+    const payload: Parameters<typeof tasksApi.updateTask>[1] = {}
+
+    if (patch.title !== undefined) {
+      const trimmed = patch.title.trim()
+      if (trimmed && trimmed !== task.title) payload.title = trimmed
+    }
+    if (patch.description !== undefined) {
+      const normalized = patch.description?.trim() || null
+      const current = task.description?.trim() || null
+      if (normalized !== current) payload.description = normalized
+    }
+    if (patch.priority !== undefined && patch.priority !== task.priority) {
+      payload.priority = priorityToApi(patch.priority)
+    }
+    if (patch.category !== undefined && patch.category !== task.category) {
+      payload.category = patch.category
+    }
+    if (patch.assigneeId !== undefined && patch.assigneeId !== task.assigneeId) {
+      payload.assignee_ids = patch.assigneeId ? [patch.assigneeId] : []
+    }
+    if (patch.dueAt !== undefined && patch.dueAt !== task.dueAt) {
+      payload.due_at = patch.dueAt
+    } else if (patch.dueDate !== undefined) {
+      const dueAt = dueDateToIso(patch.dueDate, today, timeZone)
+      if (dueAt !== task.dueAt) payload.due_at = dueAt
+    }
+
+    if (Object.keys(payload).length === 0) return
+
+    try {
+      const updated = await tasksApi.updateTask(id, payload)
+      setTasks(ts => ts.map(tk => (tk.id === id ? toTask(updated, today, timeZone) : tk)))
     } catch (e) {
       handleError(e)
     }
@@ -717,6 +760,7 @@ function MainApp() {
     addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => { void addShoppingItem(item) },
     deleteTask: (id: string) => { void deleteTask(id) },
     deleteEvent: (id: string) => { void deleteEvent(id) },
+    updateTask: (id: string, patch: TaskUpdatePatch) => { void updateTask(id, patch) },
   }
 
   if (loading) {
@@ -851,6 +895,18 @@ function MainApp() {
           today={today}
         />
       )}
+      {sheet?.type === 'taskDetail' && (
+        <TaskDetailSheet
+          task={tasks.find(tk => tk.id === sheet.taskId)}
+          members={members}
+          today={today}
+          timeZone={timeZone}
+          onClose={() => setSheet(null)}
+          onUpdate={(id, patch) => { void updateTask(id, patch) }}
+          onComplete={handlers.completeTask}
+          onDelete={handlers.deleteTask}
+        />
+      )}
       {sheet?.type === 'inviteMember' && (
         <InviteMemberSheet
           familyName={familyName}
@@ -929,7 +985,7 @@ function AddTaskSheet({ onClose, onAdd, members, defaultMemberId }: {
 
   const submit = () => {
     if (!title.trim()) return
-    onAdd({ title: title.trim(), assigneeId, dueDate, priority, recurring, category })
+    onAdd({ title: title.trim(), assigneeId, dueDate, priority, recurring, category, description: null, dueAt: null })
   }
 
   return (

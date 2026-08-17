@@ -137,8 +137,10 @@ export function toTask(task: TaskOut, today: string, timeZone = "UTC"): Task {
   return {
     id: task.id,
     title: task.title,
+    description: task.description,
     assigneeId: task.assignee_ids[0] ?? "",
     dueDate: dueLabel(task.due_at, today, timeZone),
+    dueAt: task.due_at,
     priority,
     recurring: Boolean(task.recurrence_rule),
     category: task.category ?? "Other",
@@ -335,4 +337,90 @@ export function formatLongDate(isoDate: string): string {
     day: "numeric",
     month: "long",
   });
+}
+
+export const TASK_DUE_MAX_DAYS = 365;
+
+export function dueAtToDate(
+  dueAt: string | null,
+  timeZone: string,
+): string | null {
+  if (!dueAt) return null;
+  return partsInTimezone(dueAt, timeZone).date;
+}
+
+export function thisWeekendDate(today: string): string {
+  const d = new Date(today + "T12:00:00");
+  const day = d.getDay();
+  if (day === 6) return today;
+  return addDays(today, 6 - day);
+}
+
+export function nextWeekMonday(today: string): string {
+  const d = new Date(today + "T12:00:00");
+  const day = d.getDay();
+  if (day === 1) return today;
+  if (day === 0) return addDays(today, 1);
+  return addDays(today, 8 - day);
+}
+
+export function clampDueDate(date: string, today: string): string {
+  const max = addDays(today, TASK_DUE_MAX_DAYS);
+  if (date < today) return today;
+  if (date > max) return max;
+  return date;
+}
+
+export function formatTaskDueLabel(
+  dueAt: string | null,
+  today: string,
+  timeZone: string,
+): string {
+  if (!dueAt) return "Date";
+  const label = dueLabel(dueAt, today, timeZone);
+  if (label === "today") return "Today";
+  if (label === "tomorrow") return "Tomorrow";
+  const d = new Date(label + "T12:00:00");
+  return d.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+export function weekdayShort(isoDate: string): string {
+  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-GB", {
+    weekday: "short",
+  });
+}
+
+export function monthYearLabel(year: number, month: number): string {
+  return new Date(year, month, 1).toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+export function calendarMonthsInRange(
+  today: string,
+  maxDays: number = TASK_DUE_MAX_DAYS,
+): { year: number; month: number }[] {
+  const start = new Date(today + "T12:00:00");
+  const end = new Date(addDays(today, maxDays) + "T12:00:00");
+  const months: { year: number; month: number }[] = [];
+  let y = start.getFullYear();
+  let m = start.getMonth();
+  while (y < end.getFullYear() || (y === end.getFullYear() && m <= end.getMonth())) {
+    months.push({ year: y, month: m });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  return months;
 }

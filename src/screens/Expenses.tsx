@@ -28,7 +28,7 @@ const emptyMonth = (month: string) => ({
   categories: [] as HouseholdSpend['months'][number]['categories'],
 })
 
-export default function InsightsScreen({ spend, loadMonthExpenses, openSheet }: Props) {
+export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(spend?.currentMonth ?? '')
   const [entries, setEntries] = useState<Expense[]>([])
   const [loadingEntries, setLoadingEntries] = useState(false)

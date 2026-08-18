@@ -27,7 +27,7 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
     return d.toISOString().slice(0, 10)
   })()
   const todayEvents = events.filter(e => e.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime))
-  const upcomingEvents = events.filter(e => e.date > today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))
+  const upcomingEvents = events.filter(e => e.date > today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)).slice(0, 5)
   const openTasks = tasks.filter(tk => !tk.completed)
   const dashTasks = openTasks.slice(0, 4)
   const dashShopping = shopping.filter(i => !i.completed).slice(0, 5)
@@ -60,10 +60,10 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
         icon={<BarChart3 size={16} color={t.primary} strokeWidth={1.75} />}
         title="Spend"
         count="this month"
-        onViewAll={() => navigate('insights')}
-        viewLabel="Insights"
+        onViewAll={() => navigate('expenses')}
+        viewLabel="Expenses"
       >
-        <SpendSnapshot spend={spend} onOpen={() => navigate('insights')} />
+        <SpendSnapshot spend={spend} onOpen={() => navigate('expenses')} />
       </DashSection>
 
       {/* ─── Today section ──────────────────────────────────────────────────── */}
@@ -258,7 +258,7 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`This month spend ${formatMoney(thisMonth.total, spend.currency)}. Open Insights`}
+      aria-label={`This month spend ${formatMoney(thisMonth.total, spend.currency)}. Open Expenses`}
       style={{
         width: '100%', padding: '14px 20px', border: 'none', background: 'none',
         cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',

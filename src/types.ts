@@ -137,6 +137,7 @@ export interface AppHandlers {
   addTask: (task: Omit<Task, 'id' | 'completed'>) => void
   addEvent: (event: Omit<CalendarEvent, 'id'>) => void
   addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => void
+  deleteShoppingItem: (id: string) => void
   deleteTask: (id: string) => void
   deleteEvent: (id: string) => void
   updateTask: (id: string, patch: TaskUpdatePatch) => void

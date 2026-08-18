@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, BarChart3, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
 import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, ShoppingSpend, Notification, BottomSheetType, Member, TaskUpdatePatch } from './types'
 import { TASK_CATEGORIES } from './types'
@@ -48,7 +48,7 @@ import {
   clearPendingInviteToken,
   getPendingInviteToken,
 } from './invite/pendingInvite'
-import { legacyGoRedirectPath, pathToScreen, screenToPath } from './routing'
+import { LOGIN_PATH, isLoginPath, legacyGoRedirectPath, pathToScreen, screenToPath } from './routing'
 const BOTTOM_NAV = [
   { screen: 'dashboard' as Screen, icon: Home, label: 'Home' },
   { screen: 'calendar' as Screen, icon: Calendar, label: 'Calendar' },
@@ -78,12 +78,19 @@ export default function App() {
 
 function AppRoot() {
   const session = useSession()
+  const location = useLocation()
   const [setupPending, setSetupPending] = useState(false)
   const [inviteBusy, setInviteBusy] = useState(false)
   const inviteAcceptRef = useRef(false)
 
   // Synchronous so onboarding initial state sees the token on first paint
   capturePendingInviteFromUrl()
+
+  useEffect(() => {
+    if (session.status !== 'unauthenticated') return
+    setSetupPending(false)
+    inviteAcceptRef.current = false
+  }, [session.status])
 
   // Signed-in user already in a family who opens /invite/:token
   useEffect(() => {
@@ -118,6 +125,18 @@ function AppRoot() {
     session.status === 'unauthenticated' ||
     session.status === 'needs_family' ||
     setupPending
+
+  if (session.status === 'unauthenticated' && !isLoginPath(location.pathname) && location.pathname !== '/') {
+    return <Navigate to={LOGIN_PATH} replace />
+  }
+
+  if (session.status === 'ready' && !setupPending && isLoginPath(location.pathname)) {
+    return <Navigate to="/" replace />
+  }
+
+  if (session.status === 'needs_family' && isLoginPath(location.pathname)) {
+    return <Navigate to="/" replace />
+  }
 
   if (showOnboarding) {
     return (
@@ -173,6 +192,7 @@ function MainApp() {
   useEffect(() => {
     if (legacyGoRedirectPath(location.search)) return
     if (pathToScreen(location.pathname) !== null) return
+    if (isLoginPath(location.pathname)) return
     routerNavigate('/', { replace: true })
   }, [location.pathname, location.search, routerNavigate])
 
@@ -517,6 +537,16 @@ function MainApp() {
     }
   }
 
+  async function deleteShoppingItem(id: string) {
+    try {
+      await shoppingApi.deleteShoppingItem(id)
+      setShopping(its => its.filter(i => i.id !== id))
+      showToast('Item removed')
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
   async function addShoppingLocation(name: string): Promise<ShoppingLocation | null> {
     try {
       const created = await shoppingLocationsApi.createShoppingLocation(family.id, name)
@@ -781,6 +811,7 @@ function MainApp() {
     addTask: (task: Omit<Task, 'id' | 'completed'>) => { void addTask(task) },
     addEvent: (event: Omit<CalendarEvent, 'id'>) => { void addEvent(event) },
     addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => { void addShoppingItem(item) },
+    deleteShoppingItem: (id: string) => { void deleteShoppingItem(id) },
     deleteTask: (id: string) => { void deleteTask(id) },
     deleteEvent: (id: string) => { void deleteEvent(id) },
     updateTask: (id: string, patch: TaskUpdatePatch) => { void updateTask(id, patch) },

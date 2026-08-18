@@ -113,8 +113,8 @@ export async function unsubscribeThisDevice(): Promise<void> {
 
   try {
     if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.ready
-      const sub = await registration.pushManager.getSubscription()
+      const registration = await navigator.serviceWorker.getRegistration()
+      const sub = await registration?.pushManager.getSubscription()
       await sub?.unsubscribe()
     }
   } catch {

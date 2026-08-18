@@ -159,15 +159,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(() => {
-    void unsubscribeThisDevice().finally(() => {
-      clearTokens()
-      setStoredFamilyId(null)
-      setUser(null)
-      setFamily(null)
-      setFamilies([])
-      setRawMembers([])
-      setStatus('unauthenticated')
-    })
+    void unsubscribeThisDevice()
+    clearTokens()
+    setStoredFamilyId(null)
+    setUser(null)
+    setFamily(null)
+    setFamilies([])
+    setRawMembers([])
+    setError(null)
+    setStatus('unauthenticated')
   }, [])
 
   const selectFamily = useCallback(async (familyId: string) => {

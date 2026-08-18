@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Check, ChevronLeft, Copy, Bell, Download, Plus, CheckSquare, ShoppingCart, ArrowRight } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Check, ChevronLeft, Copy, Bell, Download, Plus, CheckSquare, ShoppingCart, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { t, r, sh } from '../ui'
 import { ApiError } from '../api/client'
 import * as familiesApi from '../api/families'
@@ -12,6 +13,7 @@ import {
   getPendingInviteToken,
   normalizeInviteTokenInput,
 } from '../invite/pendingInvite'
+import { LOGIN_PATH, isLoginPath } from '../routing'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,9 +87,13 @@ const inputStyle: CSSProperties = {
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 
-function Input({ placeholder, value, onChange, autoFocus, type = 'text', name, autoComplete, id }: {
+function Input({ placeholder, value, onChange, autoFocus, type = 'text', name, autoComplete, id, style, spellCheck, autoCapitalize, autoCorrect }: {
   placeholder?: string; value: string; onChange: (v: string) => void;
   autoFocus?: boolean; type?: string; name?: string; autoComplete?: string; id?: string
+  style?: CSSProperties
+  spellCheck?: boolean
+  autoCapitalize?: 'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters'
+  autoCorrect?: 'on' | 'off'
 }) {
   return (
     <input
@@ -95,7 +101,10 @@ function Input({ placeholder, value, onChange, autoFocus, type = 'text', name, a
       name={name}
       type={type}
       autoComplete={autoComplete}
-      style={inputStyle}
+      spellCheck={spellCheck}
+      autoCapitalize={autoCapitalize}
+      autoCorrect={autoCorrect}
+      style={{ ...inputStyle, ...style }}
       placeholder={placeholder}
       value={value}
       onChange={e => onChange(e.target.value)}
@@ -103,6 +112,68 @@ function Input({ placeholder, value, onChange, autoFocus, type = 'text', name, a
       onFocus={e => { e.target.style.borderColor = 'var(--ds-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--ds-focus)' }}
       onBlur={e => { e.target.style.borderColor = 'var(--ds-border-strong)'; e.target.style.boxShadow = 'none' }}
     />
+  )
+}
+
+function PasswordInput({ placeholder, value, onChange, name, autoComplete, id }: {
+  placeholder?: string
+  value: string
+  onChange: (v: string) => void
+  name?: string
+  autoComplete?: string
+  id?: string
+}) {
+  const [isVisible, setIsVisible] = useState(false)
+
+  const handleToggleVisibility = () => {
+    setIsVisible(visible => !visible)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <Input
+        id={id}
+        name={name}
+        type={isVisible ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        style={{ paddingRight: 48 }}
+      />
+      <button
+        type="button"
+        onClick={handleToggleVisibility}
+        aria-label={isVisible ? 'Hide password' : 'Show password'}
+        aria-pressed={isVisible}
+        aria-controls={id}
+        style={{
+          position: 'absolute',
+          right: 2,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 44,
+          height: 44,
+          background: 'none',
+          border: 'none',
+          borderRadius: 'var(--ds-radius-sm)',
+          cursor: 'pointer',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onFocus={e => { e.currentTarget.style.boxShadow = '0 0 0 3px var(--ds-focus)' }}
+        onBlur={e => { e.currentTarget.style.boxShadow = 'none' }}
+      >
+        {isVisible
+          ? <EyeOff size={18} color={t.textTer} aria-hidden />
+          : <Eye size={18} color={t.textTer} aria-hidden />}
+      </button>
+    </div>
   )
 }
 
@@ -193,11 +264,15 @@ function errMessage(e: unknown): string {
 // ─── Main Onboarding component ────────────────────────────────────────────────
 
 export default function Onboarding({ handlers }: Props) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const pendingAtStart = getPendingInviteToken()
   const [step, setStep] = useState<Step>(() => {
     if (pendingAtStart && handlers.needsFamily) return 'join'
     if (pendingAtStart) return 'welcome'
-    return handlers.needsFamily ? 'family' : 'welcome'
+    if (handlers.needsFamily) return 'family'
+    if (isLoginPath(location.pathname)) return 'login'
+    return 'welcome'
   })
   const [familyName, setFamilyName] = useState('')
   const [userName, setUserName] = useState(handlers.userName ?? '')
@@ -220,8 +295,21 @@ export default function Onboarding({ handlers }: Props) {
 
   const go = (s: Step) => {
     setError(null)
+    if (!handlers.needsFamily) {
+      if (s === 'login' && !isLoginPath(location.pathname)) navigate(LOGIN_PATH)
+      if (s === 'welcome' && isLoginPath(location.pathname)) navigate('/')
+    }
     setStep(s)
   }
+
+  useEffect(() => {
+    if (handlers.needsFamily) return
+    if (isLoginPath(location.pathname)) {
+      if (step !== 'login') setStep('login')
+      return
+    }
+    if (step === 'login') setStep('welcome')
+  }, [handlers.needsFamily, location.pathname, step])
 
   const acceptInviteToken = async (raw: string) => {
     const token = normalizeInviteTokenInput(raw)
@@ -485,10 +573,9 @@ export default function Onboarding({ handlers }: Props) {
         </div>
         <div style={{ marginBottom: 20 }}>
           <label htmlFor="login-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Password</label>
-          <Input
+          <PasswordInput
             id="login-password"
             name="password"
-            type="password"
             autoComplete="current-password"
             placeholder="••••••••"
             value={password}
@@ -554,10 +641,9 @@ export default function Onboarding({ handlers }: Props) {
         </div>
         <div style={{ marginBottom: 20 }}>
           <label htmlFor="register-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Password</label>
-          <Input
+          <PasswordInput
             id="register-password"
             name="password"
-            type="password"
             autoComplete="new-password"
             placeholder="At least 8 characters"
             value={password}

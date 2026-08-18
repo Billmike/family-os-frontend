@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Plus, ShoppingCart, ArrowLeft, Undo2, Check } from 'lucide-react'
+import { Plus, ShoppingCart, ArrowLeft, Undo2, Check, Trash2 } from 'lucide-react'
 import type {
   ShoppingItem,
   ShoppingLocation,
@@ -39,6 +39,7 @@ interface Props {
   openSheet: AppHandlers['openSheet']
   addToBasket: AppHandlers['addToBasket']
   removeFromBasket: AppHandlers['removeFromBasket']
+  deleteShoppingItem: AppHandlers['deleteShoppingItem']
 }
 
 const prefersReducedMotion = () =>
@@ -53,6 +54,7 @@ export default function ShoppingScreen({
   openSheet,
   addToBasket,
   removeFromBasket,
+  deleteShoppingItem,
 }: Props) {
   const [view, setView] = useState<ShoppingView>('list')
   const [groupBy, setGroupBy] = useState<'Category' | 'Store'>('Category')
@@ -325,6 +327,7 @@ export default function ShoppingScreen({
                 divider={i > 0}
                 departing={departingIds.has(item.id)}
                 onToggle={() => handleAddToBasket(item)}
+                onRemove={() => deleteShoppingItem(item.id)}
                 rowRef={el => {
                   if (el) rowRefs.current.set(item.id, el)
                   else rowRefs.current.delete(item.id)
@@ -530,11 +533,12 @@ function BasketHeader({ count, onBack }: { count: number; onBack: () => void }) 
   )
 }
 
-function ShoppingRow({ item, divider, departing, onToggle, rowRef, secondary, hideSecondary }: {
+function ShoppingRow({ item, divider, departing, onToggle, onRemove, rowRef, secondary, hideSecondary }: {
   item: ShoppingItem
   divider: boolean
   departing: boolean
   onToggle: () => void
+  onRemove: () => void
   rowRef: (el: HTMLElement | null) => void
   secondary?: string
   hideSecondary?: boolean
@@ -575,6 +579,19 @@ function ShoppingRow({ item, divider, departing, onToggle, rowRef, secondary, hi
             }}>
               <span style={{ fontSize: 12, fontWeight: 500, color: t.textSec }}>×{item.quantity}</span>
             </div>
+          )}
+          {!departing && (
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation()
+                onRemove()
+              }}
+              aria-label={`Remove ${item.name} from list`}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
+            >
+              <Trash2 size={18} color={t.textTer} />
+            </button>
           )}
         </div>
       </div>

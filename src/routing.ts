@@ -1,5 +1,7 @@
 import type { Screen } from './types'
 
+export const LOGIN_PATH = '/login'
+
 /** Canonical path for each main app screen. */
 export const SCREEN_PATHS: Record<Screen, string> = {
   dashboard: '/',
@@ -34,11 +36,17 @@ export function screenToPath(screen: Screen): string {
   return SCREEN_PATHS[screen]
 }
 
+export function normalizePathname(pathname: string): string {
+  return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+}
+
 /** Map pathname to a Screen; unknown paths return null. */
 export function pathToScreen(pathname: string): Screen | null {
-  const normalized =
-    pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
-  return PATH_TO_SCREEN[normalized] ?? null
+  return PATH_TO_SCREEN[normalizePathname(pathname)] ?? null
+}
+
+export function isLoginPath(pathname: string): boolean {
+  return normalizePathname(pathname) === LOGIN_PATH
 }
 
 /**

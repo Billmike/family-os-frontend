@@ -92,19 +92,57 @@ export interface ShoppingSession {
   items?: ShoppingSessionItem[]
 }
 
+export const EXPENSE_CATEGORIES = [
+  'Shopping',
+  'Transportation',
+  'Housing',
+  'Utilities',
+  'Dining',
+  'Health',
+  'Childcare',
+  'Other',
+] as const
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
+export type ExpenseSourceType = 'manual' | 'shopping_session'
+
+export interface Expense {
+  id: string
+  amount: number
+  currency: string
+  category: string
+  merchant: string | null
+  note: string | null
+  occurredAt: string
+  sourceType: ExpenseSourceType
+  sourceId: string | null
+  sourceItemCount: number | null
+}
+
+export interface CategorySpend {
+  category: string
+  total: number
+  count: number
+}
+
 export interface MonthlySpend {
   month: string
   total: number
-  tripCount: number
+  entryCount: number
   average: number
+  categories: CategorySpend[]
 }
 
-export interface ShoppingSpend {
+export interface HouseholdSpend {
   currency: string
   currentMonth: string
   yearToDateTotal: number
   months: MonthlySpend[]
 }
+
+/** @deprecated Use HouseholdSpend — grocery-only view maps onto the same shape. */
+export type ShoppingSpend = HouseholdSpend
 
 export interface Notification {
   id: string
@@ -121,6 +159,8 @@ export type BottomSheetType =
   | { type: 'addTask' }
   | { type: 'addShoppingItem' }
   | { type: 'completeShopping' }
+  | { type: 'addExpense' }
+  | { type: 'editExpense'; expense: Expense }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
   | { type: 'taskDetail'; taskId: string }
@@ -141,4 +181,15 @@ export interface AppHandlers {
   deleteTask: (id: string) => void
   deleteEvent: (id: string) => void
   updateTask: (id: string, patch: TaskUpdatePatch) => void
+  addExpense: (input: ExpenseDraft) => void
+  updateExpense: (id: string, input: ExpenseDraft) => void
+  deleteExpense: (id: string) => void
+}
+
+export interface ExpenseDraft {
+  amount: number
+  category: string
+  merchant: string | null
+  note: string | null
+  occurredAt: string
 }

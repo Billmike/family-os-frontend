@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Home, Calendar, CheckSquare, ShoppingCart, BarChart3, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
-import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, ShoppingSpend, Notification, BottomSheetType, Member, TaskUpdatePatch } from './types'
+import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, HouseholdSpend, Notification, BottomSheetType, Member, TaskUpdatePatch, ExpenseDraft } from './types'
 import { TASK_CATEGORIES } from './types'
 import { getMember, formatDate, formatTime } from './data'
 import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl, CategorySelect } from './ui'
@@ -26,10 +26,11 @@ import {
   priorityToApi,
   toCalendarEvent,
   toNotification,
+  toExpense,
+  toHouseholdSpend,
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
-  toShoppingSpend,
   toTask,
   todayInTimezone,
 } from './api/adapters'
@@ -39,10 +40,12 @@ import * as tasksApi from './api/tasks'
 import * as shoppingApi from './api/shopping'
 import * as shoppingLocationsApi from './api/shoppingLocations'
 import * as shoppingSessionsApi from './api/shoppingSessions'
+import * as expensesApi from './api/expenses'
 import * as notificationsApi from './api/notifications'
 import * as familiesApi from './api/families'
 import { useFamilyRealtime } from './realtime/useFamilyRealtime'
 import TaskDetailSheet from './components/TaskDetailSheet'
+import ExpenseSheet from './components/ExpenseSheet'
 import {
   capturePendingInviteFromUrl,
   clearPendingInviteToken,
@@ -212,7 +215,7 @@ function MainApp() {
   const [shoppingLocations, setShoppingLocations] = useState<ShoppingLocation[]>([])
   const [activeSession, setActiveSession] = useState<ShoppingSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<ShoppingSession[]>([])
-  const [shoppingSpend, setShoppingSpend] = useState<ShoppingSpend | null>(null)
+  const [householdSpend, setHouseholdSpend] = useState<HouseholdSpend | null>(null)
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? '')
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today))
@@ -251,7 +254,7 @@ function MainApp() {
         notificationsApi.listNotifications(),
         shoppingSessionsApi.getActiveSession(familyId),
         shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
-        shoppingSessionsApi.getShoppingSpend(familyId).catch(() => null),
+        expensesApi.getSpend(familyId).catch(() => null),
       ])
 
       setFamilyName(dash.family_name)
@@ -264,7 +267,7 @@ function MainApp() {
       setShoppingLocations(locs.map(toShoppingLocation))
       setActiveSession(activeSess ? toShoppingSession(activeSess) : null)
       setSessionHistory(history.map(toShoppingSession))
-      setShoppingSpend(spend ? toShoppingSpend(spend) : null)
+      setHouseholdSpend(spend ? toHouseholdSpend(spend) : null)
 
       const groceries =
         lists.find(l => l.name.toLowerCase() === 'groceries') ?? lists[0] ?? null
@@ -289,16 +292,16 @@ function MainApp() {
 
   const refreshSpend = useCallback(async () => {
     try {
-      const spend = await shoppingSessionsApi.getShoppingSpend(family.id)
-      setShoppingSpend(toShoppingSpend(spend))
+      const spend = await expensesApi.getSpend(family.id)
+      setHouseholdSpend(toHouseholdSpend(spend))
     } catch {
       /* keep the last known totals */
     }
   }, [family.id])
 
-  const loadMonthSessions = useCallback(async (month: string) => {
-    const rows = await shoppingSessionsApi.listSessions(family.id, { month, limit: 100 })
-    return rows.map(toShoppingSession)
+  const loadMonthExpenses = useCallback(async (month: string) => {
+    const rows = await expensesApi.listExpenses(family.id, month)
+    return rows.map(toExpense)
   }, [family.id])
 
   useEffect(() => {
@@ -489,6 +492,51 @@ function MainApp() {
       setSessionHistory(prev => [ui, ...prev.filter(s => s.id !== ui.id)])
       setSheet(null)
       showToast('Shopping trip completed')
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function addExpense(input: ExpenseDraft) {
+    try {
+      await expensesApi.createExpense(family.id, {
+        amount: input.amount,
+        category: input.category,
+        merchant: input.merchant,
+        note: input.note,
+        occurred_at: input.occurredAt,
+      })
+      setSheet(null)
+      showToast('Expense added')
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function updateExpense(id: string, input: ExpenseDraft) {
+    try {
+      await expensesApi.updateExpense(id, {
+        amount: input.amount,
+        category: input.category,
+        merchant: input.merchant,
+        note: input.note,
+        occurred_at: input.occurredAt,
+      })
+      setSheet(null)
+      showToast('Expense updated')
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function deleteExpense(id: string) {
+    try {
+      await expensesApi.deleteExpense(id)
+      setSheet(null)
+      showToast('Expense deleted')
       void refreshSpend()
     } catch (e) {
       handleError(e)
@@ -815,6 +863,9 @@ function MainApp() {
     deleteTask: (id: string) => { void deleteTask(id) },
     deleteEvent: (id: string) => { void deleteEvent(id) },
     updateTask: (id: string, patch: TaskUpdatePatch) => { void updateTask(id, patch) },
+    addExpense: (input: ExpenseDraft) => { void addExpense(input) },
+    updateExpense: (id: string, input: ExpenseDraft) => { void updateExpense(id, input) },
+    deleteExpense: (id: string) => { void deleteExpense(id) },
   }
 
   if (loading) {
@@ -844,7 +895,7 @@ function MainApp() {
                 tasks={tasks}
                 shopping={shopping}
                 activeSession={activeSession}
-                spend={shoppingSpend}
+                spend={householdSpend}
                 memberName={dashGreeting}
                 dateLabel={dashDateLabel}
                 today={today}
@@ -876,9 +927,9 @@ function MainApp() {
             )}
             {screen === 'insights' && (
               <InsightsScreen
-                spend={shoppingSpend}
-                loadMonthSessions={loadMonthSessions}
-                navigate={navigateToScreen}
+                spend={householdSpend}
+                loadMonthExpenses={loadMonthExpenses}
+                {...handlers}
               />
             )}
             {screen === 'notifications' && (
@@ -947,6 +998,22 @@ function MainApp() {
           onClose={() => setSheet(null)}
           onComplete={handlers.completeShoppingSession}
           itemCount={activeSession?.itemCount ?? 0}
+        />
+      )}
+      {sheet?.type === 'addExpense' && (
+        <ExpenseSheet
+          today={today}
+          onClose={() => setSheet(null)}
+          onSave={handlers.addExpense}
+        />
+      )}
+      {sheet?.type === 'editExpense' && (
+        <ExpenseSheet
+          expense={sheet.expense}
+          today={today}
+          onClose={() => setSheet(null)}
+          onSave={input => handlers.updateExpense(sheet.expense.id, input)}
+          onDelete={handlers.deleteExpense}
         />
       )}
       {sheet?.type === 'eventDetail' && (

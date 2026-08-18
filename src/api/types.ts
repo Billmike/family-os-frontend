@@ -159,6 +159,44 @@ export interface ShoppingSpendOut {
   months: MonthlySpendOut[]
 }
 
+export interface CategorySpendOut {
+  category: string
+  total: string
+  count: number
+}
+
+export interface MonthlyHouseholdSpendOut {
+  month: string
+  total: string
+  entry_count: number
+  average: string
+  categories: CategorySpendOut[]
+}
+
+export interface HouseholdSpendOut {
+  currency: string
+  current_month: string
+  year_to_date_total: string
+  months: MonthlyHouseholdSpendOut[]
+}
+
+export interface ExpenseOut {
+  id: string
+  family_id: string
+  amount: string
+  currency: string
+  category: string
+  merchant: string | null
+  note: string | null
+  occurred_at: string
+  created_by: string
+  source_type: 'manual' | 'shopping_session'
+  source_id: string | null
+  source_item_count: number | null
+  created_at: string
+  updated_at: string
+}
+
 export interface NotificationOut {
   id: string
   family_id: string
@@ -221,6 +259,9 @@ export type FamilyWsMessage =
   | { type: 'shopping.session.item.added'; session: ShoppingSessionOut; item: ShoppingSessionItemOut; removed_item_id: string }
   | { type: 'shopping.session.item.removed'; session_id: string; item_id: string; restored_item?: ShoppingItemOut }
   | { type: 'shopping.session.completed'; session: ShoppingSessionOut }
+  | { type: 'expense.created'; expense: ExpenseOut }
+  | { type: 'expense.updated'; expense: ExpenseOut }
+  | { type: 'expense.deleted'; expense_id: string }
   | { type: 'event.created'; event: EventOut }
   | { type: 'event.updated'; event: EventOut }
   | { type: 'event.deleted'; event_id: string }

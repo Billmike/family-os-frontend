@@ -1,30 +1,37 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
-import type { ShoppingSession, ShoppingSpend, AppHandlers } from '../types'
-import { t, r, EmptyState, SectionLabel, Skeleton } from '../ui'
+import { BarChart3, ChevronLeft, ChevronRight, Plus, Receipt } from 'lucide-react'
+import type { Expense, HouseholdSpend, AppHandlers } from '../types'
+import { t, r, EmptyState, SectionLabel, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
 import {
   formatMoney,
   formatMonthShort,
-  formatSessionCost,
   formatSessionDate,
   formatYearMonthTitle,
   shiftYearMonth,
 } from '../api/adapters'
 
 interface Props {
-  spend: ShoppingSpend | null
-  loadMonthSessions: (month: string) => Promise<ShoppingSession[]>
-  navigate: AppHandlers['navigate']
+  spend: HouseholdSpend | null
+  loadMonthExpenses: (month: string) => Promise<Expense[]>
+  openSheet: AppHandlers['openSheet']
 }
 
-const hasAnyTrips = (spend: ShoppingSpend) =>
-  spend.months.some(row => row.tripCount > 0) || spend.yearToDateTotal > 0
+const hasAnySpend = (spend: HouseholdSpend) =>
+  spend.months.some(row => row.entryCount > 0) || spend.yearToDateTotal > 0
 
-export default function InsightsScreen({ spend, loadMonthSessions, navigate }: Props) {
+const emptyMonth = (month: string) => ({
+  month,
+  total: 0,
+  entryCount: 0,
+  average: 0,
+  categories: [] as HouseholdSpend['months'][number]['categories'],
+})
+
+export default function InsightsScreen({ spend, loadMonthExpenses, openSheet }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(spend?.currentMonth ?? '')
-  const [trips, setTrips] = useState<ShoppingSession[]>([])
-  const [loadingTrips, setLoadingTrips] = useState(false)
+  const [entries, setEntries] = useState<Expense[]>([])
+  const [loadingEntries, setLoadingEntries] = useState(false)
 
   useEffect(() => {
     if (!spend) return
@@ -36,29 +43,36 @@ export default function InsightsScreen({ spend, loadMonthSessions, navigate }: P
   useEffect(() => {
     if (!selectedMonth) return
     let cancelled = false
-    setLoadingTrips(true)
-    void loadMonthSessions(selectedMonth).then(rows => {
+    setLoadingEntries(true)
+    void loadMonthExpenses(selectedMonth).then(rows => {
       if (cancelled) return
-      setTrips(rows)
-      setLoadingTrips(false)
+      setEntries(rows)
+      setLoadingEntries(false)
     }).catch(() => {
       if (cancelled) return
-      setTrips([])
-      setLoadingTrips(false)
+      setEntries([])
+      setLoadingEntries(false)
     })
     return () => { cancelled = true }
-  }, [selectedMonth, loadMonthSessions])
+  }, [selectedMonth, loadMonthExpenses, spend])
 
-  if (!spend || !hasAnyTrips(spend)) {
+  const handleAdd = () => {
+    openSheet({ type: 'addExpense' })
+  }
+
+  if (!spend || !hasAnySpend(spend)) {
     return (
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <EmptyState
           icon={BarChart3}
           title="No spending yet"
-          body="Complete a shopping trip with a total to see monthly grocery spend."
-          action="Go to Shopping"
-          onAction={() => navigate('shopping')}
+          body="Add an expense or complete a shopping trip to see a monthly breakdown."
+          action="Add expense"
+          onAction={handleAdd}
         />
+        <FAB onClick={handleAdd} aria-label="Add expense">
+          <Plus size={24} color={t.onPrimary} />
+        </FAB>
       </div>
     )
   }
@@ -66,7 +80,7 @@ export default function InsightsScreen({ spend, loadMonthSessions, navigate }: P
   const firstMonth = spend.months[0]?.month
   const lastMonth = spend.months[spend.months.length - 1]?.month ?? spend.currentMonth
   const selected = spend.months.find(row => row.month === selectedMonth)
-    ?? { month: selectedMonth, total: 0, tripCount: 0, average: 0 }
+    ?? emptyMonth(selectedMonth)
   const selectedIndex = spend.months.findIndex(row => row.month === selectedMonth)
   const previous = selectedIndex > 0 ? spend.months[selectedIndex - 1] : undefined
   const monthTitle = formatYearMonthTitle(selected.month)
@@ -91,6 +105,11 @@ export default function InsightsScreen({ spend, loadMonthSessions, navigate }: P
   const handleNext = () => {
     if (!canGoNext) return
     setSelectedMonth(shiftYearMonth(selected.month, 1))
+  }
+
+  const handleOpenExpense = (expense: Expense) => {
+    if (expense.sourceType !== 'manual') return
+    openSheet({ type: 'editExpense', expense })
   }
 
   return (
@@ -159,8 +178,8 @@ export default function InsightsScreen({ spend, loadMonthSessions, navigate }: P
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr',
       }}>
-        <StatCell label="Trips" value={String(selected.tripCount)} />
-        <StatCell label="Avg trip" value={formatMoney(selected.average, spend.currency)} />
+        <StatCell label="Entries" value={String(selected.entryCount)} />
+        <StatCell label="Avg" value={formatMoney(selected.average, spend.currency)} />
         <StatCell label="Year to date" value={formatMoney(spend.yearToDateTotal, spend.currency)} last />
       </div>
 
@@ -179,7 +198,31 @@ export default function InsightsScreen({ spend, loadMonthSessions, navigate }: P
         />
       </div>
 
-      <SectionLabel>Trips</SectionLabel>
+      {selected.categories.length > 0 && (
+        <>
+          <SectionLabel>Categories</SectionLabel>
+          <div style={{
+            margin: '0 16px 8px',
+            background: t.surface,
+            borderRadius: r.lg,
+            border: `1px solid ${t.border}`,
+            overflow: 'hidden',
+          }}>
+            {selected.categories.map((row, i) => (
+              <CategoryRow
+                key={row.category}
+                category={row.category}
+                amount={row.total}
+                currency={spend.currency}
+                share={selected.total > 0 ? row.total / selected.total : 0}
+                divider={i > 0}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      <SectionLabel>Activity</SectionLabel>
       <div style={{
         margin: '0 16px',
         background: t.surface,
@@ -188,48 +231,127 @@ export default function InsightsScreen({ spend, loadMonthSessions, navigate }: P
         overflow: 'hidden',
         minHeight: 56,
       }}>
-        {loadingTrips ? (
+        {loadingEntries ? (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Skeleton h={16} />
             <Skeleton h={16} w="70%" />
           </div>
-        ) : trips.length === 0 ? (
+        ) : entries.length === 0 ? (
           <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ShoppingCart size={16} color={t.textTer} strokeWidth={1.75} />
+            <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
             <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
-              No shopping trips in {formatMonthShort(selected.month)}.
+              No expenses in {formatMonthShort(selected.month)}.
             </p>
           </div>
         ) : (
-          trips.map((session, i) => {
-            const dateLabel = formatSessionDate(session.completedAt ?? session.startedAt)
-            const costLabel = formatSessionCost(session)
+          entries.map((expense, i) => {
+            const isManual = expense.sourceType === 'manual'
+            const title = expense.merchant
+              || (expense.sourceType === 'shopping_session' ? 'Shopping trip' : expense.category)
+            const itemCount = expense.sourceItemCount
+            const subtitle = expense.sourceType === 'shopping_session' && itemCount != null
+              ? `${expense.category} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
+              : expense.category
             return (
-              <div
-                key={session.id}
+              <button
+                key={expense.id}
+                type="button"
+                onClick={() => handleOpenExpense(expense)}
+                disabled={!isManual}
+                aria-label={isManual ? `Edit ${title}` : title}
                 style={{
+                  width: '100%',
                   padding: '14px 16px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  gap: 12,
+                  border: 'none',
                   borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
+                  background: 'none',
+                  cursor: isManual ? 'pointer' : 'default',
+                  textAlign: 'left',
+                  fontFamily: 'var(--ds-font)',
                 }}
               >
-                <div>
-                  <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{dateLabel}</div>
-                  <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
-                    {session.itemCount} item{session.itemCount !== 1 ? 's' : ''}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                  <span style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: t.surfaceMuted,
+                    color: EXPENSE_CATEGORY_COLORS[expense.category] ?? t.textSec,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <ExpenseCategoryIcon category={expense.category} size={16} />
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
+                    <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
+                      {formatSessionDate(expense.occurredAt)} · {subtitle}
+                    </div>
                   </div>
                 </div>
-                {costLabel && (
-                  <span style={{ fontSize: 15, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
-                    {costLabel}
-                  </span>
-                )}
-              </div>
+                <span style={{ fontSize: 15, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {formatMoney(expense.amount, expense.currency)}
+                </span>
+              </button>
             )
           })
         )}
+      </div>
+
+      <FAB onClick={handleAdd} aria-label="Add expense">
+        <Plus size={24} color={t.onPrimary} />
+      </FAB>
+    </div>
+  )
+}
+
+function CategoryRow({ category, amount, currency, share, divider }: {
+  category: string
+  amount: number
+  currency: string
+  share: number
+  divider: boolean
+}) {
+  const color = EXPENSE_CATEGORY_COLORS[category] ?? t.primary
+  const width = Math.max(share * 100, share > 0 ? 4 : 0)
+  return (
+    <div style={{
+      padding: '12px 16px',
+      borderTop: divider ? `1px solid ${t.border}` : 'none',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span style={{ color, display: 'flex' }}>
+            <ExpenseCategoryIcon category={category} size={16} />
+          </span>
+          <span style={{ fontSize: 14, color: t.text, fontWeight: 500 }}>{category}</span>
+        </div>
+        <span style={{ fontSize: 14, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
+          {formatMoney(amount, currency)}
+        </span>
+      </div>
+      <div
+        role="presentation"
+        style={{
+          marginTop: 8,
+          height: 6,
+          borderRadius: 9999,
+          background: t.surfaceMuted,
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{
+          width: `${width}%`,
+          height: '100%',
+          borderRadius: 9999,
+          background: color,
+        }} />
       </div>
     </div>
   )

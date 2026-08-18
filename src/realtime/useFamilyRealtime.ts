@@ -152,6 +152,14 @@ export function useFamilyRealtime(opts: {
         void refreshSpendRef.current?.()
         return
       }
+      if (
+        msg.type === 'expense.created'
+        || msg.type === 'expense.updated'
+        || msg.type === 'expense.deleted'
+      ) {
+        void refreshSpendRef.current?.()
+        return
+      }
       if (msg.type === 'event.created' || msg.type === 'event.updated') {
         if (msg.event.recurrence_rule) {
           void refetchEvents().catch(() => {

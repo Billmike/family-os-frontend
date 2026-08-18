@@ -1,5 +1,7 @@
 import type {
   CalendarEvent,
+  Expense,
+  HouseholdSpend,
   Member,
   Notification,
   Screen,
@@ -12,6 +14,8 @@ import type {
 } from "../types";
 import type {
   EventOut,
+  ExpenseOut,
+  HouseholdSpendOut,
   MemberOut,
   NotificationOut,
   ShoppingItemOut,
@@ -213,10 +217,57 @@ export function toShoppingSpend(spend: ShoppingSpendOut): ShoppingSpend {
     months: spend.months.map(row => ({
       month: row.month,
       total: Number(row.total),
-      tripCount: row.trip_count,
+      entryCount: row.trip_count,
       average: Number(row.average),
+      categories: [],
     })),
   };
+}
+
+export function toHouseholdSpend(spend: HouseholdSpendOut): HouseholdSpend {
+  return {
+    currency: spend.currency,
+    currentMonth: spend.current_month,
+    yearToDateTotal: Number(spend.year_to_date_total),
+    months: spend.months.map(row => ({
+      month: row.month,
+      total: Number(row.total),
+      entryCount: row.entry_count,
+      average: Number(row.average),
+      categories: row.categories.map(cat => ({
+        category: cat.category,
+        total: Number(cat.total),
+        count: cat.count,
+      })),
+    })),
+  };
+}
+
+export function toExpense(expense: ExpenseOut): Expense {
+  return {
+    id: expense.id,
+    amount: Number(expense.amount),
+    currency: expense.currency,
+    category: expense.category,
+    merchant: expense.merchant,
+    note: expense.note,
+    occurredAt: expense.occurred_at,
+    sourceType: expense.source_type,
+    sourceId: expense.source_id,
+    sourceItemCount: expense.source_item_count,
+  };
+}
+
+export function dateInputFromIso(iso: string): string {
+  const d = new Date(iso);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function dateInputToIso(date: string): string {
+  return new Date(`${date}T12:00:00`).toISOString();
 }
 
 export function formatMoney(amount: number, currency = "EUR"): string {

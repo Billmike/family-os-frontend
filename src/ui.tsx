@@ -1,6 +1,6 @@
 import { type CSSProperties, type InputHTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, CheckSquare, Baby, ChevronDown, ChevronsDown, ChevronsUp, Equal, Home, MoreHorizontal, Settings2, ShoppingCart, User, X } from 'lucide-react'
+import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, Equal, Heart, Home, MoreHorizontal, Settings2, ShoppingCart, User, UtensilsCrossed, X, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Member } from './types'
 import { TASK_CATEGORIES } from './types'
@@ -370,9 +370,17 @@ export function Select({ value, onChange, options }: {
 
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 
-export function FAB({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+export function FAB({ onClick, children, 'aria-label': ariaLabel }: {
+  onClick: () => void
+  children: ReactNode
+  'aria-label'?: string
+}) {
   return (
-    <button onClick={onClick} className="fab" style={{
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="fab"
+      style={{
       position: 'fixed', right: 20,
       width: 56, height: 56, borderRadius: 9999,
       background: t.primary, border: 'none',
@@ -531,6 +539,40 @@ export function categoryLucideIcon(category: string): LucideIcon {
 
 export function categoryDisplayName(category: string): string {
   return CATEGORY_ICONS[category] ? category : (category || 'Other')
+}
+
+const EXPENSE_CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Shopping: ShoppingCart,
+  Transportation: Car,
+  Housing: Home,
+  Utilities: Zap,
+  Dining: UtensilsCrossed,
+  Health: Heart,
+  Childcare: Baby,
+  Other: MoreHorizontal,
+}
+
+export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
+  Shopping: 'var(--ds-primary)',
+  Transportation: 'var(--ds-info)',
+  Housing: 'var(--ds-warning)',
+  Utilities: 'var(--ds-text-secondary)',
+  Dining: 'var(--ds-error)',
+  Health: 'var(--ds-success)',
+  Childcare: 'var(--ds-member-3)',
+  Other: 'var(--ds-text-tertiary)',
+}
+
+export function expenseCategoryLucideIcon(category: string): LucideIcon {
+  return EXPENSE_CATEGORY_ICONS[category] ?? MoreHorizontal
+}
+
+export function ExpenseCategoryIcon({ category, size = 14 }: {
+  category: string
+  size?: number
+}) {
+  const Icon = expenseCategoryLucideIcon(category)
+  return <Icon size={size} strokeWidth={1.75} aria-hidden />
 }
 
 export function CategoryIcon({ category, size = 14 }: {

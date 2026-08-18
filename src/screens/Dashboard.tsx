@@ -1,4 +1,4 @@
-import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, ShoppingSpend, AppHandlers } from '../types'
+import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, HouseholdSpend, AppHandlers } from '../types'
 import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus } from 'lucide-react'
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
@@ -10,7 +10,7 @@ interface Props extends Partial<AppHandlers> {
   tasks: Task[]
   shopping: ShoppingItem[]
   activeSession: ShoppingSession | null
-  spend: ShoppingSpend | null
+  spend: HouseholdSpend | null
   memberName: string
   dateLabel: string
   today: string
@@ -58,7 +58,7 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
 
       <DashSection
         icon={<BarChart3 size={16} color={t.primary} strokeWidth={1.75} />}
-        title="Groceries"
+        title="Spend"
         count="this month"
         onViewAll={() => navigate('insights')}
         viewLabel="Insights"
@@ -223,13 +223,13 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
   )
 }
 
-function SpendSnapshot({ spend, onOpen }: { spend: ShoppingSpend | null; onOpen: () => void }) {
+function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen: () => void }) {
   const thisMonth = spend?.months.find(row => row.month === spend.currentMonth)
   const previous = spend && spend.months.length > 1 ? spend.months[spend.months.length - 2] : undefined
   const sparkMonths = spend?.months.slice(-6) ?? []
-  const hasTrips = Boolean(spend && (spend.yearToDateTotal > 0 || spend.months.some(row => row.tripCount > 0)))
+  const hasSpend = Boolean(spend && (spend.yearToDateTotal > 0 || spend.months.some(row => row.entryCount > 0)))
 
-  if (!spend || !hasTrips || !thisMonth) {
+  if (!spend || !hasSpend || !thisMonth) {
     return (
       <button
         type="button"
@@ -240,7 +240,7 @@ function SpendSnapshot({ spend, onOpen }: { spend: ShoppingSpend | null; onOpen:
           color: t.textTer, fontSize: 14,
         }}
       >
-        Complete a shopping trip to see spend
+        Add an expense to see spend
       </button>
     )
   }
@@ -258,7 +258,7 @@ function SpendSnapshot({ spend, onOpen }: { spend: ShoppingSpend | null; onOpen:
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`This month groceries ${formatMoney(thisMonth.total, spend.currency)}. Open Insights`}
+      aria-label={`This month spend ${formatMoney(thisMonth.total, spend.currency)}. Open Insights`}
       style={{
         width: '100%', padding: '14px 20px', border: 'none', background: 'none',
         cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',

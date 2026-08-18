@@ -17,7 +17,7 @@ export function SpendBarChart({ months, selectedMonth, currency, onSelect }: Cha
   return (
     <div
       role="group"
-      aria-label="Grocery spend by month"
+      aria-label="Household spend by month"
       style={{ display: 'flex', alignItems: 'stretch', gap: 2, height: 148, padding: '4px 4px 0' }}
     >
       {months.map(row => {

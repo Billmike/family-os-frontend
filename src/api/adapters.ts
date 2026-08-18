@@ -7,6 +7,7 @@ import type {
   ShoppingLocation,
   ShoppingSession,
   ShoppingSessionItem,
+  ShoppingSpend,
   Task,
 } from "../types";
 import type {
@@ -17,6 +18,7 @@ import type {
   ShoppingLocationOut,
   ShoppingSessionItemOut,
   ShoppingSessionOut,
+  ShoppingSpendOut,
   TaskOut,
 } from "./types";
 
@@ -201,6 +203,46 @@ export function toShoppingSession(session: ShoppingSessionOut): ShoppingSession 
     itemCount: session.item_count,
     items: session.items?.map(toShoppingSessionItem),
   };
+}
+
+export function toShoppingSpend(spend: ShoppingSpendOut): ShoppingSpend {
+  return {
+    currency: spend.currency,
+    currentMonth: spend.current_month,
+    yearToDateTotal: Number(spend.year_to_date_total),
+    months: spend.months.map(row => ({
+      month: row.month,
+      total: Number(row.total),
+      tripCount: row.trip_count,
+      average: Number(row.average),
+    })),
+  };
+}
+
+export function formatMoney(amount: number, currency = "EUR"): string {
+  const symbol = currency === "EUR" ? "€" : `${currency} `;
+  return `${symbol}${amount.toFixed(2)}`;
+}
+
+export function formatYearMonthTitle(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function formatMonthShort(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short" });
+}
+
+export function shiftYearMonth(yearMonth: string, delta: number): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
 export function formatSessionCost(session: ShoppingSession): string {

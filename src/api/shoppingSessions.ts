@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { ShoppingSessionOut } from './types'
+import type { ShoppingSessionOut, ShoppingSpendOut } from './types'
 
 export function getActiveSession(familyId: string) {
   return apiRequest<ShoppingSessionOut | null>(
@@ -35,13 +35,23 @@ export function completeSession(familyId: string, totalCost: number | string) {
   )
 }
 
-export function listSessions(familyId: string, params?: { limit?: number; offset?: number }) {
+export function listSessions(
+  familyId: string,
+  params?: { limit?: number; offset?: number; month?: string },
+) {
   const search = new URLSearchParams()
   if (params?.limit != null) search.set('limit', String(params.limit))
   if (params?.offset != null) search.set('offset', String(params.offset))
+  if (params?.month) search.set('month', params.month)
   const qs = search.toString()
   return apiRequest<ShoppingSessionOut[]>(
     `/api/families/${familyId}/shopping-sessions${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export function getShoppingSpend(familyId: string, months = 12) {
+  return apiRequest<ShoppingSpendOut>(
+    `/api/families/${familyId}/shopping-spend?months=${months}`,
   )
 }
 

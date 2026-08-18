@@ -1,13 +1,16 @@
-import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, AppHandlers } from '../types'
-import { Calendar, CheckSquare, ShoppingCart, ArrowRight, Plus } from 'lucide-react'
+import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, ShoppingSpend, AppHandlers } from '../types'
+import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus } from 'lucide-react'
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
+import { formatMoney, formatMonthShort } from '../api/adapters'
+import { SpendSparkline } from '../components/SpendBarChart'
 
 interface Props extends Partial<AppHandlers> {
   events: CalendarEvent[]
   tasks: Task[]
   shopping: ShoppingItem[]
   activeSession: ShoppingSession | null
+  spend: ShoppingSpend | null
   memberName: string
   dateLabel: string
   today: string
@@ -17,7 +20,7 @@ interface Props extends Partial<AppHandlers> {
   addToBasket: AppHandlers['addToBasket']
 }
 
-export default function Dashboard({ events, tasks, shopping, activeSession, memberName, dateLabel, today, navigate, openSheet, completeTask, addToBasket }: Props) {
+export default function Dashboard({ events, tasks, shopping, activeSession, spend, memberName, dateLabel, today, navigate, openSheet, completeTask, addToBasket }: Props) {
   const tomorrow = (() => {
     const d = new Date(today + 'T12:00:00')
     d.setDate(d.getDate() + 1)
@@ -52,6 +55,16 @@ export default function Dashboard({ events, tasks, shopping, activeSession, memb
         </h1>
         <p style={{ fontSize: 14, color: t.textSec }}>{dateLabel}</p>
       </div>
+
+      <DashSection
+        icon={<BarChart3 size={16} color={t.primary} strokeWidth={1.75} />}
+        title="Groceries"
+        count="this month"
+        onViewAll={() => navigate('insights')}
+        viewLabel="Insights"
+      >
+        <SpendSnapshot spend={spend} onOpen={() => navigate('insights')} />
+      </DashSection>
 
       {/* ─── Today section ──────────────────────────────────────────────────── */}
       <DashSection
@@ -207,6 +220,64 @@ export default function Dashboard({ events, tasks, shopping, activeSession, memb
         </DashSection>
       )}
     </div>
+  )
+}
+
+function SpendSnapshot({ spend, onOpen }: { spend: ShoppingSpend | null; onOpen: () => void }) {
+  const thisMonth = spend?.months.find(row => row.month === spend.currentMonth)
+  const previous = spend && spend.months.length > 1 ? spend.months[spend.months.length - 2] : undefined
+  const sparkMonths = spend?.months.slice(-6) ?? []
+  const hasTrips = Boolean(spend && (spend.yearToDateTotal > 0 || spend.months.some(row => row.tripCount > 0)))
+
+  if (!spend || !hasTrips || !thisMonth) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{
+          width: '100%', padding: '16px 20px', border: 'none', background: 'none',
+          cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+          color: t.textTer, fontSize: 14,
+        }}
+      >
+        Complete a shopping trip to see spend
+      </button>
+    )
+  }
+
+  const delta = previous ? thisMonth.total - previous.total : 0
+  const comparison = !previous
+    ? null
+    : Math.abs(delta) < 0.005
+      ? { text: `Same as ${formatMonthShort(previous.month)}`, color: t.textSec }
+      : delta > 0
+        ? { text: `${formatMoney(delta, spend.currency)} more than ${formatMonthShort(previous.month)}`, color: t.error }
+        : { text: `${formatMoney(Math.abs(delta), spend.currency)} less than ${formatMonthShort(previous.month)}`, color: t.success }
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`This month groceries ${formatMoney(thisMonth.total, spend.currency)}. Open Insights`}
+      style={{
+        width: '100%', padding: '14px 20px', border: 'none', background: 'none',
+        cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+        display: 'flex', alignItems: 'center', gap: 16,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 24, fontWeight: 600, color: t.text, letterSpacing: '-0.03em',
+          fontVariantNumeric: 'tabular-nums', margin: 0, lineHeight: 1.15,
+        }}>
+          {formatMoney(thisMonth.total, spend.currency)}
+        </p>
+        {comparison && (
+          <p style={{ fontSize: 12, color: comparison.color, marginTop: 4 }}>{comparison.text}</p>
+        )}
+      </div>
+      <SpendSparkline months={sparkMonths} />
+    </button>
   )
 }
 

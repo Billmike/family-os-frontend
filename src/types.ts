@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'notifications' | 'family' | 'settings'
+export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'insights' | 'notifications' | 'family' | 'settings'
 
 export interface Member {
   id: string
@@ -90,6 +90,20 @@ export interface ShoppingSession {
   currency: string
   itemCount: number
   items?: ShoppingSessionItem[]
+}
+
+export interface MonthlySpend {
+  month: string
+  total: number
+  tripCount: number
+  average: number
+}
+
+export interface ShoppingSpend {
+  currency: string
+  currentMonth: string
+  yearToDateTotal: number
+  months: MonthlySpend[]
 }
 
 export interface Notification {

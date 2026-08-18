@@ -45,6 +45,7 @@ export function useFamilyRealtime(opts: {
   setActiveSession: Dispatch<SetStateAction<ShoppingSession | null>>
   setSessionHistory: Dispatch<SetStateAction<ShoppingSession[]>>
   setNotifs: Dispatch<SetStateAction<Notification[]>>
+  refreshSpend?: () => Promise<void>
 }) {
   const {
     familyId,
@@ -58,12 +59,15 @@ export function useFamilyRealtime(opts: {
     setActiveSession,
     setSessionHistory,
     setNotifs,
+    refreshSpend,
   } = opts
   const loadAllRef = useRef(loadAll)
+  const refreshSpendRef = useRef(refreshSpend)
   const onMembershipRevokedRef = useRef(onMembershipRevoked)
   const timeZoneRef = useRef(timeZone)
   const todayRef = useRef(today)
   loadAllRef.current = loadAll
+  refreshSpendRef.current = refreshSpend
   onMembershipRevokedRef.current = onMembershipRevoked
   timeZoneRef.current = timeZone
   todayRef.current = today
@@ -145,6 +149,7 @@ export function useFamilyRealtime(opts: {
         const ui = toShoppingSession(msg.session)
         setActiveSession(null)
         setSessionHistory(prev => [ui, ...prev.filter(s => s.id !== ui.id)])
+        void refreshSpendRef.current?.()
         return
       }
       if (msg.type === 'event.created' || msg.type === 'event.updated') {

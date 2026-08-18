@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, Calendar, CheckSquare, ShoppingCart, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
-import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, Notification, BottomSheetType, Member, TaskUpdatePatch } from './types'
+import { Home, Calendar, CheckSquare, ShoppingCart, BarChart3, Bell, ArrowLeft, Settings, Repeat } from 'lucide-react'
+import type { Screen, CalendarEvent, Task, ShoppingItem, ShoppingLocation, ShoppingSession, ShoppingSpend, Notification, BottomSheetType, Member, TaskUpdatePatch } from './types'
 import { TASK_CATEGORIES } from './types'
 import { getMember, formatDate, formatTime } from './data'
 import { t, MemberAvatar, BottomSheet, Toast, OfflineBanner, FormField, Input, Select, PrimaryButton, SegmentedControl, CategorySelect } from './ui'
@@ -9,6 +9,7 @@ import Dashboard from './screens/Dashboard'
 import CalendarScreen from './screens/Calendar'
 import TasksScreen from './screens/Tasks'
 import ShoppingScreen from './screens/Shopping'
+import InsightsScreen from './screens/Insights'
 import NotificationsScreen from './screens/Notifications'
 import FamilyScreen from './screens/Family'
 import SettingsScreen from './screens/Settings'
@@ -28,6 +29,7 @@ import {
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
+  toShoppingSpend,
   toTask,
   todayInTimezone,
 } from './api/adapters'
@@ -52,6 +54,7 @@ const BOTTOM_NAV = [
   { screen: 'calendar' as Screen, icon: Calendar, label: 'Calendar' },
   { screen: 'tasks' as Screen, icon: CheckSquare, label: 'Tasks' },
   { screen: 'shopping' as Screen, icon: ShoppingCart, label: 'Shopping' },
+  { screen: 'insights' as Screen, icon: BarChart3, label: 'Insights' },
 ]
 
 const SCREEN_TITLES: Record<Screen, string> = {
@@ -59,6 +62,7 @@ const SCREEN_TITLES: Record<Screen, string> = {
   calendar: 'Calendar',
   tasks: 'Tasks',
   shopping: 'Shopping',
+  insights: 'Insights',
   notifications: 'Notifications',
   family: 'Your Family',
   settings: 'Settings',
@@ -188,6 +192,7 @@ function MainApp() {
   const [shoppingLocations, setShoppingLocations] = useState<ShoppingLocation[]>([])
   const [activeSession, setActiveSession] = useState<ShoppingSession | null>(null)
   const [sessionHistory, setSessionHistory] = useState<ShoppingSession[]>([])
+  const [shoppingSpend, setShoppingSpend] = useState<ShoppingSpend | null>(null)
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? '')
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today))
@@ -217,7 +222,7 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history] = await Promise.all([
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend] = await Promise.all([
         dashboardApi.getDashboard(familyId),
         eventsApi.listEvents(familyId, from, to),
         tasksApi.listTasks(familyId, 'all'),
@@ -226,6 +231,7 @@ function MainApp() {
         notificationsApi.listNotifications(),
         shoppingSessionsApi.getActiveSession(familyId),
         shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
+        shoppingSessionsApi.getShoppingSpend(familyId).catch(() => null),
       ])
 
       setFamilyName(dash.family_name)
@@ -238,6 +244,7 @@ function MainApp() {
       setShoppingLocations(locs.map(toShoppingLocation))
       setActiveSession(activeSess ? toShoppingSession(activeSess) : null)
       setSessionHistory(history.map(toShoppingSession))
+      setShoppingSpend(spend ? toShoppingSpend(spend) : null)
 
       const groceries =
         lists.find(l => l.name.toLowerCase() === 'groceries') ?? lists[0] ?? null
@@ -260,6 +267,20 @@ function MainApp() {
     }
   }, [family.id, timeZone, today, session.recoverFromLostFamily])
 
+  const refreshSpend = useCallback(async () => {
+    try {
+      const spend = await shoppingSessionsApi.getShoppingSpend(family.id)
+      setShoppingSpend(toShoppingSpend(spend))
+    } catch {
+      /* keep the last known totals */
+    }
+  }, [family.id])
+
+  const loadMonthSessions = useCallback(async (month: string) => {
+    const rows = await shoppingSessionsApi.listSessions(family.id, { month, limit: 100 })
+    return rows.map(toShoppingSession)
+  }, [family.id])
+
   useEffect(() => {
     void loadAll()
   }, [loadAll])
@@ -278,6 +299,7 @@ function MainApp() {
     setActiveSession,
     setSessionHistory,
     setNotifs,
+    refreshSpend,
   })
 
   useEffect(() => {
@@ -447,6 +469,7 @@ function MainApp() {
       setSessionHistory(prev => [ui, ...prev.filter(s => s.id !== ui.id)])
       setSheet(null)
       showToast('Shopping trip completed')
+      void refreshSpend()
     } catch (e) {
       handleError(e)
     }
@@ -790,6 +813,7 @@ function MainApp() {
                 tasks={tasks}
                 shopping={shopping}
                 activeSession={activeSession}
+                spend={shoppingSpend}
                 memberName={dashGreeting}
                 dateLabel={dashDateLabel}
                 today={today}
@@ -817,6 +841,13 @@ function MainApp() {
                 sessionHistory={sessionHistory}
                 loadSessionDetail={loadSessionDetail}
                 {...handlers}
+              />
+            )}
+            {screen === 'insights' && (
+              <InsightsScreen
+                spend={shoppingSpend}
+                loadMonthSessions={loadMonthSessions}
+                navigate={navigateToScreen}
               />
             )}
             {screen === 'notifications' && (

@@ -145,6 +145,20 @@ export interface ShoppingSessionOut {
   items: ShoppingSessionItemOut[]
 }
 
+export interface MonthlySpendOut {
+  month: string
+  total: string
+  trip_count: number
+  average: string
+}
+
+export interface ShoppingSpendOut {
+  currency: string
+  current_month: string
+  year_to_date_total: string
+  months: MonthlySpendOut[]
+}
+
 export interface NotificationOut {
   id: string
   family_id: string

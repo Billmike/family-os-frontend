@@ -2,6 +2,8 @@ import type { Screen } from './types'
 
 export const LOGIN_PATH = '/login'
 
+const YEAR_MONTH = /^\d{4}-\d{2}$/
+
 /** Canonical path for each main app screen. */
 export const SCREEN_PATHS: Record<Screen, string> = {
   dashboard: '/',
@@ -9,6 +11,7 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   tasks: '/tasks',
   shopping: '/shopping',
   expenses: '/expenses',
+  expenseActivity: '/expenses/activity',
   notifications: '/notifications',
   family: '/family',
   settings: '/settings',
@@ -20,10 +23,27 @@ const PATH_TO_SCREEN: Record<string, Screen> = {
   '/tasks': 'tasks',
   '/shopping': 'shopping',
   '/expenses': 'expenses',
+  '/expenses/activity': 'expenseActivity',
   '/insights': 'expenses',
   '/notifications': 'notifications',
   '/family': 'family',
   '/settings': 'settings',
+}
+
+export function parseYearMonth(value: string | null | undefined): string | null {
+  if (!value || !YEAR_MONTH.test(value)) return null
+  return value
+}
+
+export function expenseActivityPath(month?: string | null): string {
+  const path = SCREEN_PATHS.expenseActivity
+  const parsed = parseYearMonth(month)
+  if (!parsed) return path
+  return `${path}?month=${parsed}`
+}
+
+export function isExpensesSection(screen: Screen): boolean {
+  return screen === 'expenses' || screen === 'expenseActivity'
 }
 
 const LEGACY_GO_SCREENS = new Set<Screen>([

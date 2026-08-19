@@ -309,6 +309,12 @@ export function formatSessionDate(iso: string): string {
   });
 }
 
+export function expenseTitle(expense: Expense): string {
+  if (expense.merchant) return expense.merchant;
+  if (expense.sourceType === "shopping_session") return "Shopping trip";
+  return expense.category;
+}
+
 function entityToScreen(entityType: string | null): Screen | undefined {
   if (!entityType) return undefined;
   if (entityType === "event" || entityType === "calendar") return "calendar";

@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react'
-import { BarChart3, ChevronLeft, ChevronRight, Plus, Receipt } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, BarChart3, Plus, Receipt } from 'lucide-react'
 import type { Expense, HouseholdSpend, AppHandlers } from '../types'
 import { t, r, EmptyState, SectionLabel, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
+import { MonthSwitcher } from '../components/MonthSwitcher'
+import { useMonthExpenses } from '../hooks/useMonthExpenses'
 import {
+  expenseTitle,
   formatMoney,
   formatMonthShort,
   formatSessionDate,
   formatYearMonthTitle,
   shiftYearMonth,
 } from '../api/adapters'
+import { expenseActivityPath } from '../routing'
+
+const ACTIVITY_PREVIEW_LIMIT = 5
 
 interface Props {
   spend: HouseholdSpend | null
@@ -29,32 +35,11 @@ const emptyMonth = (month: string) => ({
 })
 
 export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: Props) {
-  const [selectedMonth, setSelectedMonth] = useState(spend?.currentMonth ?? '')
-  const [entries, setEntries] = useState<Expense[]>([])
-  const [loadingEntries, setLoadingEntries] = useState(false)
-
-  useEffect(() => {
-    if (!spend) return
-    if (!selectedMonth || !spend.months.some(row => row.month === selectedMonth)) {
-      setSelectedMonth(spend.currentMonth)
-    }
-  }, [spend, selectedMonth])
-
-  useEffect(() => {
-    if (!selectedMonth) return
-    let cancelled = false
-    setLoadingEntries(true)
-    void loadMonthExpenses(selectedMonth).then(rows => {
-      if (cancelled) return
-      setEntries(rows)
-      setLoadingEntries(false)
-    }).catch(() => {
-      if (cancelled) return
-      setEntries([])
-      setLoadingEntries(false)
-    })
-    return () => { cancelled = true }
-  }, [selectedMonth, loadMonthExpenses, spend])
+  const navigate = useNavigate()
+  const { selectedMonth, setSelectedMonth, entries, loadingEntries } = useMonthExpenses(
+    spend,
+    loadMonthExpenses,
+  )
 
   const handleAdd = () => {
     openSheet({ type: 'addExpense' })
@@ -112,44 +97,22 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
     openSheet({ type: 'editExpense', expense })
   }
 
+  const previewEntries = entries.slice(0, ACTIVITY_PREVIEW_LIMIT)
+  const showViewMore = entries.length > ACTIVITY_PREVIEW_LIMIT
+
+  const handleViewMore = () => {
+    navigate(expenseActivityPath(selected.month))
+  }
+
   return (
     <div style={{ padding: '8px 0 32px', maxWidth: 600, margin: '0 auto' }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '8px 12px 4px',
-      }}>
-        <button
-          type="button"
-          aria-label="Previous month"
-          onClick={handlePrev}
-          disabled={!canGoPrev}
-          style={{
-            width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none', background: 'transparent', borderRadius: r.md, cursor: canGoPrev ? 'pointer' : 'default',
-            color: canGoPrev ? t.text : t.textTer, opacity: canGoPrev ? 1 : 0.4,
-          }}
-        >
-          <ChevronLeft size={20} strokeWidth={1.75} />
-        </button>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: t.text, letterSpacing: '-0.02em', margin: 0 }}>
-          {monthTitle}
-        </h2>
-        <button
-          type="button"
-          aria-label="Next month"
-          onClick={handleNext}
-          disabled={!canGoNext}
-          style={{
-            width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none', background: 'transparent', borderRadius: r.md, cursor: canGoNext ? 'pointer' : 'default',
-            color: canGoNext ? t.text : t.textTer, opacity: canGoNext ? 1 : 0.4,
-          }}
-        >
-          <ChevronRight size={20} strokeWidth={1.75} />
-        </button>
-      </div>
+      <MonthSwitcher
+        monthTitle={monthTitle}
+        canGoPrev={canGoPrev}
+        canGoNext={canGoNext}
+        onPrev={handlePrev}
+        onNext={handleNext}
+      />
 
       <div style={{ padding: '12px 20px 20px' }}>
         <p style={{
@@ -222,7 +185,38 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
         </>
       )}
 
-      <SectionLabel>Activity</SectionLabel>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        paddingRight: 16,
+      }}>
+        <SectionLabel>Activity</SectionLabel>
+        {showViewMore && (
+          <button
+            type="button"
+            onClick={handleViewMore}
+            aria-label="View more expenses"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              color: t.primary,
+              fontSize: 13,
+              fontWeight: 500,
+              padding: '4px 0',
+              fontFamily: 'var(--ds-font)',
+              flexShrink: 0,
+            }}
+          >
+            View more <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
       <div style={{
         margin: '0 16px',
         background: t.surface,
@@ -244,10 +238,9 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
             </p>
           </div>
         ) : (
-          entries.map((expense, i) => {
+          previewEntries.map((expense, i) => {
             const isManual = expense.sourceType === 'manual'
-            const title = expense.merchant
-              || (expense.sourceType === 'shopping_session' ? 'Shopping trip' : expense.category)
+            const title = expenseTitle(expense)
             const itemCount = expense.sourceItemCount
             const subtitle = expense.sourceType === 'shopping_session' && itemCount != null
               ? `${expense.category} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`

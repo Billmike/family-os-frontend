@@ -90,9 +90,12 @@ import {
   LOGIN_PATH,
   isLoginPath,
   legacyGoRedirectPath,
+  isExpensesSection,
   pathToScreen,
   screenToPath,
 } from "./routing";
+import ExpenseActivityScreen from "./screens/ExpenseActivity";
+
 const BOTTOM_NAV = [
   { screen: "dashboard" as Screen, icon: Home, label: "Home" },
   { screen: "calendar" as Screen, icon: Calendar, label: "Calendar" },
@@ -107,6 +110,7 @@ const SCREEN_TITLES: Record<Screen, string> = {
   tasks: "Tasks",
   shopping: "Shopping",
   expenses: "Expenses",
+  expenseActivity: "Activity",
   notifications: "Notifications",
   family: "Your Family",
   settings: "Settings",
@@ -823,7 +827,14 @@ function MainApp() {
 
   const isDashboard = screen === "dashboard";
   const isSubScreen =
-    screen === "notifications" || screen === "family" || screen === "settings";
+    screen === "notifications" ||
+    screen === "family" ||
+    screen === "settings" ||
+    screen === "expenseActivity";
+  const headerBackScreen: Screen =
+    screen === "expenseActivity" ? "expenses" : "dashboard";
+  const showHeaderTitle =
+    !isDashboard && (!isSubScreen || screen === "expenseActivity");
 
   function AppHeader() {
     return (
@@ -847,7 +858,7 @@ function MainApp() {
       >
         {isSubScreen ? (
           <button
-            onClick={() => navigateToScreen("dashboard")}
+            onClick={() => navigateToScreen(headerBackScreen)}
             style={{
               background: "none",
               border: "none",
@@ -904,7 +915,7 @@ function MainApp() {
             )}
           </div>
         )}
-        {!isDashboard && !isSubScreen && (
+        {showHeaderTitle && (
           <span
             style={{
               fontSize: 17,
@@ -1023,7 +1034,9 @@ function MainApp() {
           },
         ].map((item) => {
           const Icon = item.icon;
-          const active = screen === item.screen;
+          const active =
+            screen === item.screen ||
+            (item.screen === "expenses" && isExpensesSection(screen));
           return (
             <button
               key={item.screen}
@@ -1128,7 +1141,9 @@ function MainApp() {
       >
         {BOTTOM_NAV.map((item) => {
           const Icon = item.icon;
-          const active = screen === item.screen;
+          const active =
+            screen === item.screen ||
+            (item.screen === "expenses" && isExpensesSection(screen));
           return (
             <button
               key={item.screen}
@@ -1305,6 +1320,13 @@ function MainApp() {
             )}
             {screen === "expenses" && (
               <ExpensesScreen
+                spend={householdSpend}
+                loadMonthExpenses={loadMonthExpenses}
+                {...handlers}
+              />
+            )}
+            {screen === "expenseActivity" && (
+              <ExpenseActivityScreen
                 spend={householdSpend}
                 loadMonthExpenses={loadMonthExpenses}
                 {...handlers}

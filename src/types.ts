@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'expenses' | 'notifications' | 'family' | 'settings'
+export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'expenses' | 'expenseActivity' | 'notifications' | 'family' | 'settings'
 
 export interface Member {
   id: string

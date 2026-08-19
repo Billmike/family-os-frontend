@@ -1379,6 +1379,7 @@ function MainApp() {
                 onRemoveMember={removeFamilyMember}
                 onLeaveFamily={leaveFamily}
                 onDeleteFamily={deleteFamily}
+                onSignOut={session.logout}
                 {...handlers}
               />
             )}

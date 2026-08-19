@@ -3,7 +3,7 @@ import type { AppHandlers, Member } from '../types'
 import type { UserOut } from '../api/types'
 import * as notificationsApi from '../api/notifications'
 import { ApiError } from '../api/client'
-import { t, r, Toggle, MemberAvatar, BottomSheet, FormField, Input, SegmentedControl } from '../ui'
+import { t, r, Toggle, MemberAvatar, BottomSheet, SegmentedControl, FormField, Input } from '../ui'
 import { useTheme } from '../lib/theme/ThemeProvider'
 import type { ThemePreference } from '../lib/theme/theme'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
@@ -308,12 +308,9 @@ export default function SettingsScreen({
       <section style={{ margin: '0 16px 20px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Family</p>
         <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-          <SettingsRow label="Manage family" onClick={() => navigate('family')} />
+          <SettingsRow label="Family settings" onClick={() => navigate('family')} />
           <SettingsRow label="Invite a member" onClick={() => navigate('family')} divider />
-          <SettingsRow label="Leave family" danger divider onClick={() => setConfirm('leave')} />
-          {isOwner && (
-            <SettingsRow label="Delete family" danger divider onClick={() => setConfirm('delete')} />
-          )}
+          <SettingsRow label="Sign out" danger divider onClick={onSignOut} />
         </div>
       </section>
 
@@ -325,7 +322,16 @@ export default function SettingsScreen({
             onClick={pwa.mode === 'installed' ? undefined : () => void onInstallRowClick()}
           />
           <SettingsRow label="About" divider onClick={() => setShowAbout(true)} />
-          <SettingsRow label="Sign out" danger divider onClick={onSignOut} />
+        </div>
+      </section>
+
+      <section style={{ margin: '0 16px' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Danger zone</p>
+        <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+          <SettingsRow label="Leave family" danger onClick={() => setConfirm('leave')} />
+          {isOwner && (
+            <SettingsRow label="Delete family" danger divider onClick={() => setConfirm('delete')} />
+          )}
         </div>
       </section>
 
@@ -358,7 +364,7 @@ export default function SettingsScreen({
               lineHeight: 1.7,
             }}
           >
-            <li>Dashboard for today’s overview</li>
+            <li>Dashboard for today&apos;s overview</li>
             <li>Shared calendar and reminders</li>
             <li>Family tasks and assignments</li>
             <li>Shopping lists everyone can update</li>
@@ -370,13 +376,12 @@ export default function SettingsScreen({
           </p>
         </BottomSheet>
       )}
-
       {confirm === 'leave' && (
         <BottomSheet title="Leave family" onClose={handleCloseConfirm}>
           <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.55, marginBottom: 20 }}>
             {isOwner
               ? 'If you are the last adult, this family and all its data will be deleted. Otherwise another parent becomes the admin.'
-              : 'You will lose access to this family’s tasks, events, and shopping.'}
+              : 'You will lose access to this family\u2019s tasks, events, and shopping.'}
           </p>
           <button
             onClick={() => void handleConfirmLeave()}
@@ -389,7 +394,7 @@ export default function SettingsScreen({
               cursor: familyActionBusy ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
             }}
           >
-            {familyActionBusy ? 'Leaving…' : 'Leave family'}
+            {familyActionBusy ? 'Leaving\u2026' : 'Leave family'}
           </button>
           <button
             onClick={handleCloseConfirm}
@@ -438,7 +443,7 @@ export default function SettingsScreen({
               fontFamily: 'var(--ds-font)',
             }}
           >
-            {familyActionBusy ? 'Deleting…' : 'Delete family'}
+            {familyActionBusy ? 'Deleting\u2026' : 'Delete family'}
           </button>
           <button
             onClick={handleCloseConfirm}

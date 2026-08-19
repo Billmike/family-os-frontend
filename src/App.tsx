@@ -644,6 +644,38 @@ function MainApp() {
     }
   }
 
+  async function reorderSession(
+    sessionId: string,
+  ): Promise<ShoppingSession | null> {
+    try {
+      const result = await shoppingSessionsApi.reorderSession(
+        family.id,
+        sessionId,
+      );
+      const session = toShoppingSession(result);
+      setActiveSession(session);
+      return session;
+    } catch (e) {
+      handleError(e);
+      return null;
+    }
+  }
+
+  async function updateSessionItem(
+    sessionItemId: string,
+    quantity: number,
+  ): Promise<boolean> {
+    try {
+      await shoppingSessionsApi.updateSessionItem(sessionItemId, { quantity });
+      const refreshed = await shoppingSessionsApi.getActiveSession(family.id);
+      if (refreshed) setActiveSession(toShoppingSession(refreshed));
+      return true;
+    } catch (e) {
+      handleError(e);
+      return false;
+    }
+  }
+
   async function addShoppingItem(
     item: Omit<ShoppingItem, "id" | "completed" | "addedById">,
   ) {
@@ -1316,6 +1348,8 @@ function MainApp() {
                 sessionHistory={sessionHistory}
                 loadSessionDetail={loadSessionDetail}
                 {...handlers}
+                reorderSession={reorderSession}
+                updateSessionItem={updateSessionItem}
               />
             )}
             {screen === "expenses" && (

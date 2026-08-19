@@ -58,3 +58,20 @@ export function getShoppingSpend(familyId: string, months = 12) {
 export function getSession(sessionId: string) {
   return apiRequest<ShoppingSessionOut>(`/api/shopping-sessions/${sessionId}`)
 }
+
+export function reorderSession(familyId: string, sessionId: string) {
+  return apiRequest<ShoppingSessionOut>(
+    `/api/families/${familyId}/shopping-sessions/${sessionId}/reorder`,
+    { method: 'POST' },
+  )
+}
+
+export function updateSessionItem(sessionItemId: string, data: { quantity: number }) {
+  return apiRequest<ShoppingSessionOut['items'][number]>(
+    `/api/shopping-session-items/${sessionItemId}`,
+    {
+      method: 'PATCH',
+      body: data,
+    },
+  )
+}

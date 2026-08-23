@@ -68,11 +68,11 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
   }, [selectedMonth, queryMonth, routerNavigate])
 
   const handleAdd = () => {
-    openSheet({ type: 'addExpense' })
+    openSheet({ type: 'chooseExpenseEntry' })
   }
 
   const handleOpenExpense = (expense: Expense) => {
-    if (expense.sourceType !== 'manual') return
+    if (expense.sourceType === 'shopping_session') return
     openSheet({ type: 'editExpense', expense })
   }
 

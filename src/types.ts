@@ -105,7 +105,7 @@ export const EXPENSE_CATEGORIES = [
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
-export type ExpenseSourceType = 'manual' | 'shopping_session'
+export type ExpenseSourceType = 'manual' | 'shopping_session' | 'receipt'
 
 export interface Expense {
   id: string
@@ -118,6 +118,46 @@ export interface Expense {
   sourceType: ExpenseSourceType
   sourceId: string | null
   sourceItemCount: number | null
+}
+
+export type ReceiptStatus = 'processing' | 'ready' | 'failed' | 'confirmed'
+
+export interface ReceiptItem {
+  id: string
+  receiptId: string
+  position: number
+  name: string
+  quantity: number | null
+  unit: string | null
+  unitPrice: number | null
+  totalPrice: number
+  taxCode: string | null
+  isIncluded: boolean
+}
+
+export interface Receipt {
+  id: string
+  familyId: string
+  uploadedBy: string
+  status: ReceiptStatus
+  mimeType: string
+  byteSize: number
+  originalFilename: string | null
+  categoryHint: string | null
+  suggestedCategory: string | null
+  merchant: string | null
+  purchasedAt: string | null
+  currency: string | null
+  subtotal: number | null
+  taxTotal: number | null
+  total: number | null
+  totalsMismatch: boolean
+  modelName: string | null
+  errorMessage: string | null
+  expenseId: string | null
+  items: ReceiptItem[]
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CategorySpend {
@@ -160,6 +200,8 @@ export type BottomSheetType =
   | { type: 'addShoppingItem' }
   | { type: 'completeShopping' }
   | { type: 'addExpense' }
+  | { type: 'chooseExpenseEntry' }
+  | { type: 'scanReceipt' }
   | { type: 'editExpense'; expense: Expense }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
@@ -184,6 +226,7 @@ export interface AppHandlers {
   addExpense: (input: ExpenseDraft) => void
   updateExpense: (id: string, input: ExpenseDraft) => void
   deleteExpense: (id: string) => void
+  onReceiptConfirmed: () => void
 }
 
 export interface ExpenseDraft {
@@ -192,4 +235,24 @@ export interface ExpenseDraft {
   merchant: string | null
   note: string | null
   occurredAt: string
+}
+
+export interface ReceiptItemDraft {
+  name: string
+  quantity: number | null
+  unit: string | null
+  unitPrice: number | null
+  totalPrice: number
+  taxCode: string | null
+  isIncluded: boolean
+}
+
+export interface ReceiptConfirmDraft {
+  category: string
+  merchant: string | null
+  note: string | null
+  occurredAt: string
+  currency: string
+  total: number
+  items: ReceiptItemDraft[]
 }

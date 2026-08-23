@@ -190,11 +190,73 @@ export interface ExpenseOut {
   note: string | null
   occurred_at: string
   created_by: string
-  source_type: 'manual' | 'shopping_session'
+  source_type: 'manual' | 'shopping_session' | 'receipt'
   source_id: string | null
   source_item_count: number | null
   created_at: string
   updated_at: string
+}
+
+export type ReceiptStatus = 'processing' | 'ready' | 'failed' | 'confirmed'
+
+export interface ReceiptItemOut {
+  id: string
+  receipt_id: string
+  position: number
+  name: string
+  quantity: string | null
+  unit: string | null
+  unit_price: string | null
+  total_price: string
+  tax_code: string | null
+  is_included: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ReceiptOut {
+  id: string
+  family_id: string
+  uploaded_by: string
+  status: ReceiptStatus
+  mime_type: string
+  byte_size: number
+  original_filename: string | null
+  category_hint: string | null
+  suggested_category: string | null
+  merchant: string | null
+  purchased_at: string | null
+  currency: string | null
+  subtotal: string | null
+  tax_total: string | null
+  total: string | null
+  totals_mismatch: boolean
+  model_name: string | null
+  error_message: string | null
+  expense_id: string | null
+  items: ReceiptItemOut[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ReceiptItemConfirm {
+  name: string
+  quantity?: number | string | null
+  unit?: string | null
+  unit_price?: number | string | null
+  total_price: number | string
+  tax_code?: string | null
+  is_included?: boolean
+}
+
+export interface ReceiptConfirm {
+  category: string
+  merchant?: string | null
+  note?: string | null
+  occurred_at?: string | null
+  currency?: string
+  total: number | string
+  items: ReceiptItemConfirm[]
 }
 
 export interface NotificationOut {
@@ -262,6 +324,9 @@ export type FamilyWsMessage =
   | { type: 'expense.created'; expense: ExpenseOut }
   | { type: 'expense.updated'; expense: ExpenseOut }
   | { type: 'expense.deleted'; expense_id: string }
+  | { type: 'receipt.ready'; receipt: ReceiptOut }
+  | { type: 'receipt.failed'; receipt: ReceiptOut }
+  | { type: 'receipt.deleted'; receipt_id: string }
   | { type: 'event.created'; event: EventOut }
   | { type: 'event.updated'; event: EventOut }
   | { type: 'event.deleted'; event_id: string }

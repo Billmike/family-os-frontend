@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import type { Expense, ExpenseDraft } from '../types'
+import { useEffect, useState } from 'react'
+import type { Expense, ExpenseDraft, Receipt } from '../types'
 import { EXPENSE_CATEGORIES } from '../types'
 import { BottomSheet, FormField, Input, PrimaryButton, Select, t } from '../ui'
-import { dateInputFromIso, dateInputToIso } from '../api/adapters'
+import { dateInputFromIso, dateInputToIso, formatMoney, toReceipt } from '../api/adapters'
+import * as receiptsApi from '../api/receipts'
 
 interface Props {
   expense?: Expense | null
@@ -10,9 +11,17 @@ interface Props {
   onClose: () => void
   onSave: (input: ExpenseDraft) => void
   onDelete?: (id: string) => void
+  onScanReceipt?: () => void
 }
 
-export default function ExpenseSheet({ expense, today, onClose, onSave, onDelete }: Props) {
+export default function ExpenseSheet({
+  expense,
+  today,
+  onClose,
+  onSave,
+  onDelete,
+  onScanReceipt,
+}: Props) {
   const isEdit = Boolean(expense)
   const [amount, setAmount] = useState(
     expense ? String(expense.amount) : '',
@@ -23,6 +32,36 @@ export default function ExpenseSheet({ expense, today, onClose, onSave, onDelete
   const [date, setDate] = useState(
     expense ? dateInputFromIso(expense.occurredAt) : today,
   )
+  const [receipt, setReceipt] = useState<Receipt | null>(null)
+  const [receiptImageUrl, setReceiptImageUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!expense || expense.sourceType !== 'receipt') return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const raw = await receiptsApi.getReceiptForExpense(expense.id)
+        if (cancelled) return
+        const ui = toReceipt(raw)
+        setReceipt(ui)
+        const blob = await receiptsApi.getReceiptImage(ui.id)
+        if (cancelled) return
+        setReceiptImageUrl(URL.createObjectURL(blob))
+      } catch {
+        /* optional panel */
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [expense])
+
+  useEffect(() => {
+    return () => {
+      if (receiptImageUrl) URL.revokeObjectURL(receiptImageUrl)
+    }
+  }, [receiptImageUrl])
 
   const parsed = Number.parseFloat(amount.replace(',', '.'))
   const valid = Number.isFinite(parsed) && parsed > 0 && Boolean(category)
@@ -40,6 +79,53 @@ export default function ExpenseSheet({ expense, today, onClose, onSave, onDelete
 
   return (
     <BottomSheet title={isEdit ? 'Edit expense' : 'Add expense'} onClose={onClose}>
+      {receipt && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            borderRadius: 'var(--ds-radius-md)',
+            border: `1px solid ${t.border}`,
+            background: t.surfaceMuted,
+          }}
+        >
+          <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: t.textSec }}>
+            From receipt
+          </p>
+          {receiptImageUrl && (
+            <img
+              src={receiptImageUrl}
+              alt="Receipt"
+              style={{
+                width: '100%',
+                maxHeight: 120,
+                objectFit: 'contain',
+                borderRadius: 'var(--ds-radius-sm)',
+                marginBottom: 8,
+                background: t.surface,
+              }}
+            />
+          )}
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: t.textSec }}>
+            {receipt.items
+              .filter(item => item.isIncluded)
+              .slice(0, 8)
+              .map(item => (
+                <li key={item.id} style={{ marginBottom: 4 }}>
+                  {item.name}{' '}
+                  <span style={{ color: t.textTer }}>
+                    {formatMoney(item.totalPrice, receipt.currency ?? expense?.currency ?? 'EUR')}
+                  </span>
+                </li>
+              ))}
+            {receipt.items.filter(item => item.isIncluded).length > 8 && (
+              <li style={{ color: t.textTer }}>
+                +{receipt.items.filter(item => item.isIncluded).length - 8} more
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
       <FormField label="Amount (€)">
         <Input
           placeholder="0.00"
@@ -90,7 +176,29 @@ export default function ExpenseSheet({ expense, today, onClose, onSave, onDelete
           Delete expense
         </button>
       )}
-      {!isEdit && (
+      {!isEdit && onScanReceipt && (
+        <button
+          type="button"
+          onClick={onScanReceipt}
+          aria-label="Scan a receipt instead"
+          style={{
+            width: '100%',
+            marginTop: 12,
+            padding: '12px',
+            background: 'transparent',
+            color: t.primary,
+            border: 'none',
+            borderRadius: 'var(--ds-radius-md)',
+            fontSize: 15,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'var(--ds-font)',
+          }}
+        >
+          Scan a receipt instead
+        </button>
+      )}
+      {!isEdit && !onScanReceipt && (
         <p style={{ fontSize: 12, color: t.textTer, textAlign: 'center', marginTop: 10 }}>
           Shopping trips are still completed from the Shopping tab.
         </p>

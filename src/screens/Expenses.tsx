@@ -42,7 +42,7 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
   )
 
   const handleAdd = () => {
-    openSheet({ type: 'addExpense' })
+    openSheet({ type: 'chooseExpenseEntry' })
   }
 
   if (!spend || !hasAnySpend(spend)) {
@@ -93,7 +93,7 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
   }
 
   const handleOpenExpense = (expense: Expense) => {
-    if (expense.sourceType !== 'manual') return
+    if (expense.sourceType === 'shopping_session') return
     openSheet({ type: 'editExpense', expense })
   }
 

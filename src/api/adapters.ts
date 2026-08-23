@@ -4,6 +4,8 @@ import type {
   HouseholdSpend,
   Member,
   Notification,
+  Receipt,
+  ReceiptItem,
   Screen,
   ShoppingItem,
   ShoppingLocation,
@@ -18,6 +20,8 @@ import type {
   HouseholdSpendOut,
   MemberOut,
   NotificationOut,
+  ReceiptItemOut,
+  ReceiptOut,
   ShoppingItemOut,
   ShoppingLocationOut,
   ShoppingSessionItemOut,
@@ -256,6 +260,54 @@ export function toExpense(expense: ExpenseOut): Expense {
     sourceId: expense.source_id,
     sourceItemCount: expense.source_item_count,
   };
+}
+
+function parseOptionalNumber(value: string | null | undefined): number | null {
+  if (value == null || value === "") return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+export function toReceiptItem(item: ReceiptItemOut): ReceiptItem {
+  return {
+    id: item.id,
+    receiptId: item.receipt_id,
+    position: item.position,
+    name: item.name,
+    quantity: parseOptionalNumber(item.quantity),
+    unit: item.unit,
+    unitPrice: parseOptionalNumber(item.unit_price),
+    totalPrice: Number(item.total_price),
+    taxCode: item.tax_code,
+    isIncluded: item.is_included,
+  }
+}
+
+export function toReceipt(receipt: ReceiptOut): Receipt {
+  return {
+    id: receipt.id,
+    familyId: receipt.family_id,
+    uploadedBy: receipt.uploaded_by,
+    status: receipt.status,
+    mimeType: receipt.mime_type,
+    byteSize: receipt.byte_size,
+    originalFilename: receipt.original_filename,
+    categoryHint: receipt.category_hint,
+    suggestedCategory: receipt.suggested_category,
+    merchant: receipt.merchant,
+    purchasedAt: receipt.purchased_at,
+    currency: receipt.currency,
+    subtotal: parseOptionalNumber(receipt.subtotal),
+    taxTotal: parseOptionalNumber(receipt.tax_total),
+    total: parseOptionalNumber(receipt.total),
+    totalsMismatch: receipt.totals_mismatch,
+    modelName: receipt.model_name,
+    errorMessage: receipt.error_message,
+    expenseId: receipt.expense_id,
+    items: (receipt.items ?? []).map(toReceiptItem),
+    createdAt: receipt.created_at,
+    updatedAt: receipt.updated_at,
+  }
 }
 
 export function dateInputFromIso(iso: string): string {

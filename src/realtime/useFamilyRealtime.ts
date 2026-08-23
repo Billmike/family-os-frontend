@@ -160,6 +160,16 @@ export function useFamilyRealtime(opts: {
         void refreshSpendRef.current?.()
         return
       }
+      if (
+        msg.type === 'receipt.ready'
+        || msg.type === 'receipt.failed'
+        || msg.type === 'receipt.deleted'
+      ) {
+        // Polling remains primary for the uploading device; refresh spend if an
+        // expense may have been confirmed on another device via receipt.ready
+        // after confirm (expense.created also fires).
+        return
+      }
       if (msg.type === 'event.created' || msg.type === 'event.updated') {
         if (msg.event.recurrence_rule) {
           void refetchEvents().catch(() => {

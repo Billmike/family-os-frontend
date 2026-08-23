@@ -200,3 +200,82 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   return data as T
 }
+
+async function parseError(res: Response): Promise<ApiError> {
+  let errBody: ApiErrorBody = { detail: res.statusText || 'Request failed' }
+  try {
+    errBody = (await res.json()) as ApiErrorBody
+  } catch {
+    /* ignore */
+  }
+  return new ApiError(res.status, errBody)
+}
+
+/** Multipart upload — do not set Content-Type (browser sets boundary). */
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: { auth?: boolean; skipRefresh?: boolean } = {},
+): Promise<T> {
+  const { auth = true, skipRefresh = false } = options
+  const headers: Record<string, string> = {}
+  if (auth) {
+    const token = getAccessToken()
+    if (token) headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  if (res.status === 401 && auth && !skipRefresh) {
+    const refreshed = await ensureRefresh()
+    if (refreshed) {
+      return apiUpload<T>(path, formData, { ...options, skipRefresh: true })
+    }
+    onAuthFailure?.()
+    throw await parseError(res)
+  }
+
+  if (!res.ok) {
+    throw await parseError(res)
+  }
+
+  if (res.status === 204) {
+    return undefined as T
+  }
+
+  return (await res.json()) as T
+}
+
+/** Authenticated binary download (e.g. receipt images). */
+export async function apiBlob(
+  path: string,
+  options: { auth?: boolean; skipRefresh?: boolean } = {},
+): Promise<Blob> {
+  const { auth = true, skipRefresh = false } = options
+  const headers: Record<string, string> = {}
+  if (auth) {
+    const token = getAccessToken()
+    if (token) headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { headers })
+
+  if (res.status === 401 && auth && !skipRefresh) {
+    const refreshed = await ensureRefresh()
+    if (refreshed) {
+      return apiBlob(path, { ...options, skipRefresh: true })
+    }
+    onAuthFailure?.()
+    throw await parseError(res)
+  }
+
+  if (!res.ok) {
+    throw await parseError(res)
+  }
+
+  return res.blob()
+}

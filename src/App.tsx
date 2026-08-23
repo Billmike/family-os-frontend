@@ -81,6 +81,8 @@ import * as familiesApi from "./api/families";
 import { useFamilyRealtime } from "./realtime/useFamilyRealtime";
 import TaskDetailSheet from "./components/TaskDetailSheet";
 import ExpenseSheet from "./components/ExpenseSheet";
+import ExpenseEntryChooser from "./components/ExpenseEntryChooser";
+import ReceiptScanSheet from "./components/ReceiptScanSheet";
 import {
   capturePendingInviteFromUrl,
   clearPendingInviteToken,
@@ -630,6 +632,12 @@ function MainApp() {
     } catch (e) {
       handleError(e);
     }
+  }
+
+  function handleReceiptConfirmed() {
+    setSheet(null);
+    showToast("Expense added from receipt");
+    void refreshSpend();
   }
 
   async function loadSessionDetail(
@@ -1260,6 +1268,9 @@ function MainApp() {
     deleteExpense: (id: string) => {
       void deleteExpense(id);
     },
+    onReceiptConfirmed: () => {
+      handleReceiptConfirmed();
+    },
   };
 
   if (loading) {
@@ -1440,6 +1451,23 @@ function MainApp() {
           today={today}
           onClose={() => setSheet(null)}
           onSave={handlers.addExpense}
+          onScanReceipt={() => setSheet({ type: "scanReceipt" })}
+        />
+      )}
+      {sheet?.type === "chooseExpenseEntry" && (
+        <ExpenseEntryChooser
+          onClose={() => setSheet(null)}
+          onScan={() => setSheet({ type: "scanReceipt" })}
+          onManual={() => setSheet({ type: "addExpense" })}
+        />
+      )}
+      {sheet?.type === "scanReceipt" && (
+        <ReceiptScanSheet
+          familyId={family.id}
+          today={today}
+          onClose={() => setSheet(null)}
+          onConfirmed={handlers.onReceiptConfirmed}
+          onEnterManually={() => setSheet({ type: "addExpense" })}
         />
       )}
       {sheet?.type === "editExpense" && (

@@ -304,6 +304,7 @@ export function toReceipt(receipt: ReceiptOut): Receipt {
     modelName: receipt.model_name,
     errorMessage: receipt.error_message,
     expenseId: receipt.expense_id,
+    shoppingSessionId: receipt.shopping_session_id,
     items: (receipt.items ?? []).map(toReceiptItem),
     createdAt: receipt.created_at,
     updatedAt: receipt.updated_at,

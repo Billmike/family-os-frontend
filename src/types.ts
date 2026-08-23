@@ -155,6 +155,7 @@ export interface Receipt {
   modelName: string | null
   errorMessage: string | null
   expenseId: string | null
+  shoppingSessionId: string | null
   items: ReceiptItem[]
   createdAt: string
   updatedAt: string

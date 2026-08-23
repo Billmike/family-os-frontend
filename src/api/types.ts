@@ -234,6 +234,7 @@ export interface ReceiptOut {
   model_name: string | null
   error_message: string | null
   expense_id: string | null
+  shopping_session_id: string | null
   items: ReceiptItemOut[]
   created_at: string
   updated_at: string

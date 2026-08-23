@@ -638,6 +638,12 @@ function MainApp() {
     setSheet(null);
     showToast("Expense added from receipt");
     void refreshSpend();
+    void shoppingSessionsApi
+      .listSessions(family.id, { limit: 20 })
+      .then((history) => setSessionHistory(history.map(toShoppingSession)))
+      .catch(() => {
+        /* keep last known trips */
+      });
   }
 
   async function loadSessionDetail(

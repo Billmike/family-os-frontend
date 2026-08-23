@@ -2,7 +2,7 @@ import type {
   CalendarEvent,
   Expense,
   Budget,
-  BudgetList,
+  BudgetPeriod,
   BudgetSummary,
   HouseholdSpend,
   Member,
@@ -18,8 +18,8 @@ import type {
   Task,
 } from "../types";
 import type {
-  BudgetListOut,
   BudgetOut,
+  BudgetPeriodOut,
   BudgetSummaryOut,
   EventOut,
   ExpenseOut,
@@ -236,6 +236,10 @@ export function toShoppingSpend(spend: ShoppingSpendOut): ShoppingSpend {
 
 export function toBudgetSummary(summary: BudgetSummaryOut): BudgetSummary {
   return {
+    periodId: summary.period_id,
+    labelMonth: summary.label_month,
+    startDate: summary.start_date,
+    endDate: summary.end_date,
     amount: Number(summary.amount),
     used: Number(summary.used),
     remaining: Number(summary.remaining),
@@ -247,11 +251,11 @@ export function toBudgetSummary(summary: BudgetSummaryOut): BudgetSummary {
 export function toBudget(budget: BudgetOut): Budget {
   return {
     id: budget.id,
+    periodId: budget.period_id,
     familyId: budget.family_id,
     category: budget.category,
     amount: Number(budget.amount),
     currency: budget.currency,
-    month: budget.month,
     used: Number(budget.used),
     remaining: Number(budget.remaining),
     percentUsed: budget.percent_used,
@@ -261,13 +265,35 @@ export function toBudget(budget: BudgetOut): Budget {
   }
 }
 
-export function toBudgetList(data: BudgetListOut): BudgetList {
+export function toBudgetPeriod(data: BudgetPeriodOut): BudgetPeriod {
   return {
-    month: data.month,
+    id: data.id,
+    familyId: data.family_id,
+    startDate: data.start_date,
+    endDate: data.end_date,
+    labelMonth: data.label_month,
     currency: data.currency,
     overall: data.overall ? toBudget(data.overall) : null,
     categories: data.categories.map(toBudget),
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
   }
+}
+
+export function formatCycleDateRange(startDate: string, endDate: string): string {
+  const start = new Date(`${startDate}T12:00:00`)
+  const end = new Date(`${endDate}T12:00:00`)
+  const startLabel = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  const endLabel = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return `${startLabel} – ${endLabel}`
+}
+
+export function monthsOverlapCycle(month: string, startDate: string, endDate: string): boolean {
+  const [y, m] = month.split('-').map(Number)
+  const monthStart = `${month}-01`
+  const lastDay = new Date(y, m, 0).getDate()
+  const monthEnd = `${month}-${String(lastDay).padStart(2, '0')}`
+  return startDate <= monthEnd && endDate >= monthStart
 }
 
 export function toHouseholdSpend(spend: HouseholdSpendOut): HouseholdSpend {

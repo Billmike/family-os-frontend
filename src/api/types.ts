@@ -184,6 +184,10 @@ export interface HouseholdSpendOut {
 export type BudgetState = 'ok' | 'warning' | 'over'
 
 export interface BudgetSummaryOut {
+  period_id: string
+  label_month: string
+  start_date: string
+  end_date: string
   amount: string
   used: string
   remaining: string
@@ -193,11 +197,11 @@ export interface BudgetSummaryOut {
 
 export interface BudgetOut {
   id: string
+  period_id: string
   family_id: string
   category: string | null
   amount: string
   currency: string
-  month: string
   used: string
   remaining: string
   percent_used: number
@@ -206,11 +210,21 @@ export interface BudgetOut {
   updated_at: string
 }
 
-export interface BudgetListOut {
-  month: string
+export interface BudgetPeriodOut {
+  id: string
+  family_id: string
+  start_date: string
+  end_date: string
+  label_month: string
   currency: string
   overall: BudgetOut | null
   categories: BudgetOut[]
+  created_at: string
+  updated_at: string
+}
+
+export interface BudgetPeriodListOut {
+  periods: BudgetPeriodOut[]
 }
 
 export interface ExpenseOut {
@@ -359,8 +373,8 @@ export type FamilyWsMessage =
   | { type: 'expense.created'; expense: ExpenseOut }
   | { type: 'expense.updated'; expense: ExpenseOut }
   | { type: 'expense.deleted'; expense_id: string }
-  | { type: 'budget.updated'; budget: BudgetOut }
-  | { type: 'budget.deleted'; budget_id: string }
+  | { type: 'budget.updated'; period: BudgetPeriodOut }
+  | { type: 'budget.deleted'; period_id?: string; budget_id?: string }
   | { type: 'receipt.ready'; receipt: ReceiptOut }
   | { type: 'receipt.failed'; receipt: ReceiptOut }
   | { type: 'receipt.deleted'; receipt_id: string }

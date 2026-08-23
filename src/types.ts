@@ -164,6 +164,10 @@ export interface Receipt {
 export type BudgetState = 'ok' | 'warning' | 'over'
 
 export interface BudgetSummary {
+  periodId: string
+  labelMonth: string
+  startDate: string
+  endDate: string
   amount: number
   used: number
   remaining: number
@@ -173,11 +177,11 @@ export interface BudgetSummary {
 
 export interface Budget {
   id: string
+  periodId: string
   familyId: string
   category: string | null
   amount: number
   currency: string
-  month: string
   used: number
   remaining: number
   percentUsed: number
@@ -186,11 +190,24 @@ export interface Budget {
   updatedAt: string
 }
 
-export interface BudgetList {
-  month: string
+export interface BudgetPeriod {
+  id: string
+  familyId: string
+  startDate: string
+  endDate: string
+  labelMonth: string
   currency: string
   overall: Budget | null
   categories: Budget[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BudgetPeriodDraft {
+  periodId: string | null
+  startDate: string
+  endDate: string
+  rows: BudgetRowDraft[]
 }
 
 export interface BudgetRowDraft {
@@ -243,7 +260,7 @@ export type BottomSheetType =
   | { type: 'chooseExpenseEntry' }
   | { type: 'scanReceipt' }
   | { type: 'editExpense'; expense: Expense }
-  | { type: 'budgets' }
+  | { type: 'budgets'; mode?: 'current' | 'next' }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
   | { type: 'taskDetail'; taskId: string }

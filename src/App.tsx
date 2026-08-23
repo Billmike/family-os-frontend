@@ -19,8 +19,8 @@ import type {
   ShoppingLocation,
   ShoppingSession,
   HouseholdSpend,
-  BudgetList,
-  BudgetRowDraft,
+  BudgetPeriod,
+  BudgetPeriodDraft,
   Notification,
   BottomSheetType,
   Member,
@@ -65,7 +65,7 @@ import {
   toNotification,
   toExpense,
   toHouseholdSpend,
-  toBudgetList,
+  toBudgetPeriod,
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
@@ -292,7 +292,7 @@ function MainApp() {
   const [householdSpend, setHouseholdSpend] = useState<HouseholdSpend | null>(
     null,
   );
-  const [budgets, setBudgets] = useState<BudgetList | null>(null);
+  const [budgetPeriod, setBudgetPeriod] = useState<BudgetPeriod | null>(null);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? "");
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today));
@@ -325,7 +325,7 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`;
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`;
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, budgetList] =
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, currentPeriod] =
         await Promise.all([
           dashboardApi.getDashboard(familyId),
           eventsApi.listEvents(familyId, from, to),
@@ -336,7 +336,7 @@ function MainApp() {
           shoppingSessionsApi.getActiveSession(familyId),
           shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
           expensesApi.getSpend(familyId).catch(() => null),
-          budgetsApi.getBudgets(familyId).catch(() => null),
+          budgetsApi.getCurrentBudgetPeriod(familyId).catch(() => null),
         ]);
 
       setFamilyName(dash.family_name);
@@ -350,7 +350,7 @@ function MainApp() {
       setActiveSession(activeSess ? toShoppingSession(activeSess) : null);
       setSessionHistory(history.map(toShoppingSession));
       setHouseholdSpend(spend ? toHouseholdSpend(spend) : null);
-      setBudgets(budgetList ? toBudgetList(budgetList) : null);
+      setBudgetPeriod(currentPeriod ? toBudgetPeriod(currentPeriod) : null);
 
       const groceries =
         lists.find((l) => l.name.toLowerCase() === "groceries") ??
@@ -384,10 +384,10 @@ function MainApp() {
     }
   }, [family.id]);
 
-  const refreshBudgets = useCallback(async (month?: string) => {
+  const refreshBudgets = useCallback(async () => {
     try {
-      const data = await budgetsApi.getBudgets(family.id, month);
-      setBudgets(toBudgetList(data));
+      const data = await budgetsApi.getCurrentBudgetPeriod(family.id);
+      setBudgetPeriod(data ? toBudgetPeriod(data) : null);
     } catch {
       /* keep the last known budgets */
     }
@@ -420,7 +420,7 @@ function MainApp() {
     setSessionHistory,
     setNotifs,
     refreshSpend,
-    refreshBudgets: () => refreshBudgets(),
+    refreshBudgets,
   });
 
   useEffect(() => {
@@ -608,29 +608,32 @@ function MainApp() {
     }
   }
 
-  async function saveBudgets(rows: BudgetRowDraft[]) {
+  async function saveBudgets(draft: BudgetPeriodDraft) {
     try {
-      await Promise.all(rows.map(async (row) => {
-        const trimmed = row.amount.trim()
-        const hadBudget = Boolean(row.budgetId)
-        const parsed = Number.parseFloat(trimmed.replace(',', '.'))
-        const hasValue = trimmed !== '' && Number.isFinite(parsed) && parsed > 0
-
-        if (!hasValue && hadBudget && row.budgetId) {
-          await budgetsApi.deleteBudget(row.budgetId)
-          return
-        }
-        if (!hasValue) return
-
-        if (hadBudget && row.budgetId) {
-          await budgetsApi.updateBudget(row.budgetId, parsed)
-          return
-        }
-        await budgetsApi.createBudget(family.id, {
-          category: row.category,
-          amount: parsed,
+      const budgetLines = draft.rows
+        .map(row => {
+          const trimmed = row.amount.trim()
+          const parsed = Number.parseFloat(trimmed.replace(',', '.'))
+          if (!trimmed || !Number.isFinite(parsed) || parsed <= 0) return null
+          return { category: row.category, amount: parsed }
         })
-      }))
+        .filter((row): row is { category: string | null; amount: number } => row != null)
+
+      if (draft.periodId) {
+        await budgetsApi.updateBudgetPeriod(draft.periodId, {
+          start_date: draft.startDate,
+          end_date: draft.endDate,
+          label_month: draft.endDate.slice(0, 7),
+          budgets: budgetLines,
+        })
+      } else {
+        await budgetsApi.createBudgetPeriod(family.id, {
+          start_date: draft.startDate,
+          end_date: draft.endDate,
+          label_month: draft.endDate.slice(0, 7),
+          budgets: budgetLines,
+        })
+      }
       setSheet(null)
       showToast('Budgets saved')
       void refreshBudgets()
@@ -1427,8 +1430,7 @@ function MainApp() {
             {screen === "expenses" && (
               <ExpensesScreen
                 spend={householdSpend}
-                budgets={budgets}
-                refreshBudgets={refreshBudgets}
+                budgetPeriod={budgetPeriod}
                 loadMonthExpenses={loadMonthExpenses}
                 {...handlers}
               />
@@ -1544,7 +1546,8 @@ function MainApp() {
       )}
       {sheet?.type === "budgets" && (
         <BudgetSheet
-          budgets={budgets}
+          period={budgetPeriod}
+          mode={sheet.mode === "next" ? "next" : "current"}
           onClose={() => setSheet(null)}
           onSave={saveBudgets}
         />

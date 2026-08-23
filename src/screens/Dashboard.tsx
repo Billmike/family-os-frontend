@@ -2,7 +2,7 @@ import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, HouseholdSpend
 import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus } from 'lucide-react'
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
-import { formatMoney, formatMonthShort } from '../api/adapters'
+import { formatMoney, formatMonthShort, formatCycleDateRange, formatYearMonthTitle } from '../api/adapters'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
 import { SpendSparkline } from '../components/SpendBarChart'
 
@@ -289,8 +289,16 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
         }}>
           {formatMoney(monthTotal, spend.currency)}
         </p>
+        {comparison && !budget && (
+          <p style={{ fontSize: 12, color: comparison.color, marginTop: 4 }}>{comparison.text}</p>
+        )}
         {budget && budgetCaption ? (
-          <>
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
+            <p style={{ fontSize: 12, color: t.textSec, margin: 0 }}>
+              {formatYearMonthTitle(budget.labelMonth)}
+              {' · '}
+              {formatCycleDateRange(budget.startDate, budget.endDate)}
+            </p>
             <BudgetBar
               percentUsed={budget.percentUsed}
               state={budget.state}
@@ -300,9 +308,7 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
             <p style={{ fontSize: 12, color: budgetStateColor(budget.state), marginTop: 6 }}>
               {budgetCaption}
             </p>
-          </>
-        ) : comparison ? (
-          <p style={{ fontSize: 12, color: comparison.color, marginTop: 4 }}>{comparison.text}</p>
+          </div>
         ) : null}
       </div>
       {hasSpend && <SpendSparkline months={sparkMonths} />}

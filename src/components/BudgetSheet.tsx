@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import type { BudgetList, BudgetRowDraft } from '../types'
+import type { BudgetPeriod, BudgetPeriodDraft, BudgetRowDraft } from '../types'
 import { EXPENSE_CATEGORIES } from '../types'
 import { BottomSheet, FormField, Input, PrimaryButton, ExpenseCategoryIcon, t } from '../ui'
+import { formatYearMonthTitle } from '../api/adapters'
 
-type RowKey = 'household' | typeof EXPENSE_CATEGORIES[number]
+type RowKey = 'household' | (typeof EXPENSE_CATEGORIES)[number]
 
 interface RowDef {
   key: RowKey
@@ -14,9 +15,10 @@ interface RowDef {
 }
 
 interface Props {
-  budgets: BudgetList | null
+  period: BudgetPeriod | null
+  mode?: 'current' | 'next'
   onClose: () => void
-  onSave: (rows: BudgetRowDraft[]) => void
+  onSave: (draft: BudgetPeriodDraft) => void
 }
 
 function formatInitialAmount(amount: number | undefined): string {
@@ -24,11 +26,31 @@ function formatInitialAmount(amount: number | undefined): string {
   return String(amount)
 }
 
-function buildRows(budgets: BudgetList | null): RowDef[] {
-  const overall = budgets?.overall ?? null
-  const byCategory = new Map(
-    (budgets?.categories ?? []).map(b => [b.category, b]),
-  )
+function addDaysIso(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00`)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function defaultWindow(mode: 'current' | 'next', period: BudgetPeriod | null): { start: string; end: string } {
+  const today = new Date()
+  const todayIso = today.toISOString().slice(0, 10)
+  if (mode === 'next' && period) {
+    const start = addDaysIso(period.endDate, 1)
+    const end = addDaysIso(start, 29)
+    return { start, end }
+  }
+  if (period) {
+    return { start: period.startDate, end: period.endDate }
+  }
+  const start = todayIso
+  const end = addDaysIso(start, 29)
+  return { start, end }
+}
+
+function buildRows(period: BudgetPeriod | null): RowDef[] {
+  const overall = period?.overall ?? null
+  const byCategory = new Map((period?.categories ?? []).map(b => [b.category, b]))
 
   const household: RowDef = {
     key: 'household',
@@ -60,44 +82,80 @@ function parseAmount(raw: string): number | null {
   return parsed
 }
 
-function amountsEqual(a: string, b: string): boolean {
-  const pa = parseAmount(a)
-  const pb = parseAmount(b)
-  if (pa == null && pb == null) return true
-  if (pa == null || pb == null) return false
-  return Math.abs(pa - pb) < 0.005
+function labelFromEnd(endDate: string): string {
+  return endDate.slice(0, 7)
 }
 
-export default function BudgetSheet({ budgets, onClose, onSave }: Props) {
-  const rowDefs = useMemo(() => buildRows(budgets), [budgets])
+export default function BudgetSheet({ period, mode = 'current', onClose, onSave }: Props) {
+  const defaults = useMemo(() => defaultWindow(mode, period), [mode, period])
+  const sourcePeriod = mode === 'next' ? null : period
+  const rowDefs = useMemo(() => buildRows(sourcePeriod), [sourcePeriod])
+
+  const [startDate, setStartDate] = useState(defaults.start)
+  const [endDate, setEndDate] = useState(defaults.end)
   const [amounts, setAmounts] = useState<Record<RowKey, string>>(() =>
     Object.fromEntries(rowDefs.map(row => [row.key, row.initialAmount])) as Record<RowKey, string>,
   )
+
+  const destinationLabel = formatYearMonthTitle(labelFromEnd(endDate))
+  const validRange = endDate >= startDate
 
   const handleAmountChange = (key: RowKey, value: string) => {
     setAmounts(prev => ({ ...prev, [key]: value }))
   }
 
   const handleSave = () => {
-    const changed: BudgetRowDraft[] = []
-    for (const row of rowDefs) {
-      const current = amounts[row.key] ?? ''
-      if (amountsEqual(current, row.initialAmount)) continue
-      changed.push({
-        category: row.category,
-        amount: current,
-        budgetId: row.budgetId,
-      })
-    }
-    if (changed.length === 0) {
-      onClose()
-      return
-    }
-    onSave(changed)
+    if (!validRange) return
+    const rows: BudgetRowDraft[] = rowDefs.map(row => ({
+      category: row.category,
+      amount: amounts[row.key] ?? '',
+      budgetId: mode === 'next' ? null : row.budgetId,
+    }))
+    onSave({
+      periodId: mode === 'next' ? null : period?.id ?? null,
+      startDate,
+      endDate,
+      rows,
+    })
   }
 
+  const title = mode === 'next' ? 'Plan next cycle' : period ? 'Edit budget cycle' : 'Set budget cycle'
+
   return (
-    <BottomSheet title="Monthly budgets" onClose={onClose}>
+    <BottomSheet title={title} onClose={onClose}>
+      <p style={{ fontSize: 13, color: t.textSec, margin: '0 0 16px', lineHeight: 1.45 }}>
+        Budgets follow your pay cycle, not the calendar month.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+        <FormField label="Starts">
+          <Input
+            type="date"
+            value={startDate}
+            onChange={setStartDate}
+            aria-label="Cycle start date"
+          />
+        </FormField>
+        <FormField label="Ends">
+          <Input
+            type="date"
+            value={endDate}
+            onChange={setEndDate}
+            aria-label="Cycle end date"
+          />
+        </FormField>
+      </div>
+
+      <p style={{ fontSize: 13, color: t.textSec, margin: '0 0 16px' }}>
+        Destination label: <span style={{ color: t.text, fontWeight: 600 }}>{destinationLabel}</span>
+      </p>
+
+      {!validRange && (
+        <p style={{ fontSize: 12, color: t.error, margin: '0 0 12px' }}>
+          End date must be on or after the start date.
+        </p>
+      )}
+
       {rowDefs.map((row, index) => (
         <div
           key={row.key}
@@ -125,7 +183,17 @@ export default function BudgetSheet({ budgets, onClose, onSave }: Props) {
           </FormField>
         </div>
       ))}
-      <PrimaryButton onClick={handleSave}>Save</PrimaryButton>
+      <PrimaryButton onClick={handleSave} disabled={!validRange}>
+        Save
+      </PrimaryButton>
     </BottomSheet>
   )
+}
+
+export function hasBudgetAmount(raw: string): boolean {
+  return parseAmount(raw) != null
+}
+
+export function parseBudgetAmount(raw: string): number | null {
+  return parseAmount(raw)
 }

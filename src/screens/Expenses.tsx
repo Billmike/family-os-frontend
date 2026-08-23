@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, BarChart3, Plus, Receipt } from 'lucide-react'
-import type { Budget, Expense, HouseholdSpend, BudgetList, AppHandlers } from '../types'
+import type { Budget, Expense, HouseholdSpend, BudgetPeriod, AppHandlers } from '../types'
 import { t, r, EmptyState, SectionLabel, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
@@ -13,6 +12,8 @@ import {
   formatMonthShort,
   formatSessionDate,
   formatYearMonthTitle,
+  formatCycleDateRange,
+  monthsOverlapCycle,
   shiftYearMonth,
 } from '../api/adapters'
 import { expenseActivityPath } from '../routing'
@@ -21,8 +22,7 @@ const ACTIVITY_PREVIEW_LIMIT = 5
 
 interface Props {
   spend: HouseholdSpend | null
-  budgets: BudgetList | null
-  refreshBudgets: (month: string) => Promise<void>
+  budgetPeriod: BudgetPeriod | null
   loadMonthExpenses: (month: string) => Promise<Expense[]>
   openSheet: AppHandlers['openSheet']
 }
@@ -38,31 +38,30 @@ const emptyMonth = (month: string) => ({
   categories: [] as HouseholdSpend['months'][number]['categories'],
 })
 
-export default function ExpensesScreen({ spend, budgets, refreshBudgets, loadMonthExpenses, openSheet }: Props) {
+export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses, openSheet }: Props) {
   const navigate = useNavigate()
   const { selectedMonth, setSelectedMonth, entries, loadingEntries } = useMonthExpenses(
     spend,
     loadMonthExpenses,
   )
 
-  useEffect(() => {
-    if (!spend) return
-    void refreshBudgets(selectedMonth)
-  }, [selectedMonth, refreshBudgets, spend])
-
   const handleAdd = () => {
     openSheet({ type: 'chooseExpenseEntry' })
   }
 
   const handleOpenBudgets = () => {
-    if (selectedMonth !== spend?.currentMonth) return
-    openSheet({ type: 'budgets' })
+    openSheet({ type: 'budgets', mode: 'current' })
   }
 
-  const canEditBudgets = selectedMonth === spend?.currentMonth
+  const handlePlanNext = () => {
+    openSheet({ type: 'budgets', mode: 'next' })
+  }
 
-  const monthBudgets = budgets?.month === selectedMonth ? budgets : null
-  const overallBudget = monthBudgets?.overall ?? null
+  const cycleSummary = spend?.budget ?? null
+  const showCategoryBudgets = Boolean(
+    budgetPeriod
+    && monthsOverlapCycle(selectedMonth, budgetPeriod.startDate, budgetPeriod.endDate),
+  )
 
   if (!spend || !hasAnySpend(spend)) {
     return (
@@ -74,6 +73,18 @@ export default function ExpensesScreen({ spend, budgets, refreshBudgets, loadMon
           action="Add expense"
           onAction={handleAdd}
         />
+        <div style={{ margin: '0 16px 20px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={handleOpenBudgets}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: t.primary, fontSize: 14, fontWeight: 500, fontFamily: 'var(--ds-font)',
+            }}
+          >
+            {budgetPeriod ? 'Edit budget cycle' : 'Set a budget cycle'}
+          </button>
+        </div>
         <FAB onClick={handleAdd} aria-label="Add expense">
           <Plus size={24} color={t.onPrimary} />
         </FAB>
@@ -150,57 +161,99 @@ export default function ExpensesScreen({ spend, budgets, refreshBudgets, loadMon
             {comparison.text}
           </p>
         )}
-        {canEditBudgets ? (
-          <button
-            type="button"
-            onClick={handleOpenBudgets}
-            aria-label={overallBudget ? 'Edit monthly budget' : 'Set a monthly budget'}
-            style={{
-              width: '100%',
-              marginTop: 12,
-              padding: 0,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontFamily: 'var(--ds-font)',
-            }}
-          >
-            {overallBudget ? (
+      </div>
+
+      <div style={{
+        margin: '0 16px 20px',
+        background: t.surface,
+        borderRadius: r.lg,
+        border: `1px solid ${t.border}`,
+        padding: '14px 16px',
+      }}>
+        {cycleSummary || budgetPeriod ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: t.textSec, margin: 0, letterSpacing: '0.02em' }}>
+                  This cycle · {formatYearMonthTitle(cycleSummary?.labelMonth ?? budgetPeriod!.labelMonth)}
+                </p>
+                <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>
+                  {formatCycleDateRange(
+                    cycleSummary?.startDate ?? budgetPeriod!.startDate,
+                    cycleSummary?.endDate ?? budgetPeriod!.endDate,
+                  )}
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={handleOpenBudgets}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: t.primary, fontSize: 13, fontWeight: 500, fontFamily: 'var(--ds-font)', padding: 0,
+                  }}
+                >
+                  Edit
+                </button>
+                {budgetPeriod && (
+                  <button
+                    type="button"
+                    onClick={handlePlanNext}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: t.textTer, fontSize: 12, fontFamily: 'var(--ds-font)', padding: 0,
+                    }}
+                  >
+                    Plan next
+                  </button>
+                )}
+              </div>
+            </div>
+            {cycleSummary ? (
               <>
-                <p style={{ fontSize: 14, color: budgetStateColor(overallBudget.state), margin: 0 }}>
-                  {formatMoney(overallBudget.used, spend.currency)} of {formatMoney(overallBudget.amount, spend.currency)}
+                <p style={{
+                  fontSize: 14,
+                  color: budgetStateColor(cycleSummary.state),
+                  margin: '12px 0 0',
+                }}>
+                  {formatMoney(cycleSummary.used, spend.currency)} of{' '}
+                  {formatMoney(cycleSummary.amount, spend.currency)}
                   {' · '}
-                  {overallBudget.remaining >= 0
-                    ? `${formatMoney(overallBudget.remaining, spend.currency)} left`
-                    : `${formatMoney(Math.abs(overallBudget.remaining), spend.currency)} over`}
+                  {cycleSummary.remaining >= 0
+                    ? `${formatMoney(cycleSummary.remaining, spend.currency)} left`
+                    : `${formatMoney(Math.abs(cycleSummary.remaining), spend.currency)} over`}
                 </p>
                 <BudgetBar
-                  percentUsed={overallBudget.percentUsed}
-                  state={overallBudget.state}
-                  ariaLabel={`Monthly budget ${Math.round(overallBudget.percentUsed)} percent used`}
+                  percentUsed={cycleSummary.percentUsed}
+                  state={cycleSummary.state}
+                  ariaLabel={`Cycle budget ${Math.round(cycleSummary.percentUsed)} percent used`}
                 />
               </>
             ) : (
-              <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>Set a monthly budget</p>
+              <p style={{ fontSize: 13, color: t.textSec, margin: '12px 0 0' }}>
+                No household limit set for this cycle. Category limits still apply.
+              </p>
             )}
-          </button>
-        ) : overallBudget ? (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ fontSize: 14, color: budgetStateColor(overallBudget.state), margin: 0 }}>
-              {formatMoney(overallBudget.used, spend.currency)} of {formatMoney(overallBudget.amount, spend.currency)}
-              {' · '}
-              {overallBudget.remaining >= 0
-                ? `${formatMoney(overallBudget.remaining, spend.currency)} left`
-                : `${formatMoney(Math.abs(overallBudget.remaining), spend.currency)} over`}
+            <p style={{ fontSize: 11, color: t.textTer, margin: '10px 0 0', lineHeight: 1.4 }}>
+              Budgets follow your pay cycle, not the calendar month.
             </p>
-            <BudgetBar
-              percentUsed={overallBudget.percentUsed}
-              state={overallBudget.state}
-              ariaLabel={`Monthly budget ${Math.round(overallBudget.percentUsed)} percent used`}
-            />
-          </div>
-        ) : null}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={handleOpenBudgets}
+            aria-label="Set a budget cycle"
+            style={{
+              width: '100%', padding: 0, border: 'none', background: 'none',
+              cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+            }}
+          >
+            <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>Set a budget cycle</p>
+            <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>
+              Budgets follow your pay cycle, not the calendar month.
+            </p>
+          </button>
+        )}
       </div>
 
       <div style={{
@@ -248,7 +301,9 @@ export default function ExpensesScreen({ spend, budgets, refreshBudgets, loadMon
                 amount={row.total}
                 currency={spend.currency}
                 share={selected.total > 0 ? row.total / selected.total : 0}
-                budget={monthBudgets?.categories.find(b => b.category === row.category) ?? null}
+                budget={showCategoryBudgets
+                  ? budgetPeriod?.categories.find(b => b.category === row.category) ?? null
+                  : null}
                 divider={i > 0}
               />
             ))}

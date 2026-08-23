@@ -19,6 +19,8 @@ import type {
   ShoppingLocation,
   ShoppingSession,
   HouseholdSpend,
+  BudgetList,
+  BudgetRowDraft,
   Notification,
   BottomSheetType,
   Member,
@@ -63,6 +65,7 @@ import {
   toNotification,
   toExpense,
   toHouseholdSpend,
+  toBudgetList,
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
@@ -76,11 +79,13 @@ import * as shoppingApi from "./api/shopping";
 import * as shoppingLocationsApi from "./api/shoppingLocations";
 import * as shoppingSessionsApi from "./api/shoppingSessions";
 import * as expensesApi from "./api/expenses";
+import * as budgetsApi from "./api/budgets";
 import * as notificationsApi from "./api/notifications";
 import * as familiesApi from "./api/families";
 import { useFamilyRealtime } from "./realtime/useFamilyRealtime";
 import TaskDetailSheet from "./components/TaskDetailSheet";
 import ExpenseSheet from "./components/ExpenseSheet";
+import BudgetSheet from "./components/BudgetSheet";
 import ExpenseEntryChooser from "./components/ExpenseEntryChooser";
 import ReceiptScanSheet from "./components/ReceiptScanSheet";
 import {
@@ -287,6 +292,7 @@ function MainApp() {
   const [householdSpend, setHouseholdSpend] = useState<HouseholdSpend | null>(
     null,
   );
+  const [budgets, setBudgets] = useState<BudgetList | null>(null);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? "");
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today));
@@ -319,7 +325,7 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`;
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`;
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend] =
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, budgetList] =
         await Promise.all([
           dashboardApi.getDashboard(familyId),
           eventsApi.listEvents(familyId, from, to),
@@ -330,6 +336,7 @@ function MainApp() {
           shoppingSessionsApi.getActiveSession(familyId),
           shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
           expensesApi.getSpend(familyId).catch(() => null),
+          budgetsApi.getBudgets(familyId).catch(() => null),
         ]);
 
       setFamilyName(dash.family_name);
@@ -343,6 +350,7 @@ function MainApp() {
       setActiveSession(activeSess ? toShoppingSession(activeSess) : null);
       setSessionHistory(history.map(toShoppingSession));
       setHouseholdSpend(spend ? toHouseholdSpend(spend) : null);
+      setBudgets(budgetList ? toBudgetList(budgetList) : null);
 
       const groceries =
         lists.find((l) => l.name.toLowerCase() === "groceries") ??
@@ -376,6 +384,15 @@ function MainApp() {
     }
   }, [family.id]);
 
+  const refreshBudgets = useCallback(async (month?: string) => {
+    try {
+      const data = await budgetsApi.getBudgets(family.id, month);
+      setBudgets(toBudgetList(data));
+    } catch {
+      /* keep the last known budgets */
+    }
+  }, [family.id]);
+
   const loadMonthExpenses = useCallback(
     async (month: string) => {
       const rows = await expensesApi.listExpenses(family.id, month);
@@ -403,6 +420,7 @@ function MainApp() {
     setSessionHistory,
     setNotifs,
     refreshSpend,
+    refreshBudgets: () => refreshBudgets(),
   });
 
   useEffect(() => {
@@ -584,8 +602,41 @@ function MainApp() {
       setSheet(null);
       showToast("Shopping trip completed");
       void refreshSpend();
+      void refreshBudgets();
     } catch (e) {
       handleError(e);
+    }
+  }
+
+  async function saveBudgets(rows: BudgetRowDraft[]) {
+    try {
+      await Promise.all(rows.map(async (row) => {
+        const trimmed = row.amount.trim()
+        const hadBudget = Boolean(row.budgetId)
+        const parsed = Number.parseFloat(trimmed.replace(',', '.'))
+        const hasValue = trimmed !== '' && Number.isFinite(parsed) && parsed > 0
+
+        if (!hasValue && hadBudget && row.budgetId) {
+          await budgetsApi.deleteBudget(row.budgetId)
+          return
+        }
+        if (!hasValue) return
+
+        if (hadBudget && row.budgetId) {
+          await budgetsApi.updateBudget(row.budgetId, parsed)
+          return
+        }
+        await budgetsApi.createBudget(family.id, {
+          category: row.category,
+          amount: parsed,
+        })
+      }))
+      setSheet(null)
+      showToast('Budgets saved')
+      void refreshBudgets()
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
     }
   }
 
@@ -601,6 +652,7 @@ function MainApp() {
       setSheet(null);
       showToast("Expense added");
       void refreshSpend();
+      void refreshBudgets();
     } catch (e) {
       handleError(e);
     }
@@ -618,6 +670,7 @@ function MainApp() {
       setSheet(null);
       showToast("Expense updated");
       void refreshSpend();
+      void refreshBudgets();
     } catch (e) {
       handleError(e);
     }
@@ -629,6 +682,7 @@ function MainApp() {
       setSheet(null);
       showToast("Expense deleted");
       void refreshSpend();
+      void refreshBudgets();
     } catch (e) {
       handleError(e);
     }
@@ -638,6 +692,7 @@ function MainApp() {
     setSheet(null);
     showToast("Expense added from receipt");
     void refreshSpend();
+    void refreshBudgets();
     void shoppingSessionsApi
       .listSessions(family.id, { limit: 20 })
       .then((history) => setSessionHistory(history.map(toShoppingSession)))
@@ -1372,6 +1427,8 @@ function MainApp() {
             {screen === "expenses" && (
               <ExpensesScreen
                 spend={householdSpend}
+                budgets={budgets}
+                refreshBudgets={refreshBudgets}
                 loadMonthExpenses={loadMonthExpenses}
                 {...handlers}
               />
@@ -1483,6 +1540,13 @@ function MainApp() {
           onClose={() => setSheet(null)}
           onSave={(input) => handlers.updateExpense(sheet.expense.id, input)}
           onDelete={handlers.deleteExpense}
+        />
+      )}
+      {sheet?.type === "budgets" && (
+        <BudgetSheet
+          budgets={budgets}
+          onClose={() => setSheet(null)}
+          onSave={saveBudgets}
         />
       )}
       {sheet?.type === "eventDetail" && (

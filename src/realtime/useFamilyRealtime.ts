@@ -46,6 +46,7 @@ export function useFamilyRealtime(opts: {
   setSessionHistory: Dispatch<SetStateAction<ShoppingSession[]>>
   setNotifs: Dispatch<SetStateAction<Notification[]>>
   refreshSpend?: () => Promise<void>
+  refreshBudgets?: () => Promise<void>
 }) {
   const {
     familyId,
@@ -60,14 +61,17 @@ export function useFamilyRealtime(opts: {
     setSessionHistory,
     setNotifs,
     refreshSpend,
+    refreshBudgets,
   } = opts
   const loadAllRef = useRef(loadAll)
   const refreshSpendRef = useRef(refreshSpend)
+  const refreshBudgetsRef = useRef(refreshBudgets)
   const onMembershipRevokedRef = useRef(onMembershipRevoked)
   const timeZoneRef = useRef(timeZone)
   const todayRef = useRef(today)
   loadAllRef.current = loadAll
   refreshSpendRef.current = refreshSpend
+  refreshBudgetsRef.current = refreshBudgets
   onMembershipRevokedRef.current = onMembershipRevoked
   timeZoneRef.current = timeZone
   todayRef.current = today
@@ -150,6 +154,7 @@ export function useFamilyRealtime(opts: {
         setActiveSession(null)
         setSessionHistory(prev => [ui, ...prev.filter(s => s.id !== ui.id)])
         void refreshSpendRef.current?.()
+        void refreshBudgetsRef.current?.()
         return
       }
       if (
@@ -158,6 +163,15 @@ export function useFamilyRealtime(opts: {
         || msg.type === 'expense.deleted'
       ) {
         void refreshSpendRef.current?.()
+        void refreshBudgetsRef.current?.()
+        return
+      }
+      if (
+        msg.type === 'budget.updated'
+        || msg.type === 'budget.deleted'
+      ) {
+        void refreshSpendRef.current?.()
+        void refreshBudgetsRef.current?.()
         return
       }
       if (

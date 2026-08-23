@@ -1,6 +1,9 @@
 import type {
   CalendarEvent,
   Expense,
+  Budget,
+  BudgetList,
+  BudgetSummary,
   HouseholdSpend,
   Member,
   Notification,
@@ -15,6 +18,9 @@ import type {
   Task,
 } from "../types";
 import type {
+  BudgetListOut,
+  BudgetOut,
+  BudgetSummaryOut,
   EventOut,
   ExpenseOut,
   HouseholdSpendOut,
@@ -228,6 +234,42 @@ export function toShoppingSpend(spend: ShoppingSpendOut): ShoppingSpend {
   };
 }
 
+export function toBudgetSummary(summary: BudgetSummaryOut): BudgetSummary {
+  return {
+    amount: Number(summary.amount),
+    used: Number(summary.used),
+    remaining: Number(summary.remaining),
+    percentUsed: summary.percent_used,
+    state: summary.state,
+  }
+}
+
+export function toBudget(budget: BudgetOut): Budget {
+  return {
+    id: budget.id,
+    familyId: budget.family_id,
+    category: budget.category,
+    amount: Number(budget.amount),
+    currency: budget.currency,
+    month: budget.month,
+    used: Number(budget.used),
+    remaining: Number(budget.remaining),
+    percentUsed: budget.percent_used,
+    state: budget.state,
+    createdAt: budget.created_at,
+    updatedAt: budget.updated_at,
+  }
+}
+
+export function toBudgetList(data: BudgetListOut): BudgetList {
+  return {
+    month: data.month,
+    currency: data.currency,
+    overall: data.overall ? toBudget(data.overall) : null,
+    categories: data.categories.map(toBudget),
+  }
+}
+
 export function toHouseholdSpend(spend: HouseholdSpendOut): HouseholdSpend {
   return {
     currency: spend.currency,
@@ -244,6 +286,7 @@ export function toHouseholdSpend(spend: HouseholdSpendOut): HouseholdSpend {
         count: cat.count,
       })),
     })),
+    budget: spend.budget ? toBudgetSummary(spend.budget) : spend.budget ?? null,
   };
 }
 
@@ -375,6 +418,7 @@ function entityToScreen(entityType: string | null): Screen | undefined {
   if (entityType === "shopping" || entityType === "shopping_item" || entityType === "shopping_session")
     return "shopping";
   if (entityType === "family" || entityType === "invitation") return "family";
+  if (entityType === "budget" || entityType === "expense") return "expenses";
   return undefined;
 }
 
@@ -400,7 +444,8 @@ export function toNotification(n: NotificationOut): Notification {
     n.type === "calendar" ||
     n.type === "task" ||
     n.type === "shopping" ||
-    n.type === "family"
+    n.type === "family" ||
+    n.type === "budget"
       ? n.type
       : "family";
   return {

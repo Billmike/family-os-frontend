@@ -1,5 +1,5 @@
 import type { Notification, AppHandlers } from '../types'
-import { Calendar, CheckSquare, ShoppingCart, Users, Bell } from 'lucide-react'
+import { Calendar, CheckSquare, ShoppingCart, Users, Bell, BarChart3 } from 'lucide-react'
 import { t, r, EmptyState } from '../ui'
 
 interface Props {
@@ -14,6 +14,7 @@ const ICONS = {
   task: CheckSquare,
   shopping: ShoppingCart,
   family: Users,
+  budget: BarChart3,
 }
 
 const ICON_COLORS = {
@@ -21,6 +22,7 @@ const ICON_COLORS = {
   task:     { color: 'var(--ds-success)',   bg: 'var(--ds-success-subtle)' },
   shopping: { color: 'var(--ds-warning)',   bg: 'var(--ds-warning-subtle)' },
   family:   { color: 'var(--ds-info)',      bg: 'var(--ds-info-subtle)' },
+  budget:   { color: 'var(--ds-warning)',   bg: 'var(--ds-warning-subtle)' },
 }
 
 export default function NotificationsScreen({ notifications, markNotificationRead, markAllNotificationsRead, navigate }: Props) {

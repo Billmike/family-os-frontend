@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, BarChart3, Plus, Receipt } from 'lucide-react'
-import type { Expense, HouseholdSpend, AppHandlers } from '../types'
+import type { Budget, Expense, HouseholdSpend, BudgetList, AppHandlers } from '../types'
 import { t, r, EmptyState, SectionLabel, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
+import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { useMonthExpenses } from '../hooks/useMonthExpenses'
 import {
@@ -19,6 +21,8 @@ const ACTIVITY_PREVIEW_LIMIT = 5
 
 interface Props {
   spend: HouseholdSpend | null
+  budgets: BudgetList | null
+  refreshBudgets: (month: string) => Promise<void>
   loadMonthExpenses: (month: string) => Promise<Expense[]>
   openSheet: AppHandlers['openSheet']
 }
@@ -34,16 +38,31 @@ const emptyMonth = (month: string) => ({
   categories: [] as HouseholdSpend['months'][number]['categories'],
 })
 
-export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: Props) {
+export default function ExpensesScreen({ spend, budgets, refreshBudgets, loadMonthExpenses, openSheet }: Props) {
   const navigate = useNavigate()
   const { selectedMonth, setSelectedMonth, entries, loadingEntries } = useMonthExpenses(
     spend,
     loadMonthExpenses,
   )
 
+  useEffect(() => {
+    if (!spend) return
+    void refreshBudgets(selectedMonth)
+  }, [selectedMonth, refreshBudgets, spend])
+
   const handleAdd = () => {
     openSheet({ type: 'chooseExpenseEntry' })
   }
+
+  const handleOpenBudgets = () => {
+    if (selectedMonth !== spend?.currentMonth) return
+    openSheet({ type: 'budgets' })
+  }
+
+  const canEditBudgets = selectedMonth === spend?.currentMonth
+
+  const monthBudgets = budgets?.month === selectedMonth ? budgets : null
+  const overallBudget = monthBudgets?.overall ?? null
 
   if (!spend || !hasAnySpend(spend)) {
     return (
@@ -131,6 +150,57 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
             {comparison.text}
           </p>
         )}
+        {canEditBudgets ? (
+          <button
+            type="button"
+            onClick={handleOpenBudgets}
+            aria-label={overallBudget ? 'Edit monthly budget' : 'Set a monthly budget'}
+            style={{
+              width: '100%',
+              marginTop: 12,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+              fontFamily: 'var(--ds-font)',
+            }}
+          >
+            {overallBudget ? (
+              <>
+                <p style={{ fontSize: 14, color: budgetStateColor(overallBudget.state), margin: 0 }}>
+                  {formatMoney(overallBudget.used, spend.currency)} of {formatMoney(overallBudget.amount, spend.currency)}
+                  {' · '}
+                  {overallBudget.remaining >= 0
+                    ? `${formatMoney(overallBudget.remaining, spend.currency)} left`
+                    : `${formatMoney(Math.abs(overallBudget.remaining), spend.currency)} over`}
+                </p>
+                <BudgetBar
+                  percentUsed={overallBudget.percentUsed}
+                  state={overallBudget.state}
+                  ariaLabel={`Monthly budget ${Math.round(overallBudget.percentUsed)} percent used`}
+                />
+              </>
+            ) : (
+              <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>Set a monthly budget</p>
+            )}
+          </button>
+        ) : overallBudget ? (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 14, color: budgetStateColor(overallBudget.state), margin: 0 }}>
+              {formatMoney(overallBudget.used, spend.currency)} of {formatMoney(overallBudget.amount, spend.currency)}
+              {' · '}
+              {overallBudget.remaining >= 0
+                ? `${formatMoney(overallBudget.remaining, spend.currency)} left`
+                : `${formatMoney(Math.abs(overallBudget.remaining), spend.currency)} over`}
+            </p>
+            <BudgetBar
+              percentUsed={overallBudget.percentUsed}
+              state={overallBudget.state}
+              ariaLabel={`Monthly budget ${Math.round(overallBudget.percentUsed)} percent used`}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div style={{
@@ -178,6 +248,7 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
                 amount={row.total}
                 currency={spend.currency}
                 share={selected.total > 0 ? row.total / selected.total : 0}
+                budget={monthBudgets?.categories.find(b => b.category === row.category) ?? null}
                 divider={i > 0}
               />
             ))}
@@ -304,15 +375,23 @@ export default function ExpensesScreen({ spend, loadMonthExpenses, openSheet }: 
   )
 }
 
-function CategoryRow({ category, amount, currency, share, divider }: {
+function CategoryRow({ category, amount, currency, share, budget, divider }: {
   category: string
   amount: number
   currency: string
   share: number
+  budget?: Budget | null
   divider: boolean
 }) {
   const color = EXPENSE_CATEGORY_COLORS[category] ?? t.primary
-  const width = Math.max(share * 100, share > 0 ? 4 : 0)
+  const hasBudget = Boolean(budget)
+  const fillPercent = hasBudget && budget
+    ? Math.min((amount / budget.amount) * 100, 100)
+    : Math.max(share * 100, share > 0 ? 4 : 0)
+  const barColor = hasBudget && budget
+    ? budget.state === 'over' ? t.error : budgetStateColor(budget.state)
+    : color
+
   return (
     <div style={{
       padding: '12px 16px',
@@ -325,12 +404,22 @@ function CategoryRow({ category, amount, currency, share, divider }: {
           </span>
           <span style={{ fontSize: 14, color: t.text, fontWeight: 500 }}>{category}</span>
         </div>
-        <span style={{ fontSize: 14, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
-          {formatMoney(amount, currency)}
-        </span>
+        {hasBudget && budget ? (
+          <span style={{ fontSize: 13, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
+            {formatMoney(amount, currency)} / {formatMoney(budget.amount, currency)}
+          </span>
+        ) : (
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
+            {formatMoney(amount, currency)}
+          </span>
+        )}
       </div>
       <div
-        role="presentation"
+        role={hasBudget ? 'progressbar' : 'presentation'}
+        aria-label={hasBudget && budget ? `${category} budget ${Math.round(budget.percentUsed)} percent used` : undefined}
+        aria-valuemin={hasBudget ? 0 : undefined}
+        aria-valuemax={hasBudget ? 100 : undefined}
+        aria-valuenow={hasBudget && budget ? Math.min(budget.percentUsed, 100) : undefined}
         style={{
           marginTop: 8,
           height: 6,
@@ -340,10 +429,10 @@ function CategoryRow({ category, amount, currency, share, divider }: {
         }}
       >
         <div style={{
-          width: `${width}%`,
+          width: `${fillPercent}%`,
           height: '100%',
           borderRadius: 9999,
-          background: color,
+          background: barColor,
         }} />
       </div>
     </div>

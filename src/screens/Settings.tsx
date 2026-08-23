@@ -60,6 +60,7 @@ export default function SettingsScreen({
     taskDueSoon: true,
     shoppingUpdates: true,
     familyInvites: true,
+    budgetAlerts: true,
   })
   const [pushOnDevice, setPushOnDevice] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
@@ -86,6 +87,7 @@ export default function SettingsScreen({
           taskDueSoon: p.task_due_soon,
           shoppingUpdates: p.shopping_activity,
           familyInvites: p.family_activity,
+          budgetAlerts: p.budget_alerts,
         })
       } catch {
         /* keep defaults */
@@ -111,6 +113,7 @@ export default function SettingsScreen({
         task_due_soon: next.taskDueSoon,
         shopping_activity: next.shoppingUpdates,
         family_activity: next.familyInvites,
+        budget_alerts: next.budgetAlerts,
       })
     } catch (e) {
       setPrefs(prefs)
@@ -301,6 +304,9 @@ export default function SettingsScreen({
           </PrefGroup>
           <PrefGroup label="Family" divider>
             <ToggleRow label="Someone joins the family" value={prefs.familyInvites} onChange={() => void toggle('familyInvites')} />
+          </PrefGroup>
+          <PrefGroup label="Budgets" divider>
+            <ToggleRow label="Budget alerts" value={prefs.budgetAlerts} onChange={() => void toggle('budgetAlerts')} />
           </PrefGroup>
         </div>
       </section>

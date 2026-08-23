@@ -161,6 +161,44 @@ export interface Receipt {
   updatedAt: string
 }
 
+export type BudgetState = 'ok' | 'warning' | 'over'
+
+export interface BudgetSummary {
+  amount: number
+  used: number
+  remaining: number
+  percentUsed: number
+  state: BudgetState
+}
+
+export interface Budget {
+  id: string
+  familyId: string
+  category: string | null
+  amount: number
+  currency: string
+  month: string
+  used: number
+  remaining: number
+  percentUsed: number
+  state: BudgetState
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BudgetList {
+  month: string
+  currency: string
+  overall: Budget | null
+  categories: Budget[]
+}
+
+export interface BudgetRowDraft {
+  category: string | null
+  amount: string
+  budgetId: string | null
+}
+
 export interface CategorySpend {
   category: string
   total: number
@@ -180,6 +218,7 @@ export interface HouseholdSpend {
   currentMonth: string
   yearToDateTotal: number
   months: MonthlySpend[]
+  budget?: BudgetSummary | null
 }
 
 /** @deprecated Use HouseholdSpend — grocery-only view maps onto the same shape. */
@@ -187,7 +226,7 @@ export type ShoppingSpend = HouseholdSpend
 
 export interface Notification {
   id: string
-  type: 'calendar' | 'task' | 'shopping' | 'family'
+  type: 'calendar' | 'task' | 'shopping' | 'family' | 'budget'
   title: string
   body: string
   timestamp: string
@@ -204,6 +243,7 @@ export type BottomSheetType =
   | { type: 'chooseExpenseEntry' }
   | { type: 'scanReceipt' }
   | { type: 'editExpense'; expense: Expense }
+  | { type: 'budgets' }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
   | { type: 'taskDetail'; taskId: string }

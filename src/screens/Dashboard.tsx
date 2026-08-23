@@ -3,6 +3,7 @@ import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus } from
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
 import { formatMoney, formatMonthShort } from '../api/adapters'
+import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
 import { SpendSparkline } from '../components/SpendBarChart'
 
 interface Props extends Partial<AppHandlers> {
@@ -225,11 +226,16 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
 
 function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen: () => void }) {
   const thisMonth = spend?.months.find(row => row.month === spend.currentMonth)
+    ?? (spend
+      ? { month: spend.currentMonth, total: 0, entryCount: 0, average: 0, categories: [] as HouseholdSpend['months'][number]['categories'] }
+      : undefined)
   const previous = spend && spend.months.length > 1 ? spend.months[spend.months.length - 2] : undefined
   const sparkMonths = spend?.months.slice(-6) ?? []
   const hasSpend = Boolean(spend && (spend.yearToDateTotal > 0 || spend.months.some(row => row.entryCount > 0)))
+  const hasBudget = Boolean(spend?.budget)
+  const budget = spend?.budget
 
-  if (!spend || !hasSpend || !thisMonth) {
+  if (!spend || !thisMonth || (!hasSpend && !hasBudget)) {
     return (
       <button
         type="button"
@@ -245,7 +251,8 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
     )
   }
 
-  const delta = previous ? thisMonth.total - previous.total : 0
+  const monthTotal = thisMonth.total
+  const delta = previous ? monthTotal - previous.total : 0
   const comparison = !previous
     ? null
     : Math.abs(delta) < 0.005
@@ -254,11 +261,21 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
         ? { text: `${formatMoney(delta, spend.currency)} more than ${formatMonthShort(previous.month)}`, color: t.error }
         : { text: `${formatMoney(Math.abs(delta), spend.currency)} less than ${formatMonthShort(previous.month)}`, color: t.success }
 
+  const budgetCaption = budget
+    ? budget.remaining >= 0
+      ? `${formatMoney(budget.remaining, spend.currency)} left of ${formatMoney(budget.amount, spend.currency)}`
+      : `${formatMoney(Math.abs(budget.remaining), spend.currency)} over ${formatMoney(budget.amount, spend.currency)}`
+    : null
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`This month spend ${formatMoney(thisMonth.total, spend.currency)}. Open Expenses`}
+      aria-label={
+        budget
+          ? `This month spend ${formatMoney(monthTotal, spend.currency)}. ${budgetCaption}. Open Expenses`
+          : `This month spend ${formatMoney(monthTotal, spend.currency)}. Open Expenses`
+      }
       style={{
         width: '100%', padding: '14px 20px', border: 'none', background: 'none',
         cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
@@ -270,13 +287,25 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
           fontSize: 24, fontWeight: 600, color: t.text, letterSpacing: '-0.03em',
           fontVariantNumeric: 'tabular-nums', margin: 0, lineHeight: 1.15,
         }}>
-          {formatMoney(thisMonth.total, spend.currency)}
+          {formatMoney(monthTotal, spend.currency)}
         </p>
-        {comparison && (
+        {budget && budgetCaption ? (
+          <>
+            <BudgetBar
+              percentUsed={budget.percentUsed}
+              state={budget.state}
+              ariaLabel={`Household budget ${Math.round(budget.percentUsed)} percent used`}
+              height={4}
+            />
+            <p style={{ fontSize: 12, color: budgetStateColor(budget.state), marginTop: 6 }}>
+              {budgetCaption}
+            </p>
+          </>
+        ) : comparison ? (
           <p style={{ fontSize: 12, color: comparison.color, marginTop: 4 }}>{comparison.text}</p>
-        )}
+        ) : null}
       </div>
-      <SpendSparkline months={sparkMonths} />
+      {hasSpend && <SpendSparkline months={sparkMonths} />}
     </button>
   )
 }

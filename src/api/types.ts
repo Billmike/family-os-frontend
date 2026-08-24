@@ -368,6 +368,7 @@ export type FamilyWsMessage =
   | { type: 'shopping.item.updated'; item_id: string; deleted: true }
   | { type: 'shopping.session.started'; session: ShoppingSessionOut }
   | { type: 'shopping.session.item.added'; session: ShoppingSessionOut; item: ShoppingSessionItemOut; removed_item_id: string }
+  | { type: 'shopping.session.item.updated'; session_id: string; item: ShoppingSessionItemOut }
   | { type: 'shopping.session.item.removed'; session_id: string; item_id: string; restored_item?: ShoppingItemOut }
   | { type: 'shopping.session.completed'; session: ShoppingSessionOut }
   | { type: 'expense.created'; expense: ExpenseOut }

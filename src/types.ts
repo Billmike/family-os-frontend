@@ -255,6 +255,8 @@ export type BottomSheetType =
   | { type: 'addEvent' }
   | { type: 'addTask' }
   | { type: 'addShoppingItem' }
+  | { type: 'editShoppingItem'; itemId: string }
+  | { type: 'editBasketItem'; sessionItemId: string }
   | { type: 'completeShopping' }
   | { type: 'addExpense' }
   | { type: 'chooseExpenseEntry' }
@@ -277,6 +279,8 @@ export interface AppHandlers {
   addTask: (task: Omit<Task, 'id' | 'completed'>) => void
   addEvent: (event: Omit<CalendarEvent, 'id'>) => void
   addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'completed' | 'addedById'>) => void
+  updateShoppingItem: (id: string, patch: ShoppingItemPatch) => void
+  updateBasketItem: (sessionItemId: string, patch: ShoppingItemPatch) => void
   deleteShoppingItem: (id: string) => void
   deleteTask: (id: string) => void
   deleteEvent: (id: string) => void
@@ -286,6 +290,16 @@ export interface AppHandlers {
   deleteExpense: (id: string) => void
   onReceiptConfirmed: () => void
 }
+
+/** Full set of user-editable fields on a shopping list or basket item. */
+export interface ShoppingItemDraft {
+  name: string
+  category: string
+  quantity: number
+  locationId: string | null
+}
+
+export type ShoppingItemPatch = Partial<ShoppingItemDraft>
 
 export interface ExpenseDraft {
   amount: number

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Plus, Minus, ShoppingCart, ArrowLeft, Undo2, Check, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, ShoppingCart, ArrowLeft, Check, Trash2, RefreshCw } from 'lucide-react'
 import type {
   ShoppingItem,
   ShoppingLocation,
@@ -7,7 +7,7 @@ import type {
   Member,
   AppHandlers,
 } from '../types'
-import { t, r, ShoppingCheckbox, FAB, SectionLabel, EmptyState, SegmentedControl, PrimaryButton } from '../ui'
+import { t, r, ShoppingCheckbox, FAB, SectionLabel, EmptyState, SegmentedControl, PrimaryButton, QuantityStepper } from '../ui'
 import { CATEGORY_ORDER } from '../data'
 import { formatSessionCost, formatSessionDate } from '../api/adapters'
 
@@ -37,11 +37,12 @@ interface Props {
   sessionHistory: ShoppingSession[]
   loadSessionDetail: (sessionId: string) => Promise<ShoppingSession | null>
   reorderSession: (sessionId: string) => Promise<ShoppingSession | null>
-  updateSessionItem: (sessionItemId: string, quantity: number) => Promise<boolean>
   openSheet: AppHandlers['openSheet']
   addToBasket: AppHandlers['addToBasket']
   removeFromBasket: AppHandlers['removeFromBasket']
   deleteShoppingItem: AppHandlers['deleteShoppingItem']
+  updateShoppingItem: AppHandlers['updateShoppingItem']
+  updateBasketItem: AppHandlers['updateBasketItem']
 }
 
 const prefersReducedMotion = () =>
@@ -54,11 +55,12 @@ export default function ShoppingScreen({
   sessionHistory,
   loadSessionDetail,
   reorderSession,
-  updateSessionItem,
   openSheet,
   addToBasket,
   removeFromBasket,
   deleteShoppingItem,
+  updateShoppingItem,
+  updateBasketItem,
 }: Props) {
   const [view, setView] = useState<ShoppingView>('list')
   const [groupBy, setGroupBy] = useState<'Category' | 'Store'>('Category')
@@ -194,8 +196,9 @@ export default function ShoppingScreen({
                   item={item}
                   divider={i > 0}
                   secondary={storeNameFor(item)}
+                  onEdit={() => openSheet({ type: 'editBasketItem', sessionItemId: item.id })}
                   onUndo={() => removeFromBasket(item.id)}
-                  onQuantityChange={(qty) => { void updateSessionItem(item.id, qty) }}
+                  onQuantityChange={(quantity) => updateBasketItem(item.id, { quantity })}
                 />
               ))}
             </div>
@@ -367,6 +370,8 @@ export default function ShoppingScreen({
                 divider={i > 0}
                 departing={departingIds.has(item.id)}
                 onToggle={() => handleAddToBasket(item)}
+                onEdit={() => openSheet({ type: 'editShoppingItem', itemId: item.id })}
+                onQuantityChange={(quantity) => updateShoppingItem(item.id, { quantity })}
                 onRemove={() => deleteShoppingItem(item.id)}
                 rowRef={el => {
                   if (el) rowRefs.current.set(item.id, el)
@@ -573,11 +578,13 @@ function BasketHeader({ count, onBack }: { count: number; onBack: () => void }) 
   )
 }
 
-function ShoppingRow({ item, divider, departing, onToggle, onRemove, rowRef, secondary, hideSecondary }: {
+function ShoppingRow({ item, divider, departing, onToggle, onEdit, onQuantityChange, onRemove, rowRef, secondary, hideSecondary }: {
   item: ShoppingItem
   divider: boolean
   departing: boolean
   onToggle: () => void
+  onEdit: () => void
+  onQuantityChange: (quantity: number) => void
   onRemove: () => void
   rowRef: (el: HTMLElement | null) => void
   secondary?: string
@@ -602,7 +609,16 @@ function ShoppingRow({ item, divider, departing, onToggle, onRemove, rowRef, sec
           }}
         >
           <ShoppingCheckbox checked={departing} onChange={onToggle} />
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit ${item.name}`}
+            style={{
+              flex: 1, minWidth: 0, display: 'block', textAlign: 'left',
+              background: 'none', border: 'none', padding: '2px 0', margin: 0,
+              cursor: 'pointer', fontFamily: 'var(--ds-font)',
+            }}
+          >
             <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {item.name}
             </div>
@@ -611,27 +627,26 @@ function ShoppingRow({ item, divider, departing, onToggle, onRemove, rowRef, sec
                 {secondary}
               </div>
             )}
-          </div>
-          {item.quantity > 1 && (
-            <div style={{
-              minWidth: 28, height: 22, borderRadius: r.pill, border: `1px solid ${t.border}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px',
-            }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: t.textSec }}>×{item.quantity}</span>
-            </div>
-          )}
+          </button>
           {!departing && (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation()
-                onRemove()
-              }}
-              aria-label={`Remove ${item.name} from list`}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
-            >
-              <Trash2 size={18} color={t.textTer} />
-            </button>
+            <>
+              <QuantityStepper
+                value={item.quantity}
+                onChange={onQuantityChange}
+                label={item.name}
+              />
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation()
+                  onRemove()
+                }}
+                aria-label={`Remove ${item.name} from list`}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
+              >
+                <Trash2 size={18} color={t.textTer} />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -639,70 +654,57 @@ function ShoppingRow({ item, divider, departing, onToggle, onRemove, rowRef, sec
   )
 }
 
-function BasketRow({ item, divider, secondary, onUndo, onQuantityChange }: {
+function BasketRow({ item, divider, secondary, onEdit, onUndo, onQuantityChange }: {
   item: { id: string; name: string; quantity: number; category: string }
   divider: boolean
   secondary?: string
+  onEdit?: () => void
   onUndo?: () => void
   onQuantityChange?: (quantity: number) => void
 }) {
-  const editable = !!onQuantityChange
-
-  const handleDecrement = () => {
-    if (!onQuantityChange) return
-    if (item.quantity <= 1 && onUndo) {
-      onUndo()
-      return
-    }
-    onQuantityChange(item.quantity - 1)
-  }
-
-  const handleIncrement = () => {
-    if (!onQuantityChange) return
-    onQuantityChange(item.quantity + 1)
-  }
+  const label = (
+    <>
+      <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {item.name}
+      </div>
+      {secondary && (
+        <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>{secondary}</div>
+      )}
+    </>
+  )
 
   return (
     <div style={{
       padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
       borderTop: divider ? `1px solid ${t.border}` : 'none',
     }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {item.name}
-        </div>
-        {secondary && (
-          <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>{secondary}</div>
-        )}
-      </div>
-      {editable ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            onClick={handleDecrement}
-            aria-label={`Decrease quantity of ${item.name}`}
-            style={{
-              width: 28, height: 28, borderRadius: r.pill,
-              border: `1px solid ${t.border}`, background: t.surface,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Minus size={14} color={t.textSec} />
-          </button>
-          <span style={{ fontSize: 14, fontWeight: 600, color: t.text, minWidth: 24, textAlign: 'center' }}>
-            {item.quantity}
-          </span>
-          <button
-            onClick={handleIncrement}
-            aria-label={`Increase quantity of ${item.name}`}
-            style={{
-              width: 28, height: 28, borderRadius: r.pill,
-              border: `1px solid ${t.border}`, background: t.surface,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Plus size={14} color={t.textSec} />
-          </button>
-        </div>
+      {onEdit ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Edit ${item.name}`}
+          style={{
+            flex: 1, minWidth: 0, display: 'block', textAlign: 'left',
+            background: 'none', border: 'none', padding: '2px 0', margin: 0,
+            cursor: 'pointer', fontFamily: 'var(--ds-font)',
+          }}
+        >
+          {label}
+        </button>
+      ) : (
+        <div style={{ flex: 1, minWidth: 0 }}>{label}</div>
+      )}
+      {onQuantityChange ? (
+        <QuantityStepper
+          value={item.quantity}
+          onChange={onQuantityChange}
+          label={item.name}
+          atMinAction={
+            onUndo
+              ? { label: `Return ${item.name} to list`, onActivate: onUndo }
+              : undefined
+          }
+        />
       ) : (
         item.quantity > 1 && (
           <div style={{
@@ -712,15 +714,6 @@ function BasketRow({ item, divider, secondary, onUndo, onQuantityChange }: {
             <span style={{ fontSize: 12, fontWeight: 500, color: t.textSec }}>×{item.quantity}</span>
           </div>
         )
-      )}
-      {onUndo && !editable && (
-        <button
-          onClick={onUndo}
-          aria-label={`Return ${item.name} to list`}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
-        >
-          <Undo2 size={18} color={t.textTer} />
-        </button>
       )}
     </div>
   )

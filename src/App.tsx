@@ -18,6 +18,7 @@ import type {
   ShoppingItem,
   ShoppingLocation,
   ShoppingSession,
+  ShoppingSessionItem,
   HouseholdSpend,
   BudgetPeriod,
   BudgetPeriodDraft,
@@ -26,6 +27,7 @@ import type {
   Member,
   TaskUpdatePatch,
   ExpenseDraft,
+  ShoppingItemPatch,
 } from "./types";
 import { TASK_CATEGORIES } from "./types";
 import { getMember, formatDate, formatTime } from "./data";
@@ -69,6 +71,7 @@ import {
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
+  toShoppingSessionItem,
   toTask,
   todayInTimezone,
 } from "./api/adapters";
@@ -88,6 +91,7 @@ import ExpenseSheet from "./components/ExpenseSheet";
 import BudgetSheet from "./components/BudgetSheet";
 import ExpenseEntryChooser from "./components/ExpenseEntryChooser";
 import ReceiptScanSheet from "./components/ReceiptScanSheet";
+import ShoppingItemSheet from "./components/ShoppingItemSheet";
 import {
   capturePendingInviteFromUrl,
   clearPendingInviteToken,
@@ -122,6 +126,26 @@ const SCREEN_TITLES: Record<Screen, string> = {
   family: "Your Family",
   settings: "Settings",
 };
+
+/** Stepper taps arrive in bursts, so coalesce them into a single request. */
+const ITEM_EDIT_DEBOUNCE_MS = 400;
+
+interface PendingEdit<T> {
+  timer: number;
+  patch: ShoppingItemPatch;
+  /** Last server-confirmed value, restored if the request fails. */
+  snapshot: T;
+}
+
+/** Omitted keys are left untouched by the API; an explicit null clears them. */
+function shoppingPatchToApi(patch: ShoppingItemPatch) {
+  const body: Partial<shoppingApi.ShoppingItemCreate> = {};
+  if (patch.name !== undefined) body.name = patch.name;
+  if (patch.quantity !== undefined) body.quantity = patch.quantity;
+  if (patch.category !== undefined) body.category = patch.category;
+  if (patch.locationId !== undefined) body.location_id = patch.locationId;
+  return body;
+}
 
 export default function App() {
   return (
@@ -305,6 +329,21 @@ function MainApp() {
   } | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingListEdits = useRef(
+    new Map<string, PendingEdit<ShoppingItem>>(),
+  );
+  const pendingBasketEdits = useRef(
+    new Map<string, PendingEdit<ShoppingSessionItem>>(),
+  );
+
+  useEffect(() => {
+    const listEdits = pendingListEdits.current;
+    const basketEdits = pendingBasketEdits.current;
+    return () => {
+      listEdits.forEach((edit) => window.clearTimeout(edit.timer));
+      basketEdits.forEach((edit) => window.clearTimeout(edit.timer));
+    };
+  }, []);
 
   const unreadCount = notifs.filter((n) => !n.read).length;
 
@@ -733,19 +772,100 @@ function MainApp() {
     }
   }
 
-  async function updateSessionItem(
+  function replaceActiveSessionItem(
     sessionItemId: string,
-    quantity: number,
-  ): Promise<boolean> {
+    update: (item: ShoppingSessionItem) => ShoppingSessionItem,
+  ) {
+    setActiveSession((current) =>
+      current?.items
+        ? {
+            ...current,
+            items: current.items.map((i) =>
+              i.id === sessionItemId ? update(i) : i,
+            ),
+          }
+        : current,
+    );
+  }
+
+  async function flushListEdit(
+    id: string,
+    patch: ShoppingItemPatch,
+    snapshot: ShoppingItem,
+  ) {
     try {
-      await shoppingSessionsApi.updateSessionItem(sessionItemId, { quantity });
-      const refreshed = await shoppingSessionsApi.getActiveSession(family.id);
-      if (refreshed) setActiveSession(toShoppingSession(refreshed));
-      return true;
+      const updated = await shoppingApi.updateShoppingItem(
+        id,
+        shoppingPatchToApi(patch),
+      );
+      const ui = toShoppingItem(updated);
+      setShopping((its) => its.map((i) => (i.id === id ? ui : i)));
     } catch (e) {
+      setShopping((its) => its.map((i) => (i.id === id ? snapshot : i)));
       handleError(e);
-      return false;
     }
+  }
+
+  async function flushBasketEdit(
+    sessionItemId: string,
+    patch: ShoppingItemPatch,
+    snapshot: ShoppingSessionItem,
+  ) {
+    try {
+      const updated = await shoppingSessionsApi.updateSessionItem(
+        sessionItemId,
+        shoppingPatchToApi(patch),
+      );
+      const ui = toShoppingSessionItem(updated);
+      replaceActiveSessionItem(sessionItemId, () => ui);
+    } catch (e) {
+      replaceActiveSessionItem(sessionItemId, () => snapshot);
+      handleError(e);
+    }
+  }
+
+  function updateShoppingItem(id: string, patch: ShoppingItemPatch) {
+    const pending = pendingListEdits.current.get(id);
+    const snapshot = pending?.snapshot ?? shopping.find((i) => i.id === id);
+    if (!snapshot) return;
+    if (pending) window.clearTimeout(pending.timer);
+
+    setShopping((its) => its.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
+    const merged = { ...pending?.patch, ...patch };
+    const timer = window.setTimeout(() => {
+      pendingListEdits.current.delete(id);
+      void flushListEdit(id, merged, snapshot);
+    }, ITEM_EDIT_DEBOUNCE_MS);
+    pendingListEdits.current.set(id, { timer, patch: merged, snapshot });
+  }
+
+  function updateBasketItem(sessionItemId: string, patch: ShoppingItemPatch) {
+    const pending = pendingBasketEdits.current.get(sessionItemId);
+    const snapshot =
+      pending?.snapshot ??
+      activeSession?.items?.find((i) => i.id === sessionItemId);
+    if (!snapshot) return;
+    if (pending) window.clearTimeout(pending.timer);
+
+    // A new store id makes the denormalized name stale; the list of known
+    // locations covers the label until the response comes back.
+    replaceActiveSessionItem(sessionItemId, (item) => ({
+      ...item,
+      ...patch,
+      ...(patch.locationId !== undefined && { locationName: null }),
+    }));
+
+    const merged = { ...pending?.patch, ...patch };
+    const timer = window.setTimeout(() => {
+      pendingBasketEdits.current.delete(sessionItemId);
+      void flushBasketEdit(sessionItemId, merged, snapshot);
+    }, ITEM_EDIT_DEBOUNCE_MS);
+    pendingBasketEdits.current.set(sessionItemId, {
+      timer,
+      patch: merged,
+      snapshot,
+    });
   }
 
   async function addShoppingItem(
@@ -1311,6 +1431,8 @@ function MainApp() {
     ) => {
       void addShoppingItem(item);
     },
+    updateShoppingItem,
+    updateBasketItem,
     deleteShoppingItem: (id: string) => {
       void deleteShoppingItem(id);
     },
@@ -1424,7 +1546,6 @@ function MainApp() {
                 loadSessionDetail={loadSessionDetail}
                 {...handlers}
                 reorderSession={reorderSession}
-                updateSessionItem={updateSessionItem}
               />
             )}
             {screen === "expenses" && (
@@ -1497,11 +1618,56 @@ function MainApp() {
         />
       )}
       {sheet?.type === "addShoppingItem" && (
-        <AddShoppingSheet
-          onClose={() => setSheet(null)}
-          onAdd={handlers.addShoppingItem}
+        <ShoppingItemSheet
+          mode="add"
           locations={shoppingLocations}
+          onClose={() => setSheet(null)}
+          onSubmit={handlers.addShoppingItem}
           onCreateLocation={addShoppingLocation}
+        />
+      )}
+      {sheet?.type === "editShoppingItem" && (
+        <ShoppingItemSheet
+          mode="list"
+          item={shopping.find((i) => i.id === sheet.itemId)}
+          locations={shoppingLocations}
+          onClose={() => setSheet(null)}
+          onSubmit={(draft) => {
+            handlers.updateShoppingItem(sheet.itemId, draft);
+            setSheet(null);
+          }}
+          onCreateLocation={addShoppingLocation}
+          onDelete={() => {
+            handlers.deleteShoppingItem(sheet.itemId);
+            setSheet(null);
+          }}
+          onVanished={() => {
+            setSheet(null);
+            showToast("That item is no longer on the list", "error");
+          }}
+        />
+      )}
+      {sheet?.type === "editBasketItem" && (
+        <ShoppingItemSheet
+          mode="basket"
+          item={activeSession?.items?.find(
+            (i) => i.id === sheet.sessionItemId,
+          )}
+          locations={shoppingLocations}
+          onClose={() => setSheet(null)}
+          onSubmit={(draft) => {
+            handlers.updateBasketItem(sheet.sessionItemId, draft);
+            setSheet(null);
+          }}
+          onCreateLocation={addShoppingLocation}
+          onReturnToList={() => {
+            handlers.removeFromBasket(sheet.sessionItemId);
+            setSheet(null);
+          }}
+          onVanished={() => {
+            setSheet(null);
+            showToast("That item is no longer in the basket", "error");
+          }}
         />
       )}
       {sheet?.type === "completeShopping" && (
@@ -1834,183 +2000,6 @@ function CompleteShoppingSheet({
       <PrimaryButton onClick={submit} fullWidth disabled={!valid}>
         Complete shopping
       </PrimaryButton>
-    </BottomSheet>
-  );
-}
-
-function AddShoppingSheet({
-  onClose,
-  onAdd,
-  locations,
-  onCreateLocation,
-}: {
-  onClose: () => void;
-  onAdd: (i: Omit<ShoppingItem, "id" | "completed" | "addedById">) => void;
-  locations: ShoppingLocation[];
-  onCreateLocation: (name: string) => Promise<ShoppingLocation | null>;
-}) {
-  const NONE = "";
-  const ADD_NEW = "__add_new__";
-  const [name, setName] = useState("");
-  const [qty, setQty] = useState(1);
-  const [category, setCat] = useState("Produce");
-  const [locationId, setLocationId] = useState(NONE);
-  const [addingStore, setAddingStore] = useState(false);
-  const [newStoreName, setNewStoreName] = useState("");
-  const [creatingStore, setCreatingStore] = useState(false);
-  const cats = ["Produce", "Meat", "Dairy", "Bakery", "Baby", "Other"];
-
-  const storeOptions = [
-    { value: NONE, label: "None" },
-    ...locations.map((l) => ({ value: l.id, label: l.name })),
-    { value: ADD_NEW, label: "+ Add new store…" },
-  ];
-
-  const onStoreChange = (value: string) => {
-    if (value === ADD_NEW) {
-      setAddingStore(true);
-      setNewStoreName("");
-      return;
-    }
-    setAddingStore(false);
-    setLocationId(value);
-  };
-
-  const saveNewStore = async () => {
-    const trimmed = newStoreName.trim();
-    if (!trimmed || creatingStore) return;
-    setCreatingStore(true);
-    try {
-      const created = await onCreateLocation(trimmed);
-      if (created) {
-        setLocationId(created.id);
-        setAddingStore(false);
-        setNewStoreName("");
-      }
-    } finally {
-      setCreatingStore(false);
-    }
-  };
-
-  const submit = () => {
-    if (!name.trim()) return;
-    onAdd({
-      name: name.trim(),
-      quantity: qty,
-      category,
-      locationId: locationId || null,
-    });
-    setName("");
-    setQty(1);
-  };
-
-  return (
-    <BottomSheet title="Add Item" onClose={onClose}>
-      <FormField label="Item">
-        <Input
-          placeholder="What do you need?"
-          value={name}
-          onChange={setName}
-          autoFocus
-        />
-      </FormField>
-      <FormField label="Category">
-        <Select
-          value={category}
-          onChange={setCat}
-          options={cats.map((c) => ({ value: c, label: c }))}
-        />
-      </FormField>
-      <FormField label="Store">
-        <Select
-          value={addingStore ? ADD_NEW : locationId}
-          onChange={onStoreChange}
-          options={storeOptions}
-        />
-      </FormField>
-      {addingStore && (
-        <FormField label="New store name">
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <Input
-                placeholder="e.g. JC Penney"
-                value={newStoreName}
-                onChange={setNewStoreName}
-                autoFocus
-              />
-            </div>
-            <PrimaryButton
-              onClick={() => {
-                void saveNewStore();
-              }}
-              disabled={!newStoreName.trim() || creatingStore}
-            >
-              Save
-            </PrimaryButton>
-          </div>
-        </FormField>
-      )}
-      <FormField label="Quantity">
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            onClick={() => setQty((q) => Math.max(1, q - 1))}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "var(--ds-radius-md)",
-              border: `1px solid ${t.border}`,
-              background: t.surface,
-              fontSize: 20,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            −
-          </button>
-          <span
-            style={{
-              flex: 1,
-              textAlign: "center",
-              fontSize: 16,
-              fontWeight: 500,
-            }}
-          >
-            {qty}
-          </span>
-          <button
-            onClick={() => setQty((q) => q + 1)}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "var(--ds-radius-md)",
-              border: `1px solid ${t.border}`,
-              background: t.surface,
-              fontSize: 20,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            +
-          </button>
-        </div>
-      </FormField>
-      <PrimaryButton onClick={submit} fullWidth disabled={!name.trim()}>
-        Add Item
-      </PrimaryButton>
-      <p
-        style={{
-          fontSize: 12,
-          color: t.textTer,
-          textAlign: "center",
-          marginTop: 10,
-        }}
-      >
-        Tap Add to continue adding items
-      </p>
     </BottomSheet>
   );
 }

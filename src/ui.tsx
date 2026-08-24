@@ -1,6 +1,6 @@
 import { type CSSProperties, type InputHTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, Equal, Heart, Home, MoreHorizontal, Settings2, ShoppingCart, User, UtensilsCrossed, X, Zap } from 'lucide-react'
+import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, Equal, Heart, Home, Minus, MoreHorizontal, Plus, Settings2, ShoppingCart, User, UtensilsCrossed, X, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Member } from './types'
 import { TASK_CATEGORIES } from './types'
@@ -106,6 +106,127 @@ export function ShoppingCheckbox({ checked, onChange }: { checked: boolean; onCh
     >
       {checked && <Check size={13} color={t.onPrimary} strokeWidth={2.5} />}
     </button>
+  )
+}
+
+// ─── QuantityStepper ──────────────────────────────────────────────────────────
+
+/** `sm` keeps a 28px control inside a ~40px hit area; `lg` fills a form row. */
+const STEPPER_SIZES = {
+  sm: { control: 28, icon: 14, hitPad: 6, radius: r.pill, valueFont: 14, valueWidth: 24 },
+  lg: { control: 44, icon: 18, hitPad: 0, radius: r.md, valueFont: 16, valueWidth: 32 },
+} as const
+
+export function QuantityStepper({
+  value,
+  onChange,
+  label,
+  size = 'sm',
+  min = 1,
+  fullWidth,
+  disabled,
+  atMinAction,
+}: {
+  value: number
+  onChange: (quantity: number) => void
+  /** Item name, used to build distinct accessible labels for each control. */
+  label: string
+  size?: 'sm' | 'lg'
+  min?: number
+  fullWidth?: boolean
+  disabled?: boolean
+  /**
+   * Repurposes minus at `min` — the label matters because the button then does
+   * something other than decrement. Without it, minus is blocked at `min`.
+   */
+  atMinAction?: { label: string; onActivate: () => void }
+}) {
+  const s = STEPPER_SIZES[size]
+  const atMin = value <= min
+  const decrementBlocked = disabled || (atMin && !atMinAction)
+
+  const handleDecrement = () => {
+    if (disabled) return
+    if (atMin) {
+      atMinAction?.onActivate()
+      return
+    }
+    onChange(value - 1)
+  }
+
+  const handleIncrement = () => {
+    if (disabled) return
+    onChange(value + 1)
+  }
+
+  const controlStyle = (blocked: boolean): CSSProperties => ({
+    width: s.control,
+    height: s.control,
+    borderRadius: s.radius,
+    border: `1px solid ${t.border}`,
+    background: t.surface,
+    color: blocked ? t.textTer : t.textSec,
+    opacity: blocked ? 0.45 : 1,
+    cursor: blocked ? 'not-allowed' : 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    flexShrink: 0,
+  })
+
+  const hitAreaStyle: CSSProperties = {
+    background: 'none',
+    border: 'none',
+    padding: s.hitPad,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: fullWidth ? '100%' : undefined }}>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); handleDecrement() }}
+        disabled={decrementBlocked}
+        aria-label={
+          atMin && atMinAction
+            ? atMinAction.label
+            : `Decrease quantity of ${label}`
+        }
+        style={{ ...hitAreaStyle, cursor: decrementBlocked ? 'not-allowed' : 'pointer' }}
+      >
+        <span style={controlStyle(decrementBlocked)}>
+          <Minus size={s.icon} aria-hidden />
+        </span>
+      </button>
+      <span
+        aria-live="polite"
+        style={{
+          fontSize: s.valueFont,
+          fontWeight: 600,
+          color: t.text,
+          minWidth: s.valueWidth,
+          flex: fullWidth ? 1 : undefined,
+          textAlign: 'center',
+        }}
+      >
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); handleIncrement() }}
+        disabled={disabled}
+        aria-label={`Increase quantity of ${label}`}
+        style={{ ...hitAreaStyle, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      >
+        <span style={controlStyle(!!disabled)}>
+          <Plus size={s.icon} aria-hidden />
+        </span>
+      </button>
+    </div>
   )
 }
 

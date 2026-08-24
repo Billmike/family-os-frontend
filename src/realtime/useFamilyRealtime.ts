@@ -7,6 +7,7 @@ import {
   toNotification,
   toShoppingItem,
   toShoppingSession,
+  toShoppingSessionItem,
   toTask,
 } from '../api/adapters'
 import { ensureAccessToken, wsBase } from '../api/client'
@@ -135,6 +136,14 @@ export function useFamilyRealtime(opts: {
         if ('removed_item_id' in msg) {
           setShopping(prev => prev.filter(i => i.id !== msg.removed_item_id))
         }
+        return
+      }
+      if (msg.type === 'shopping.session.item.updated') {
+        const ui = toShoppingSessionItem(msg.item)
+        setActiveSession(prev => {
+          if (!prev || prev.id !== msg.session_id || !prev.items) return prev
+          return { ...prev, items: prev.items.map(i => (i.id === ui.id ? ui : i)) }
+        })
         return
       }
       if (msg.type === 'shopping.session.item.removed') {

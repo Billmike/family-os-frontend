@@ -66,7 +66,15 @@ export function reorderSession(familyId: string, sessionId: string) {
   )
 }
 
-export function updateSessionItem(sessionItemId: string, data: { quantity: number }) {
+export interface SessionItemUpdate {
+  name?: string
+  quantity?: number | string
+  unit?: string | null
+  category?: string | null
+  location_id?: string | null
+}
+
+export function updateSessionItem(sessionItemId: string, data: SessionItemUpdate) {
   return apiRequest<ShoppingSessionOut['items'][number]>(
     `/api/shopping-session-items/${sessionItemId}`,
     {

@@ -2,7 +2,11 @@ import type {
   CalendarEvent,
   Expense,
   Budget,
+  BudgetGroupBlock,
   BudgetPeriod,
+  BudgetPeriodSummary,
+  BudgetSubcategory,
+  BudgetSubcategoryGroup,
   BudgetSummary,
   HouseholdSpend,
   Member,
@@ -20,6 +24,8 @@ import type {
 import type {
   BudgetOut,
   BudgetPeriodOut,
+  BudgetSubcategoryListOut,
+  BudgetSubcategoryOut,
   BudgetSummaryOut,
   EventOut,
   ExpenseOut,
@@ -253,19 +259,38 @@ export function toBudget(budget: BudgetOut): Budget {
     id: budget.id,
     periodId: budget.period_id,
     familyId: budget.family_id,
-    category: budget.category,
+    subcategoryId: budget.subcategory_id,
+    subcategoryName: budget.subcategory_name,
+    group: budget.group,
     amount: Number(budget.amount),
     currency: budget.currency,
     used: Number(budget.used),
     remaining: Number(budget.remaining),
     percentUsed: budget.percent_used,
     state: budget.state,
+    settled: budget.settled,
+    settlementExpenseId: budget.settlement_expense_id,
     createdAt: budget.created_at,
     updatedAt: budget.updated_at,
   }
 }
 
 export function toBudgetPeriod(data: BudgetPeriodOut): BudgetPeriod {
+  const summary: BudgetPeriodSummary = {
+    incomeExpected: Number(data.summary.income_expected),
+    incomeActual: Number(data.summary.income_actual),
+    totalExpensesExpected: Number(data.summary.total_expenses_expected),
+    totalExpensesActual: Number(data.summary.total_expenses_actual),
+    leftOverExpected: Number(data.summary.left_over_expected),
+    leftOverActual: Number(data.summary.left_over_actual),
+  }
+  const groups: BudgetGroupBlock[] = data.groups.map(g => ({
+    group: g.group,
+    direction: g.direction,
+    expected: Number(g.expected),
+    actual: Number(g.actual),
+    lines: g.lines.map(toBudget),
+  }))
   return {
     id: data.id,
     familyId: data.family_id,
@@ -273,11 +298,31 @@ export function toBudgetPeriod(data: BudgetPeriodOut): BudgetPeriod {
     endDate: data.end_date,
     labelMonth: data.label_month,
     currency: data.currency,
-    overall: data.overall ? toBudget(data.overall) : null,
-    categories: data.categories.map(toBudget),
+    groups,
+    summary,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   }
+}
+
+export function toBudgetSubcategory(row: BudgetSubcategoryOut): BudgetSubcategory {
+  return {
+    id: row.id,
+    familyId: row.family_id,
+    group: row.group,
+    name: row.name,
+    sortOrder: row.sort_order,
+    role: row.role,
+    archivedAt: row.archived_at,
+  }
+}
+
+export function toBudgetSubcategoryGroups(data: BudgetSubcategoryListOut): BudgetSubcategoryGroup[] {
+  return data.groups.map(g => ({
+    group: g.group,
+    direction: g.direction,
+    subcategories: g.subcategories.map(toBudgetSubcategory),
+  }))
 }
 
 export function formatCycleDateRange(startDate: string, endDate: string): string {
@@ -308,6 +353,8 @@ export function toHouseholdSpend(spend: HouseholdSpendOut): HouseholdSpend {
       average: Number(row.average),
       categories: row.categories.map(cat => ({
         category: cat.category,
+        subcategoryId: cat.subcategory_id ?? null,
+        group: cat.group ?? null,
         total: Number(cat.total),
         count: cat.count,
       })),
@@ -321,7 +368,10 @@ export function toExpense(expense: ExpenseOut): Expense {
     id: expense.id,
     amount: Number(expense.amount),
     currency: expense.currency,
-    category: expense.category,
+    subcategoryId: expense.subcategory_id,
+    subcategoryName: expense.subcategory_name,
+    group: expense.group,
+    direction: expense.direction,
     merchant: expense.merchant,
     note: expense.note,
     occurredAt: expense.occurred_at,
@@ -363,6 +413,7 @@ export function toReceipt(receipt: ReceiptOut): Receipt {
     originalFilename: receipt.original_filename,
     categoryHint: receipt.category_hint,
     suggestedCategory: receipt.suggested_category,
+    suggestedSubcategoryId: receipt.suggested_subcategory_id ?? null,
     merchant: receipt.merchant,
     purchasedAt: receipt.purchased_at,
     currency: receipt.currency,
@@ -432,9 +483,10 @@ export function formatSessionDate(iso: string): string {
 }
 
 export function expenseTitle(expense: Expense): string {
-  if (expense.merchant) return expense.merchant;
-  if (expense.sourceType === "shopping_session") return "Shopping trip";
-  return expense.category;
+  if (expense.merchant) return expense.merchant
+  if (expense.sourceType === "shopping_session") return "Shopping trip"
+  if (expense.sourceType === "budget_line") return `Settled: ${expense.subcategoryName}`
+  return `${expense.group} · ${expense.subcategoryName}`
 }
 
 function entityToScreen(entityType: string | null): Screen | undefined {
@@ -444,7 +496,8 @@ function entityToScreen(entityType: string | null): Screen | undefined {
   if (entityType === "shopping" || entityType === "shopping_item" || entityType === "shopping_session")
     return "shopping";
   if (entityType === "family" || entityType === "invitation") return "family";
-  if (entityType === "budget" || entityType === "expense") return "expenses";
+  if (entityType === "budget") return "budget";
+  if (entityType === "expense") return "budgetSpend";
   return undefined;
 }
 

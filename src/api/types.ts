@@ -161,6 +161,8 @@ export interface ShoppingSpendOut {
 
 export interface CategorySpendOut {
   category: string
+  subcategory_id?: string | null
+  group?: string | null
   total: string
   count: number
 }
@@ -199,15 +201,36 @@ export interface BudgetOut {
   id: string
   period_id: string
   family_id: string
-  category: string | null
+  subcategory_id: string
+  subcategory_name: string
+  group: string
   amount: string
   currency: string
   used: string
   remaining: string
   percent_used: number
   state: BudgetState
+  settled: boolean
+  settlement_expense_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface BudgetGroupOut {
+  group: string
+  direction: 'inflow' | 'outflow'
+  expected: string
+  actual: string
+  lines: BudgetOut[]
+}
+
+export interface BudgetPeriodSummaryOut {
+  income_expected: string
+  income_actual: string
+  total_expenses_expected: string
+  total_expenses_actual: string
+  left_over_expected: string
+  left_over_actual: string
 }
 
 export interface BudgetPeriodOut {
@@ -217,8 +240,8 @@ export interface BudgetPeriodOut {
   end_date: string
   label_month: string
   currency: string
-  overall: BudgetOut | null
-  categories: BudgetOut[]
+  groups: BudgetGroupOut[]
+  summary: BudgetPeriodSummaryOut
   created_at: string
   updated_at: string
 }
@@ -227,17 +250,58 @@ export interface BudgetPeriodListOut {
   periods: BudgetPeriodOut[]
 }
 
+export interface BudgetSubcategoryOut {
+  id: string
+  family_id: string
+  group: string
+  name: string
+  sort_order: number
+  role: string | null
+  archived_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BudgetSubcategoryGroupOut {
+  group: string
+  direction: 'inflow' | 'outflow'
+  subcategories: BudgetSubcategoryOut[]
+}
+
+export interface BudgetSubcategoryListOut {
+  groups: BudgetSubcategoryGroupOut[]
+}
+
+export interface BudgetInsightsMonthOut {
+  month: string
+  income_expected: string
+  income_actual: string
+  outflow_expected: string
+  outflow_actual: string
+  net_expected: string
+  net_actual: string
+  groups: BudgetGroupOut[]
+}
+
+export interface BudgetInsightsOut {
+  currency: string
+  months: BudgetInsightsMonthOut[]
+}
+
 export interface ExpenseOut {
   id: string
   family_id: string
   amount: string
   currency: string
-  category: string
+  subcategory_id: string
+  subcategory_name: string
+  group: string
+  direction: 'inflow' | 'outflow'
   merchant: string | null
   note: string | null
   occurred_at: string
   created_by: string
-  source_type: 'manual' | 'shopping_session' | 'receipt'
+  source_type: 'manual' | 'shopping_session' | 'receipt' | 'budget_line'
   source_id: string | null
   source_item_count: number | null
   created_at: string
@@ -271,6 +335,7 @@ export interface ReceiptOut {
   original_filename: string | null
   category_hint: string | null
   suggested_category: string | null
+  suggested_subcategory_id?: string | null
   merchant: string | null
   purchased_at: string | null
   currency: string | null
@@ -298,7 +363,7 @@ export interface ReceiptItemConfirm {
 }
 
 export interface ReceiptConfirm {
-  category: string
+  subcategory_id: string
   merchant?: string | null
   note?: string | null
   occurred_at?: string | null

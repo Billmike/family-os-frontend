@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
-import type { Expense, ExpenseDraft, Receipt } from '../types'
-import { EXPENSE_CATEGORIES } from '../types'
-import { BottomSheet, FormField, Input, PrimaryButton, Select, t } from '../ui'
+import { useEffect, useMemo, useState } from 'react'
+import type { BudgetSubcategoryGroup, Expense, ExpenseDraft, Receipt } from '../types'
+import { BottomSheet, FormField, Input, PrimaryButton, t } from '../ui'
 import { dateInputFromIso, dateInputToIso, formatMoney, toReceipt } from '../api/adapters'
 import * as receiptsApi from '../api/receipts'
 
 interface Props {
   expense?: Expense | null
   today: string
+  subcategoryGroups: BudgetSubcategoryGroup[]
   onClose: () => void
   onSave: (input: ExpenseDraft) => void
   onDelete?: (id: string) => void
@@ -17,16 +17,32 @@ interface Props {
 export default function ExpenseSheet({
   expense,
   today,
+  subcategoryGroups,
   onClose,
   onSave,
   onDelete,
   onScanReceipt,
 }: Props) {
   const isEdit = Boolean(expense)
-  const [amount, setAmount] = useState(
-    expense ? String(expense.amount) : '',
+  const flatOptions = useMemo(
+    () =>
+      subcategoryGroups.flatMap(g =>
+        g.subcategories.map(s => ({
+          id: s.id,
+          label: `${g.group} · ${s.name}`,
+          group: g.group,
+        })),
+      ),
+    [subcategoryGroups],
   )
-  const [category, setCategory] = useState(expense?.category ?? 'Transportation')
+  const defaultSubId =
+    expense?.subcategoryId ??
+    flatOptions.find(o => o.group === 'Fixed Expense' && o.label.includes('Transport'))?.id ??
+    flatOptions[0]?.id ??
+    ''
+
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : '')
+  const [subcategoryId, setSubcategoryId] = useState(defaultSubId)
   const [merchant, setMerchant] = useState(expense?.merchant ?? '')
   const [note, setNote] = useState(expense?.note ?? '')
   const [date, setDate] = useState(
@@ -64,13 +80,13 @@ export default function ExpenseSheet({
   }, [receiptImageUrl])
 
   const parsed = Number.parseFloat(amount.replace(',', '.'))
-  const valid = Number.isFinite(parsed) && parsed > 0 && Boolean(category)
+  const valid = Number.isFinite(parsed) && parsed > 0 && Boolean(subcategoryId)
 
   const handleSave = () => {
     if (!valid) return
     onSave({
       amount: parsed,
-      category,
+      subcategoryId,
       merchant: merchant.trim() || null,
       note: note.trim() || null,
       occurredAt: dateInputToIso(date),
@@ -78,7 +94,7 @@ export default function ExpenseSheet({
   }
 
   return (
-    <BottomSheet title={isEdit ? 'Edit expense' : 'Add expense'} onClose={onClose}>
+    <BottomSheet title={isEdit ? 'Edit entry' : 'Add entry'} onClose={onClose}>
       {receipt && (
         <div
           style={{
@@ -135,12 +151,30 @@ export default function ExpenseSheet({
           inputMode="decimal"
         />
       </FormField>
-      <FormField label="Category">
-        <Select
-          value={category}
-          onChange={setCategory}
-          options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))}
-        />
+      <FormField label="Subcategory">
+        <select
+          value={subcategoryId}
+          onChange={e => setSubcategoryId(e.target.value)}
+          aria-label="Budget subcategory"
+          style={{
+            width: '100%',
+            border: `1px solid ${t.border}`,
+            borderRadius: 'var(--ds-radius-md)',
+            padding: '10px 12px',
+            fontSize: 14,
+            background: t.surface,
+            color: t.text,
+            fontFamily: 'var(--ds-font)',
+          }}
+        >
+          {subcategoryGroups.map(g => (
+            <optgroup key={g.group} label={g.group}>
+              {g.subcategories.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </FormField>
       <FormField label="Merchant">
         <Input placeholder="Miles Berlin" value={merchant} onChange={setMerchant} />
@@ -152,7 +186,7 @@ export default function ExpenseSheet({
         <Input placeholder="What was this for?" value={note} onChange={setNote} />
       </FormField>
       <PrimaryButton onClick={handleSave} fullWidth disabled={!valid}>
-        {isEdit ? 'Save' : 'Add expense'}
+        {isEdit ? 'Save' : 'Add entry'}
       </PrimaryButton>
       {isEdit && expense && onDelete && (
         <button
@@ -173,7 +207,7 @@ export default function ExpenseSheet({
             fontFamily: 'var(--ds-font)',
           }}
         >
-          Delete expense
+          Delete entry
         </button>
       )}
       {!isEdit && onScanReceipt && (

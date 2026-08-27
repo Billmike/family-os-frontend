@@ -1,8 +1,13 @@
 import { apiRequest } from './client'
-import type { BudgetOut, BudgetPeriodListOut, BudgetPeriodOut } from './types'
+import type {
+  BudgetInsightsOut,
+  BudgetOut,
+  BudgetPeriodListOut,
+  BudgetPeriodOut,
+} from './types'
 
 export interface BudgetLineIn {
-  category?: string | null
+  subcategory_id: string
   amount: number | string
 }
 
@@ -21,6 +26,13 @@ export interface BudgetPeriodUpdate {
   budgets?: BudgetLineIn[]
 }
 
+export interface BudgetPeriodCopy {
+  start_date: string
+  end_date: string
+  label_month?: string | null
+  source_period_id?: string | null
+}
+
 export function getCurrentBudgetPeriod(familyId: string) {
   return apiRequest<BudgetPeriodOut | null>(
     `/api/families/${familyId}/budget-periods/current`,
@@ -35,6 +47,13 @@ export function listBudgetPeriods(familyId: string, include = 'current,past,upco
 
 export function createBudgetPeriod(familyId: string, data: BudgetPeriodCreate) {
   return apiRequest<BudgetPeriodOut>(`/api/families/${familyId}/budget-periods`, {
+    method: 'POST',
+    body: data,
+  })
+}
+
+export function copyBudgetPeriod(familyId: string, data: BudgetPeriodCopy) {
+  return apiRequest<BudgetPeriodOut>(`/api/families/${familyId}/budget-periods/copy`, {
     method: 'POST',
     body: data,
   })
@@ -60,4 +79,18 @@ export function updateBudget(budgetId: string, amount: number | string) {
 
 export function deleteBudget(budgetId: string) {
   return apiRequest<void>(`/api/budgets/${budgetId}`, { method: 'DELETE' })
+}
+
+export function settleBudget(budgetId: string) {
+  return apiRequest<BudgetPeriodOut>(`/api/budgets/${budgetId}/settle`, { method: 'POST' })
+}
+
+export function unsettleBudget(budgetId: string) {
+  return apiRequest<BudgetPeriodOut>(`/api/budgets/${budgetId}/settle`, { method: 'DELETE' })
+}
+
+export function getBudgetInsights(familyId: string, months = 12) {
+  return apiRequest<BudgetInsightsOut>(
+    `/api/families/${familyId}/budget-insights?months=${months}`,
+  )
 }

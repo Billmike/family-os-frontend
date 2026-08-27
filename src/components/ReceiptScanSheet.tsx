@@ -1,21 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, ImagePlus, Loader2, AlertTriangle } from 'lucide-react'
-import type { Receipt, ReceiptConfirmDraft, ReceiptItemDraft } from '../types'
-import { EXPENSE_CATEGORIES } from '../types'
-import { BottomSheet, FormField, Input, PrimaryButton, Select, t } from '../ui'
+import type { BudgetSubcategoryGroup, Receipt, ReceiptConfirmDraft, ReceiptItemDraft } from '../types'
+import { BottomSheet, FormField, Input, PrimaryButton, t } from '../ui'
 import { dateInputFromIso, dateInputToIso, formatMoney, toReceipt } from '../api/adapters'
 import * as receiptsApi from '../api/receipts'
 import { ApiError } from '../api/client'
 import { compressImageForUpload } from '../lib/image'
 import ReceiptItemsEditor from './ReceiptItemsEditor'
 
-/** Categories that show the full itemized editor by default. */
-export const ITEMIZED_CATEGORIES = new Set([
-  'Shopping',
-  'Dining',
-  'Health',
-  'Childcare',
-  'Other',
+/** Groups that show the full itemized editor by default. */
+export const ITEMIZED_GROUPS = new Set([
+  'Fixed Expense',
+  'Variable Expense',
 ])
 
 type Step = 'choose' | 'uploading' | 'extracting' | 'review' | 'failed'
@@ -23,6 +19,7 @@ type Step = 'choose' | 'uploading' | 'extracting' | 'review' | 'failed'
 interface Props {
   familyId: string
   today: string
+  subcategoryGroups: BudgetSubcategoryGroup[]
   onClose: () => void
   onConfirmed: () => void
   onEnterManually: () => void
@@ -34,10 +31,29 @@ const POLL_CEILING_MS = 60_000
 export default function ReceiptScanSheet({
   familyId,
   today,
+  subcategoryGroups,
   onClose,
   onConfirmed,
   onEnterManually,
 }: Props) {
+  const groceriesId = useMemo(() => {
+    for (const g of subcategoryGroups) {
+      const found = g.subcategories.find(s => s.role === 'groceries')
+      if (found) return found.id
+    }
+    return subcategoryGroups[0]?.subcategories[0]?.id ?? ''
+  }, [subcategoryGroups])
+
+  const subcategoryMeta = useMemo(() => {
+    const map = new Map<string, { group: string; name: string; role: string | null }>()
+    for (const g of subcategoryGroups) {
+      for (const s of g.subcategories) {
+        map.set(s.id, { group: g.group, name: s.name, role: s.role })
+      }
+    }
+    return map
+  }, [subcategoryGroups])
+
   const [step, setStep] = useState<Step>('choose')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [receiptId, setReceiptId] = useState<string | null>(null)
@@ -45,7 +61,7 @@ export default function ReceiptScanSheet({
   const [saving, setSaving] = useState(false)
   const [showCollapsedItems, setShowCollapsedItems] = useState(false)
 
-  const [category, setCategory] = useState('Shopping')
+  const [subcategoryId, setSubcategoryId] = useState(groceriesId)
   const [merchant, setMerchant] = useState('')
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today)
@@ -59,8 +75,10 @@ export default function ReceiptScanSheet({
   const pollStartedAt = useRef<number>(0)
   const cancelledRef = useRef(false)
 
-  // Reset on mount so React Strict Mode's effect cleanup → re-run cycle
-  // does not permanently abort polling (cancelledRef would stay true).
+  useEffect(() => {
+    if (!subcategoryId && groceriesId) setSubcategoryId(groceriesId)
+  }, [groceriesId, subcategoryId])
+
   useEffect(() => {
     cancelledRef.current = false
     return () => {
@@ -75,7 +93,7 @@ export default function ReceiptScanSheet({
   }, [imageUrl])
 
   const applyReceipt = (receipt: Receipt) => {
-    setCategory(receipt.suggestedCategory ?? 'Shopping')
+    setSubcategoryId(receipt.suggestedSubcategoryId ?? groceriesId)
     setMerchant(receipt.merchant ?? '')
     setDate(receipt.purchasedAt ? dateInputFromIso(receipt.purchasedAt) : today)
     setTotal(receipt.total != null ? String(receipt.total) : '')
@@ -168,11 +186,12 @@ export default function ReceiptScanSheet({
   }
 
   const parsedTotal = Number.parseFloat(total.replace(',', '.'))
-  const isItemized = ITEMIZED_CATEGORIES.has(category)
+  const selectedGroup = subcategoryMeta.get(subcategoryId)?.group ?? ''
+  const isItemized = ITEMIZED_GROUPS.has(selectedGroup) || subcategoryMeta.get(subcategoryId)?.role === 'groceries'
   const valid =
     Number.isFinite(parsedTotal) &&
     parsedTotal > 0 &&
-    Boolean(category) &&
+    Boolean(subcategoryId) &&
     (!isItemized || items.some(item => item.isIncluded && item.name.trim()))
 
   const handleConfirm = async () => {
@@ -180,7 +199,7 @@ export default function ReceiptScanSheet({
     setSaving(true)
     try {
       const draft: ReceiptConfirmDraft = {
-        category,
+        subcategoryId,
         merchant: merchant.trim() || null,
         note: note.trim() || null,
         occurredAt: dateInputToIso(date),
@@ -189,7 +208,7 @@ export default function ReceiptScanSheet({
         items,
       }
       await receiptsApi.confirmReceipt(receiptId, {
-        category: draft.category,
+        subcategory_id: draft.subcategoryId,
         merchant: draft.merchant,
         note: draft.note,
         occurred_at: draft.occurredAt,
@@ -399,12 +418,30 @@ export default function ReceiptScanSheet({
           {errorMessage && (
             <p style={{ color: t.error, fontSize: 13, margin: '0 0 8px' }}>{errorMessage}</p>
           )}
-          <FormField label="Category">
-            <Select
-              value={category}
-              onChange={setCategory}
-              options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))}
-            />
+          <FormField label="Subcategory">
+            <select
+              value={subcategoryId}
+              onChange={e => setSubcategoryId(e.target.value)}
+              aria-label="Budget subcategory"
+              style={{
+                width: '100%',
+                border: `1px solid ${t.border}`,
+                borderRadius: 'var(--ds-radius-md)',
+                padding: '10px 12px',
+                fontSize: 14,
+                background: t.surface,
+                color: t.text,
+                fontFamily: 'var(--ds-font)',
+              }}
+            >
+              {subcategoryGroups.map(g => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.subcategories.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </FormField>
           <FormField label="Merchant">
             <Input placeholder="REWE" value={merchant} onChange={setMerchant} />

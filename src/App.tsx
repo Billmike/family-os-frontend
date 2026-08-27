@@ -6,6 +6,7 @@ import {
   CheckSquare,
   ShoppingCart,
   BarChart3,
+  Wallet,
   Bell,
   ArrowLeft,
   Settings,
@@ -21,7 +22,7 @@ import type {
   ShoppingSessionItem,
   HouseholdSpend,
   BudgetPeriod,
-  BudgetPeriodDraft,
+  BudgetSubcategoryGroup,
   Notification,
   BottomSheetType,
   Member,
@@ -48,7 +49,6 @@ import Dashboard from "./screens/Dashboard";
 import CalendarScreen from "./screens/Calendar";
 import TasksScreen from "./screens/Tasks";
 import ShoppingScreen from "./screens/Shopping";
-import ExpensesScreen from "./screens/Expenses";
 import NotificationsScreen from "./screens/Notifications";
 import FamilyScreen from "./screens/Family";
 import SettingsScreen from "./screens/Settings";
@@ -68,6 +68,7 @@ import {
   toExpense,
   toHouseholdSpend,
   toBudgetPeriod,
+  toBudgetSubcategoryGroups,
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
@@ -83,15 +84,17 @@ import * as shoppingLocationsApi from "./api/shoppingLocations";
 import * as shoppingSessionsApi from "./api/shoppingSessions";
 import * as expensesApi from "./api/expenses";
 import * as budgetsApi from "./api/budgets";
+import * as budgetSubcategoriesApi from "./api/budgetSubcategories";
 import * as notificationsApi from "./api/notifications";
 import * as familiesApi from "./api/families";
 import { useFamilyRealtime } from "./realtime/useFamilyRealtime";
 import TaskDetailSheet from "./components/TaskDetailSheet";
 import ExpenseSheet from "./components/ExpenseSheet";
-import BudgetSheet from "./components/BudgetSheet";
+import CycleDatesSheet from "./components/CycleDatesSheet";
 import ExpenseEntryChooser from "./components/ExpenseEntryChooser";
 import ReceiptScanSheet from "./components/ReceiptScanSheet";
 import ShoppingItemSheet from "./components/ShoppingItemSheet";
+import BudgetScreen, { type BudgetTab } from "./screens/Budget";
 import {
   capturePendingInviteFromUrl,
   clearPendingInviteToken,
@@ -101,7 +104,8 @@ import {
   LOGIN_PATH,
   isLoginPath,
   legacyGoRedirectPath,
-  isExpensesSection,
+  legacyPathRedirect,
+  isBudgetSection,
   pathToScreen,
   screenToPath,
 } from "./routing";
@@ -112,7 +116,14 @@ const BOTTOM_NAV = [
   { screen: "calendar" as Screen, icon: Calendar, label: "Calendar" },
   { screen: "tasks" as Screen, icon: CheckSquare, label: "Tasks" },
   { screen: "shopping" as Screen, icon: ShoppingCart, label: "Shopping" },
-  { screen: "expenses" as Screen, icon: BarChart3, label: "Expenses" },
+  { screen: "budget" as Screen, icon: Wallet, label: "Budget" },
+];
+
+/** The sidebar has room for the Budget sub-views the bottom nav folds into one tab. */
+const DESKTOP_NAV = [
+  ...BOTTOM_NAV,
+  { screen: "budgetSpend" as Screen, icon: BarChart3, label: "Spend" },
+  { screen: "notifications" as Screen, icon: Bell, label: "Notifications" },
 ];
 
 const SCREEN_TITLES: Record<Screen, string> = {
@@ -120,11 +131,25 @@ const SCREEN_TITLES: Record<Screen, string> = {
   calendar: "Calendar",
   tasks: "Tasks",
   shopping: "Shopping",
-  expenses: "Expenses",
-  expenseActivity: "Activity",
+  budget: "Budget",
+  budgetSpend: "Budget",
+  budgetInsights: "Budget",
+  budgetActivity: "Activity",
   notifications: "Notifications",
   family: "Your Family",
   settings: "Settings",
+};
+
+const BUDGET_TAB_SCREENS: Record<BudgetTab, Screen> = {
+  plan: "budget",
+  spend: "budgetSpend",
+  insights: "budgetInsights",
+};
+
+const BUDGET_TAB_BY_SCREEN: Partial<Record<Screen, BudgetTab>> = {
+  budget: "plan",
+  budgetSpend: "spend",
+  budgetInsights: "insights",
 };
 
 /** Stepper taps arrive in bursts, so coalesce them into a single request. */
@@ -285,15 +310,24 @@ function MainApp() {
     routerNavigate(legacyPath, { replace: true });
   }, [location.search, routerNavigate]);
 
+  // Retired routes: /expenses → /budget/spend (query string carries the month over)
+  useEffect(() => {
+    const target = legacyPathRedirect(location.pathname);
+    if (!target) return;
+    routerNavigate(`${target}${location.search}`, { replace: true });
+  }, [location.pathname, location.search, routerNavigate]);
+
   // Unknown paths → home (invite paths are stripped before MainApp mounts)
   useEffect(() => {
     if (legacyGoRedirectPath(location.search)) return;
+    if (legacyPathRedirect(location.pathname)) return;
     if (pathToScreen(location.pathname) !== null) return;
     if (isLoginPath(location.pathname)) return;
     routerNavigate("/", { replace: true });
   }, [location.pathname, location.search, routerNavigate]);
 
   const screen = pathToScreen(location.pathname) ?? "dashboard";
+  const budgetTab = BUDGET_TAB_BY_SCREEN[screen];
 
   const navigateToScreen = useCallback(
     (next: Screen) => {
@@ -317,6 +351,7 @@ function MainApp() {
     null,
   );
   const [budgetPeriod, setBudgetPeriod] = useState<BudgetPeriod | null>(null);
+  const [subcategoryGroups, setSubcategoryGroups] = useState<BudgetSubcategoryGroup[]>([]);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? "");
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today));
@@ -364,7 +399,7 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`;
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`;
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, currentPeriod] =
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, currentPeriod, subcats] =
         await Promise.all([
           dashboardApi.getDashboard(familyId),
           eventsApi.listEvents(familyId, from, to),
@@ -376,6 +411,7 @@ function MainApp() {
           shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
           expensesApi.getSpend(familyId).catch(() => null),
           budgetsApi.getCurrentBudgetPeriod(familyId).catch(() => null),
+          budgetSubcategoriesApi.listBudgetSubcategories(familyId).catch(() => null),
         ]);
 
       setFamilyName(dash.family_name);
@@ -390,6 +426,7 @@ function MainApp() {
       setSessionHistory(history.map(toShoppingSession));
       setHouseholdSpend(spend ? toHouseholdSpend(spend) : null);
       setBudgetPeriod(currentPeriod ? toBudgetPeriod(currentPeriod) : null);
+      if (subcats) setSubcategoryGroups(toBudgetSubcategoryGroups(subcats));
 
       const groceries =
         lists.find((l) => l.name.toLowerCase() === "groceries") ??
@@ -429,6 +466,15 @@ function MainApp() {
       setBudgetPeriod(data ? toBudgetPeriod(data) : null);
     } catch {
       /* keep the last known budgets */
+    }
+  }, [family.id]);
+
+  const refreshSubcategories = useCallback(async () => {
+    try {
+      const data = await budgetSubcategoriesApi.listBudgetSubcategories(family.id);
+      setSubcategoryGroups(toBudgetSubcategoryGroups(data));
+    } catch {
+      /* keep last known */
     }
   }, [family.id]);
 
@@ -647,35 +693,107 @@ function MainApp() {
     }
   }
 
-  async function saveBudgets(draft: BudgetPeriodDraft) {
+  async function saveCycleDates(draft: {
+    startDate: string
+    endDate: string
+    periodId: string | null
+    copy: boolean
+  }) {
     try {
-      const budgetLines = draft.rows
-        .map(row => {
-          const trimmed = row.amount.trim()
-          const parsed = Number.parseFloat(trimmed.replace(',', '.'))
-          if (!trimmed || !Number.isFinite(parsed) || parsed <= 0) return null
-          return { category: row.category, amount: parsed }
-        })
-        .filter((row): row is { category: string | null; amount: number } => row != null)
-
+      const labelMonth = draft.endDate.slice(0, 7)
       if (draft.periodId) {
         await budgetsApi.updateBudgetPeriod(draft.periodId, {
           start_date: draft.startDate,
           end_date: draft.endDate,
-          label_month: draft.endDate.slice(0, 7),
-          budgets: budgetLines,
+          label_month: labelMonth,
+        })
+      } else if (draft.copy) {
+        await budgetsApi.copyBudgetPeriod(family.id, {
+          start_date: draft.startDate,
+          end_date: draft.endDate,
+          label_month: labelMonth,
+          source_period_id: budgetPeriod?.id ?? null,
         })
       } else {
+        const existingLines =
+          budgetPeriod?.groups.flatMap(g =>
+            g.lines.map(l => ({ subcategory_id: l.subcategoryId, amount: l.amount })),
+          ) ?? []
         await budgetsApi.createBudgetPeriod(family.id, {
           start_date: draft.startDate,
           end_date: draft.endDate,
-          label_month: draft.endDate.slice(0, 7),
-          budgets: budgetLines,
+          label_month: labelMonth,
+          budgets: existingLines,
         })
       }
       setSheet(null)
-      showToast('Budgets saved')
+      showToast('Budget cycle saved')
       void refreshBudgets()
+      void refreshSpend()
+      void refreshSubcategories()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function updateBudgetExpected(budgetId: string, amount: number) {
+    try {
+      await budgetsApi.updateBudget(budgetId, amount)
+      void refreshBudgets()
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function addBudgetLine(subcategoryId: string, amount: number) {
+    if (!budgetPeriod) {
+      showToast('Start a budget cycle first', 'error')
+      return
+    }
+    try {
+      const lines = budgetPeriod.groups.flatMap(g =>
+        g.lines.map(l => ({ subcategory_id: l.subcategoryId, amount: l.amount })),
+      )
+      const existing = lines.find(l => l.subcategory_id === subcategoryId)
+      if (existing) existing.amount = amount
+      else lines.push({ subcategory_id: subcategoryId, amount })
+      await budgetsApi.updateBudgetPeriod(budgetPeriod.id, { budgets: lines })
+      void refreshBudgets()
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function addBudgetSubcategory(group: string, name: string): Promise<string | null> {
+    try {
+      const row = await budgetSubcategoriesApi.createBudgetSubcategory(family.id, {
+        group,
+        name,
+      })
+      await refreshSubcategories()
+      return row.id
+    } catch (e) {
+      handleError(e)
+      return null
+    }
+  }
+
+  async function settleBudgetLine(budgetId: string) {
+    try {
+      const period = await budgetsApi.settleBudget(budgetId)
+      setBudgetPeriod(toBudgetPeriod(period))
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function unsettleBudgetLine(budgetId: string) {
+    try {
+      const period = await budgetsApi.unsettleBudget(budgetId)
+      setBudgetPeriod(toBudgetPeriod(period))
       void refreshSpend()
     } catch (e) {
       handleError(e)
@@ -686,7 +804,7 @@ function MainApp() {
     try {
       await expensesApi.createExpense(family.id, {
         amount: input.amount,
-        category: input.category,
+        subcategory_id: input.subcategoryId,
         merchant: input.merchant,
         note: input.note,
         occurred_at: input.occurredAt,
@@ -704,7 +822,7 @@ function MainApp() {
     try {
       await expensesApi.updateExpense(id, {
         amount: input.amount,
-        category: input.category,
+        subcategory_id: input.subcategoryId,
         merchant: input.merchant,
         note: input.note,
         occurred_at: input.occurredAt,
@@ -1054,11 +1172,11 @@ function MainApp() {
     screen === "notifications" ||
     screen === "family" ||
     screen === "settings" ||
-    screen === "expenseActivity";
+    screen === "budgetActivity";
   const headerBackScreen: Screen =
-    screen === "expenseActivity" ? "expenses" : "dashboard";
+    screen === "budgetActivity" ? "budgetSpend" : "dashboard";
   const showHeaderTitle =
-    !isDashboard && (!isSubScreen || screen === "expenseActivity");
+    !isDashboard && (!isSubScreen || screen === "budgetActivity");
 
   function AppHeader() {
     return (
@@ -1249,18 +1367,12 @@ function MainApp() {
             FamilyOS
           </span>
         </div>
-        {[
-          ...BOTTOM_NAV,
-          {
-            screen: "notifications" as Screen,
-            icon: Bell,
-            label: "Notifications",
-          },
-        ].map((item) => {
+        {DESKTOP_NAV.map((item) => {
           const Icon = item.icon;
           const active =
             screen === item.screen ||
-            (item.screen === "expenses" && isExpensesSection(screen));
+            (item.screen === "budget" && screen === "budgetInsights") ||
+            (item.screen === "budgetSpend" && screen === "budgetActivity");
           return (
             <button
               key={item.screen}
@@ -1367,7 +1479,7 @@ function MainApp() {
           const Icon = item.icon;
           const active =
             screen === item.screen ||
-            (item.screen === "expenses" && isExpensesSection(screen));
+            (item.screen === "budget" && isBudgetSection(screen));
           return (
             <button
               key={item.screen}
@@ -1548,18 +1660,30 @@ function MainApp() {
                 reorderSession={reorderSession}
               />
             )}
-            {screen === "expenses" && (
-              <ExpensesScreen
+            {screen === "budgetActivity" && (
+              <ExpenseActivityScreen
                 spend={householdSpend}
-                budgetPeriod={budgetPeriod}
                 loadMonthExpenses={loadMonthExpenses}
                 {...handlers}
               />
             )}
-            {screen === "expenseActivity" && (
-              <ExpenseActivityScreen
+            {budgetTab && (
+              <BudgetScreen
+                tab={budgetTab}
+                onSelectTab={(next) => navigateToScreen(BUDGET_TAB_SCREENS[next])}
+                period={budgetPeriod}
+                subcategoryGroups={subcategoryGroups}
                 spend={householdSpend}
                 loadMonthExpenses={loadMonthExpenses}
+                loading={loading}
+                onCreateCycle={() => setSheet({ type: 'cycleDates', mode: 'create' })}
+                onCopyCycle={() => setSheet({ type: 'cycleDates', mode: 'copy' })}
+                onEditDates={() => setSheet({ type: 'cycleDates', mode: 'current' })}
+                onUpdateExpected={updateBudgetExpected}
+                onAddLine={addBudgetLine}
+                onAddSubcategory={addBudgetSubcategory}
+                onSettle={settleBudgetLine}
+                onUnsettle={unsettleBudgetLine}
                 {...handlers}
               />
             )}
@@ -1680,6 +1804,7 @@ function MainApp() {
       {sheet?.type === "addExpense" && (
         <ExpenseSheet
           today={today}
+          subcategoryGroups={subcategoryGroups}
           onClose={() => setSheet(null)}
           onSave={handlers.addExpense}
           onScanReceipt={() => setSheet({ type: "scanReceipt" })}
@@ -1696,6 +1821,7 @@ function MainApp() {
         <ReceiptScanSheet
           familyId={family.id}
           today={today}
+          subcategoryGroups={subcategoryGroups}
           onClose={() => setSheet(null)}
           onConfirmed={handlers.onReceiptConfirmed}
           onEnterManually={() => setSheet({ type: "addExpense" })}
@@ -1705,17 +1831,18 @@ function MainApp() {
         <ExpenseSheet
           expense={sheet.expense}
           today={today}
+          subcategoryGroups={subcategoryGroups}
           onClose={() => setSheet(null)}
           onSave={(input) => handlers.updateExpense(sheet.expense.id, input)}
           onDelete={handlers.deleteExpense}
         />
       )}
-      {sheet?.type === "budgets" && (
-        <BudgetSheet
+      {sheet?.type === "cycleDates" && (
+        <CycleDatesSheet
           period={budgetPeriod}
-          mode={sheet.mode === "next" ? "next" : "current"}
+          mode={sheet.mode ?? 'create'}
           onClose={() => setSheet(null)}
-          onSave={saveBudgets}
+          onSave={saveCycleDates}
         />
       )}
       {sheet?.type === "eventDetail" && (

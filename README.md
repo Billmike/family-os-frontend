@@ -110,10 +110,11 @@ client/
 │   ├── realtime/
 │   │   └── useFamilyRealtime.ts  # WebSocket hook — live family data sync
 │   ├── screens/             # Top-level screen components (one per route)
+│   │   ├── Budget.tsx           # Budget section shell: Plan / Spend / Insights tabs
 │   │   ├── Calendar.tsx
 │   │   ├── Dashboard.tsx
 │   │   ├── ExpenseActivity.tsx
-│   │   ├── Expenses.tsx
+│   │   ├── Expenses.tsx         # Rendered as the Budget "Spend" tab
 │   │   ├── Family.tsx
 │   │   ├── Notifications.tsx
 │   │   ├── Onboarding.tsx
@@ -159,13 +160,19 @@ Routes are defined declaratively in `src/routing.ts` as a bidirectional `Screen 
 | `/calendar` | Calendar |
 | `/tasks` | Tasks |
 | `/shopping` | Shopping |
-| `/expenses` | Expenses |
-| `/expenses/activity` | Expense Activity |
+| `/budget` | Budget — Plan tab |
+| `/budget/spend` | Budget — Spend tab |
+| `/budget/insights` | Budget — Insights tab |
+| `/budget/activity` | Expense Activity (sub-screen) |
 | `/notifications` | Notifications |
 | `/family` | Your Family |
 | `/settings` | Settings |
 | `/login` | Onboarding / Login |
 | `/invite/:token` | Auto-join via invite link |
+
+Retired paths are redirected by `legacyPathRedirect`: `/expenses` → `/budget/spend`, `/expenses/activity` → `/budget/activity` (the `?month=` query is preserved), and `/insights` → `/budget`.
+
+The mobile bottom nav shows five destinations — Home, Calendar, Tasks, Shopping, Budget — and highlights Budget for any path in the budget section. The desktop sidebar additionally lists Spend and Notifications.
 
 ### Real-time Sync
 

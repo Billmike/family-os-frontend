@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { BarChart3, ChevronLeft, ChevronRight, Pencil, Plus, Receipt } from 'lucide-react'
 import type { Expense, HouseholdSpend, AppHandlers } from '../types'
-import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS } from '../ui'
+import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS } from '../ui'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { useMonthExpenses } from '../hooks/useMonthExpenses'
 import {
@@ -13,7 +13,7 @@ import {
   formatYearMonthTitle,
   shiftYearMonth,
 } from '../api/adapters'
-import { expenseActivityPath, parseYearMonth } from '../routing'
+import { budgetActivityPath, parseYearMonth } from '../routing'
 
 interface Props {
   spend: HouseholdSpend | null
@@ -64,7 +64,7 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
   useEffect(() => {
     if (!selectedMonth) return
     if (queryMonth === selectedMonth) return
-    routerNavigate(expenseActivityPath(selectedMonth), { replace: true })
+    routerNavigate(budgetActivityPath(selectedMonth), { replace: true })
   }, [selectedMonth, queryMonth, routerNavigate])
 
   const handleAdd = () => {
@@ -153,8 +153,8 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
                 const title = expenseTitle(expense)
                 const itemCount = expense.sourceItemCount
                 const subtitle = expense.sourceType === 'shopping_session' && itemCount != null
-                  ? `${expense.category} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
-                  : expense.category
+                  ? `${expense.group} · ${expense.subcategoryName} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
+                  : `${expense.group} · ${expense.subcategoryName}`
                 return (
                   <button
                     key={expense.id}
@@ -183,13 +183,13 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
                         height: 32,
                         borderRadius: 10,
                         background: t.surfaceMuted,
-                        color: EXPENSE_CATEGORY_COLORS[expense.category] ?? t.textSec,
+                        color: BUDGET_GROUP_COLORS[expense.group] ?? t.textSec,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
                       }}>
-                        <ExpenseCategoryIcon category={expense.category} size={16} />
+                        <ExpenseCategoryIcon category={expense.group} size={16} />
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
@@ -228,8 +228,8 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
                         <td style={{ ...cellStyle, fontWeight: 500 }}>{title}</td>
                         <td style={cellStyle}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            <ExpenseCategoryIcon category={expense.category} size={14} />
-                            {expense.category}
+                            <ExpenseCategoryIcon category={expense.group} size={14} />
+                            {expense.group} · {expense.subcategoryName}
                           </span>
                         </td>
                         <td style={{

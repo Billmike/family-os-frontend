@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'expenses' | 'expenseActivity' | 'notifications' | 'family' | 'settings'
+export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'budget' | 'budgetSpend' | 'budgetInsights' | 'budgetActivity' | 'notifications' | 'family' | 'settings'
 
 export interface Member {
   id: string
@@ -92,26 +92,45 @@ export interface ShoppingSession {
   items?: ShoppingSessionItem[]
 }
 
-export const EXPENSE_CATEGORIES = [
-  'Shopping',
-  'Transportation',
-  'Housing',
-  'Utilities',
-  'Dining',
-  'Health',
-  'Childcare',
-  'Other',
+export const BUDGET_GROUPS = [
+  'Income',
+  'Fixed Expense',
+  'Variable Expense',
+  'Debt',
+  'Savings',
+  'Investment',
 ] as const
 
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+export type BudgetGroup = (typeof BUDGET_GROUPS)[number]
 
-export type ExpenseSourceType = 'manual' | 'shopping_session' | 'receipt'
+export type BudgetDirection = 'inflow' | 'outflow'
+
+export type ExpenseSourceType = 'manual' | 'shopping_session' | 'receipt' | 'budget_line'
+
+export interface BudgetSubcategory {
+  id: string
+  familyId: string
+  group: BudgetGroup | string
+  name: string
+  sortOrder: number
+  role: string | null
+  archivedAt: string | null
+}
+
+export interface BudgetSubcategoryGroup {
+  group: BudgetGroup | string
+  direction: BudgetDirection
+  subcategories: BudgetSubcategory[]
+}
 
 export interface Expense {
   id: string
   amount: number
   currency: string
-  category: string
+  subcategoryId: string
+  subcategoryName: string
+  group: string
+  direction: BudgetDirection
   merchant: string | null
   note: string | null
   occurredAt: string
@@ -145,6 +164,7 @@ export interface Receipt {
   originalFilename: string | null
   categoryHint: string | null
   suggestedCategory: string | null
+  suggestedSubcategoryId: string | null
   merchant: string | null
   purchasedAt: string | null
   currency: string | null
@@ -179,15 +199,36 @@ export interface Budget {
   id: string
   periodId: string
   familyId: string
-  category: string | null
+  subcategoryId: string
+  subcategoryName: string
+  group: string
   amount: number
   currency: string
   used: number
   remaining: number
   percentUsed: number
   state: BudgetState
+  settled: boolean
+  settlementExpenseId: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface BudgetGroupBlock {
+  group: string
+  direction: BudgetDirection
+  expected: number
+  actual: number
+  lines: Budget[]
+}
+
+export interface BudgetPeriodSummary {
+  incomeExpected: number
+  incomeActual: number
+  totalExpensesExpected: number
+  totalExpensesActual: number
+  leftOverExpected: number
+  leftOverActual: number
 }
 
 export interface BudgetPeriod {
@@ -197,8 +238,8 @@ export interface BudgetPeriod {
   endDate: string
   labelMonth: string
   currency: string
-  overall: Budget | null
-  categories: Budget[]
+  groups: BudgetGroupBlock[]
+  summary: BudgetPeriodSummary
   createdAt: string
   updatedAt: string
 }
@@ -211,13 +252,15 @@ export interface BudgetPeriodDraft {
 }
 
 export interface BudgetRowDraft {
-  category: string | null
+  subcategoryId: string
   amount: string
   budgetId: string | null
 }
 
 export interface CategorySpend {
   category: string
+  subcategoryId: string | null
+  group: string | null
   total: number
   count: number
 }
@@ -262,7 +305,7 @@ export type BottomSheetType =
   | { type: 'chooseExpenseEntry' }
   | { type: 'scanReceipt' }
   | { type: 'editExpense'; expense: Expense }
-  | { type: 'budgets'; mode?: 'current' | 'next' }
+  | { type: 'cycleDates'; mode?: 'current' | 'next' | 'create' | 'copy' }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
   | { type: 'taskDetail'; taskId: string }
@@ -303,7 +346,7 @@ export type ShoppingItemPatch = Partial<ShoppingItemDraft>
 
 export interface ExpenseDraft {
   amount: number
-  category: string
+  subcategoryId: string
   merchant: string | null
   note: string | null
   occurredAt: string
@@ -320,7 +363,7 @@ export interface ReceiptItemDraft {
 }
 
 export interface ReceiptConfirmDraft {
-  category: string
+  subcategoryId: string
   merchant: string | null
   note: string | null
   occurredAt: string

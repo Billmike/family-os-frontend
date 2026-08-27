@@ -1,6 +1,6 @@
 import { type CSSProperties, type InputHTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, Equal, Heart, Home, Minus, MoreHorizontal, Plus, Settings2, ShoppingCart, User, UtensilsCrossed, X, Zap } from 'lucide-react'
+import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, CreditCard, Equal, Heart, Home, Minus, MoreHorizontal, PiggyBank, Plus, Settings2, ShoppingCart, TrendingUp, User, UtensilsCrossed, Wallet, X, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Member } from './types'
 import { TASK_CATEGORIES } from './types'
@@ -447,9 +447,11 @@ const inputBase: CSSProperties = {
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 
-export function Input({ placeholder, value, onChange, autoFocus, type = 'text', inputMode }: {
+export function Input({ placeholder, value, onChange, autoFocus, type = 'text', inputMode, onBlur, 'aria-label': ariaLabel }: {
   placeholder?: string; value?: string; onChange?: (v: string) => void;
   autoFocus?: boolean; type?: string; inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode']
+  onBlur?: () => void
+  'aria-label'?: string
 }) {
   return (
     <input
@@ -459,9 +461,14 @@ export function Input({ placeholder, value, onChange, autoFocus, type = 'text', 
       placeholder={placeholder}
       value={value}
       autoFocus={autoFocus}
+      aria-label={ariaLabel}
       onChange={e => onChange?.(e.target.value)}
       onFocus={e => { e.target.style.borderColor = 'var(--ds-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--ds-focus)' }}
-      onBlur={e => { e.target.style.borderColor = 'var(--ds-border-strong)'; e.target.style.boxShadow = 'none' }}
+      onBlur={e => {
+        e.target.style.borderColor = 'var(--ds-border-strong)'
+        e.target.style.boxShadow = 'none'
+        onBlur?.()
+      }}
     />
   )
 }
@@ -671,6 +678,15 @@ const EXPENSE_CATEGORY_ICONS: Record<string, LucideIcon> = {
   Health: Heart,
   Childcare: Baby,
   Other: MoreHorizontal,
+  // New budget groups (and common subcategory labels)
+  Income: Wallet,
+  'Fixed Expense': Home,
+  'Variable Expense': ShoppingCart,
+  Debt: CreditCard,
+  Savings: PiggyBank,
+  Investment: TrendingUp,
+  Groceries: ShoppingCart,
+  Transport: Car,
 }
 
 export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
@@ -684,8 +700,27 @@ export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
   Other: 'var(--ds-text-tertiary)',
 }
 
+export const BUDGET_GROUP_COLORS: Record<string, string> = {
+  Income: '#2F6B4F',
+  'Fixed Expense': '#1E3A5F',
+  'Variable Expense': '#A67C52',
+  Debt: '#8B2E2E',
+  Savings: '#5B3A6E',
+  Investment: '#2F6B4F',
+  Summary: '#8B7355',
+}
+
+export const BUDGET_GROUP_ICONS: Record<string, LucideIcon> = {
+  Income: Wallet,
+  'Fixed Expense': Home,
+  'Variable Expense': ShoppingCart,
+  Debt: CreditCard,
+  Savings: PiggyBank,
+  Investment: TrendingUp,
+}
+
 export function expenseCategoryLucideIcon(category: string): LucideIcon {
-  return EXPENSE_CATEGORY_ICONS[category] ?? MoreHorizontal
+  return EXPENSE_CATEGORY_ICONS[category] ?? BUDGET_GROUP_ICONS[category] ?? MoreHorizontal
 }
 
 export function ExpenseCategoryIcon({ category, size = 14 }: {
@@ -693,6 +728,14 @@ export function ExpenseCategoryIcon({ category, size = 14 }: {
   size?: number
 }) {
   const Icon = expenseCategoryLucideIcon(category)
+  return <Icon size={size} strokeWidth={1.75} aria-hidden />
+}
+
+export function BudgetGroupIcon({ group, size = 14 }: {
+  group: string
+  size?: number
+}) {
+  const Icon = BUDGET_GROUP_ICONS[group] ?? MoreHorizontal
   return <Icon size={size} strokeWidth={1.75} aria-hidden />
 }
 

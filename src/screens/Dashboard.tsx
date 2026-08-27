@@ -61,10 +61,10 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
         icon={<BarChart3 size={16} color={t.primary} strokeWidth={1.75} />}
         title="Spend"
         count="this month"
-        onViewAll={() => navigate('expenses')}
+        onViewAll={() => navigate('budgetSpend')}
         viewLabel="Expenses"
       >
-        <SpendSnapshot spend={spend} onOpen={() => navigate('expenses')} />
+        <SpendSnapshot spend={spend} onOpen={() => navigate('budgetSpend')} />
       </DashSection>
 
       {/* ─── Today section ──────────────────────────────────────────────────── */}

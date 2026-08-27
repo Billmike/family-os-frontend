@@ -10,8 +10,10 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   calendar: '/calendar',
   tasks: '/tasks',
   shopping: '/shopping',
-  expenses: '/expenses',
-  expenseActivity: '/expenses/activity',
+  budget: '/budget',
+  budgetSpend: '/budget/spend',
+  budgetInsights: '/budget/insights',
+  budgetActivity: '/budget/activity',
   notifications: '/notifications',
   family: '/family',
   settings: '/settings',
@@ -22,12 +24,20 @@ const PATH_TO_SCREEN: Record<string, Screen> = {
   '/calendar': 'calendar',
   '/tasks': 'tasks',
   '/shopping': 'shopping',
-  '/expenses': 'expenses',
-  '/expenses/activity': 'expenseActivity',
-  '/insights': 'expenses',
+  '/budget': 'budget',
+  '/budget/spend': 'budgetSpend',
+  '/budget/insights': 'budgetInsights',
+  '/budget/activity': 'budgetActivity',
   '/notifications': 'notifications',
   '/family': 'family',
   '/settings': 'settings',
+}
+
+/** Paths from earlier releases that still need to resolve for bookmarks and push links. */
+const LEGACY_PATH_REDIRECTS: Record<string, string> = {
+  '/expenses': SCREEN_PATHS.budgetSpend,
+  '/expenses/activity': SCREEN_PATHS.budgetActivity,
+  '/insights': SCREEN_PATHS.budget,
 }
 
 export function parseYearMonth(value: string | null | undefined): string | null {
@@ -35,15 +45,20 @@ export function parseYearMonth(value: string | null | undefined): string | null 
   return value
 }
 
-export function expenseActivityPath(month?: string | null): string {
-  const path = SCREEN_PATHS.expenseActivity
+export function budgetActivityPath(month?: string | null): string {
+  const path = SCREEN_PATHS.budgetActivity
   const parsed = parseYearMonth(month)
   if (!parsed) return path
   return `${path}?month=${parsed}`
 }
 
-export function isExpensesSection(screen: Screen): boolean {
-  return screen === 'expenses' || screen === 'expenseActivity'
+export function isBudgetSection(screen: Screen): boolean {
+  return (
+    screen === 'budget'
+    || screen === 'budgetSpend'
+    || screen === 'budgetInsights'
+    || screen === 'budgetActivity'
+  )
 }
 
 const LEGACY_GO_SCREENS = new Set<Screen>([
@@ -68,6 +83,11 @@ export function pathToScreen(pathname: string): Screen | null {
 
 export function isLoginPath(pathname: string): boolean {
   return normalizePathname(pathname) === LOGIN_PATH
+}
+
+/** Returns the current path for a retired route, otherwise null. */
+export function legacyPathRedirect(pathname: string): string | null {
+  return LEGACY_PATH_REDIRECTS[normalizePathname(pathname)] ?? null
 }
 
 /**

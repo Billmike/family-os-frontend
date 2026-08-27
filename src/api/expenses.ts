@@ -3,7 +3,7 @@ import type { ExpenseOut, HouseholdSpendOut } from './types'
 
 export interface ExpenseCreate {
   amount: number | string
-  category: string
+  subcategory_id: string
   merchant?: string | null
   note?: string | null
   occurred_at?: string | null

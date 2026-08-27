@@ -594,35 +594,17 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
 
   return (
     <div style={{
-      padding: '12px 16px',
+      padding: '12px 16px 12px 60px',
       borderTop: divider ? `1px solid ${t.border}` : 'none',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              background: t.surfaceMuted,
-              color,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Receipt size={16} strokeWidth={1.75} />
-          </span>
-          <span style={{ fontSize: 14, color: t.text, fontWeight: 500 }}>{category}</span>
-        </div>
+        <span style={{ fontSize: 14, color: t.textSec, fontWeight: 500, minWidth: 0 }}>{category}</span>
         {hasBudget && budget ? (
-          <span style={{ fontSize: 13, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: t.textSec, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
             {formatMoney(amount, currency)} / {formatMoney(budget.amount, currency)}
           </span>
         ) : (
-          <span style={{ fontSize: 14, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.textSec, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
             {formatMoney(amount, currency)}
           </span>
         )}

@@ -466,7 +466,6 @@ function SpendGroupList({
                   budget={line.budget}
                   color={color}
                   divider
-                  nested
                 />
               ))}
             </div>
@@ -576,7 +575,7 @@ function SpendGroupHeader({
   )
 }
 
-function CategoryRow({ category, amount, currency, share, budget, color, divider, nested }: {
+function CategoryRow({ category, amount, currency, share, budget, color, divider }: {
   category: string
   amount: number
   currency: string
@@ -584,7 +583,6 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
   budget?: Budget | null
   color: string
   divider: boolean
-  nested?: boolean
 }) {
   const hasBudget = Boolean(budget && budget.amount > 0)
   const fillPercent = hasBudget && budget
@@ -596,13 +594,26 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
 
   return (
     <div style={{
-      padding: nested ? '12px 16px 12px 60px' : '12px 16px',
+      padding: '12px 16px',
       borderTop: divider ? `1px solid ${t.border}` : 'none',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ color, display: 'flex' }}>
-            <ExpenseCategoryIcon category={category} size={16} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span
+            aria-hidden
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: t.surfaceMuted,
+              color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Receipt size={16} strokeWidth={1.75} />
           </span>
           <span style={{ fontSize: 14, color: t.text, fontWeight: 500 }}>{category}</span>
         </div>

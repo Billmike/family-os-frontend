@@ -69,6 +69,9 @@ import {
   toHouseholdSpend,
   toBudgetPeriod,
   toBudgetSubcategoryGroups,
+  sortBudgetPeriods,
+  pickDefaultPeriodId,
+  parseOverlapRange,
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
@@ -91,6 +94,7 @@ import { useFamilyRealtime } from "./realtime/useFamilyRealtime";
 import TaskDetailSheet from "./components/TaskDetailSheet";
 import ExpenseSheet from "./components/ExpenseSheet";
 import CycleDatesSheet from "./components/CycleDatesSheet";
+import CycleListSheet from "./components/CycleListSheet";
 import ExpenseEntryChooser from "./components/ExpenseEntryChooser";
 import ReceiptScanSheet from "./components/ReceiptScanSheet";
 import ShoppingItemSheet from "./components/ShoppingItemSheet";
@@ -350,7 +354,10 @@ function MainApp() {
   const [householdSpend, setHouseholdSpend] = useState<HouseholdSpend | null>(
     null,
   );
-  const [budgetPeriod, setBudgetPeriod] = useState<BudgetPeriod | null>(null);
+  const [budgetPeriods, setBudgetPeriods] = useState<BudgetPeriod[]>([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
+  const budgetPeriod =
+    budgetPeriods.find((p) => p.id === selectedPeriodId) ?? null;
   const [subcategoryGroups, setSubcategoryGroups] = useState<BudgetSubcategoryGroup[]>([]);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? "");
@@ -399,7 +406,7 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`;
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`;
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, currentPeriod, subcats] =
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, listedPeriods, subcats] =
         await Promise.all([
           dashboardApi.getDashboard(familyId),
           eventsApi.listEvents(familyId, from, to),
@@ -410,7 +417,7 @@ function MainApp() {
           shoppingSessionsApi.getActiveSession(familyId),
           shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
           expensesApi.getSpend(familyId).catch(() => null),
-          budgetsApi.getCurrentBudgetPeriod(familyId).catch(() => null),
+          budgetsApi.listBudgetPeriods(familyId).catch(() => null),
           budgetSubcategoriesApi.listBudgetSubcategories(familyId).catch(() => null),
         ]);
 
@@ -425,7 +432,11 @@ function MainApp() {
       setActiveSession(activeSess ? toShoppingSession(activeSess) : null);
       setSessionHistory(history.map(toShoppingSession));
       setHouseholdSpend(spend ? toHouseholdSpend(spend) : null);
-      setBudgetPeriod(currentPeriod ? toBudgetPeriod(currentPeriod) : null);
+      const nextPeriods = listedPeriods
+        ? sortBudgetPeriods(listedPeriods.periods.map(toBudgetPeriod))
+        : [];
+      setBudgetPeriods(nextPeriods);
+      setSelectedPeriodId(pickDefaultPeriodId(nextPeriods, today));
       if (subcats) setSubcategoryGroups(toBudgetSubcategoryGroups(subcats));
 
       const groceries =
@@ -460,14 +471,20 @@ function MainApp() {
     }
   }, [family.id]);
 
-  const refreshBudgets = useCallback(async () => {
+  const refreshBudgets = useCallback(async (selectId?: string) => {
     try {
-      const data = await budgetsApi.getCurrentBudgetPeriod(family.id);
-      setBudgetPeriod(data ? toBudgetPeriod(data) : null);
+      const data = await budgetsApi.listBudgetPeriods(family.id);
+      const next = sortBudgetPeriods(data.periods.map(toBudgetPeriod));
+      setBudgetPeriods(next);
+      setSelectedPeriodId((prev) => {
+        if (selectId && next.some((p) => p.id === selectId)) return selectId;
+        if (prev && next.some((p) => p.id === prev)) return prev;
+        return pickDefaultPeriodId(next, today);
+      });
     } catch {
       /* keep the last known budgets */
     }
-  }, [family.id]);
+  }, [family.id, today]);
 
   const refreshSubcategories = useCallback(async () => {
     try {
@@ -701,14 +718,15 @@ function MainApp() {
   }) {
     try {
       const labelMonth = draft.endDate.slice(0, 7)
+      let saved
       if (draft.periodId) {
-        await budgetsApi.updateBudgetPeriod(draft.periodId, {
+        saved = await budgetsApi.updateBudgetPeriod(draft.periodId, {
           start_date: draft.startDate,
           end_date: draft.endDate,
           label_month: labelMonth,
         })
       } else if (draft.copy) {
-        await budgetsApi.copyBudgetPeriod(family.id, {
+        saved = await budgetsApi.copyBudgetPeriod(family.id, {
           start_date: draft.startDate,
           end_date: draft.endDate,
           label_month: labelMonth,
@@ -719,7 +737,7 @@ function MainApp() {
           budgetPeriod?.groups.flatMap(g =>
             g.lines.map(l => ({ subcategory_id: l.subcategoryId, amount: l.amount })),
           ) ?? []
-        await budgetsApi.createBudgetPeriod(family.id, {
+        saved = await budgetsApi.createBudgetPeriod(family.id, {
           start_date: draft.startDate,
           end_date: draft.endDate,
           label_month: labelMonth,
@@ -728,11 +746,13 @@ function MainApp() {
       }
       setSheet(null)
       showToast('Budget cycle saved')
-      void refreshBudgets()
+      void refreshBudgets(saved.id)
       void refreshSpend()
       void refreshSubcategories()
     } catch (e) {
       handleError(e)
+      const range = e instanceof ApiError ? parseOverlapRange(e.message) : null
+      if (range) setSheet({ type: 'cycleList', highlightRange: range })
     }
   }
 
@@ -783,7 +803,11 @@ function MainApp() {
   async function settleBudgetLine(budgetId: string) {
     try {
       const period = await budgetsApi.settleBudget(budgetId)
-      setBudgetPeriod(toBudgetPeriod(period))
+      const updated = toBudgetPeriod(period)
+      setBudgetPeriods((prev) =>
+        sortBudgetPeriods(prev.map((p) => (p.id === updated.id ? updated : p))),
+      )
+      setSelectedPeriodId(updated.id)
       void refreshSpend()
     } catch (e) {
       handleError(e)
@@ -793,8 +817,23 @@ function MainApp() {
   async function unsettleBudgetLine(budgetId: string) {
     try {
       const period = await budgetsApi.unsettleBudget(budgetId)
-      setBudgetPeriod(toBudgetPeriod(period))
+      const updated = toBudgetPeriod(period)
+      setBudgetPeriods((prev) =>
+        sortBudgetPeriods(prev.map((p) => (p.id === updated.id ? updated : p))),
+      )
+      setSelectedPeriodId(updated.id)
       void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
+  async function deleteBudgetCycle(periodId: string) {
+    try {
+      await budgetsApi.deleteBudgetPeriod(periodId)
+      showToast("Budget cycle deleted")
+      await refreshBudgets()
+      setSheet(null)
     } catch (e) {
       handleError(e)
     }
@@ -1672,10 +1711,15 @@ function MainApp() {
                 tab={budgetTab}
                 onSelectTab={(next) => navigateToScreen(BUDGET_TAB_SCREENS[next])}
                 period={budgetPeriod}
+                periods={budgetPeriods}
+                selectedPeriodId={selectedPeriodId}
+                today={today}
                 subcategoryGroups={subcategoryGroups}
                 spend={householdSpend}
                 loadMonthExpenses={loadMonthExpenses}
                 loading={loading}
+                onSelectPeriod={setSelectedPeriodId}
+                onOpenCycleList={() => setSheet({ type: 'cycleList' })}
                 onCreateCycle={() => setSheet({ type: 'cycleDates', mode: 'create' })}
                 onCopyCycle={() => setSheet({ type: 'cycleDates', mode: 'copy' })}
                 onEditDates={() => setSheet({ type: 'cycleDates', mode: 'current' })}
@@ -1840,9 +1884,28 @@ function MainApp() {
       {sheet?.type === "cycleDates" && (
         <CycleDatesSheet
           period={budgetPeriod}
+          periods={budgetPeriods}
           mode={sheet.mode ?? 'create'}
           onClose={() => setSheet(null)}
           onSave={saveCycleDates}
+        />
+      )}
+      {sheet?.type === "cycleList" && (
+        <CycleListSheet
+          periods={budgetPeriods}
+          selectedPeriodId={selectedPeriodId}
+          today={today}
+          highlightRange={sheet.highlightRange}
+          onClose={() => setSheet(null)}
+          onSelect={(id) => {
+            setSelectedPeriodId(id)
+            setSheet(null)
+          }}
+          onEditDates={(id) => {
+            setSelectedPeriodId(id)
+            setSheet({ type: 'cycleDates', mode: 'current' })
+          }}
+          onDelete={deleteBudgetCycle}
         />
       )}
       {sheet?.type === "eventDetail" && (

@@ -333,6 +333,68 @@ export function formatCycleDateRange(startDate: string, endDate: string): string
   return `${startLabel} – ${endLabel}`
 }
 
+export function formatCycleDay(isoDate: string): string {
+  return new Date(`${isoDate}T12:00:00`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+export type CycleStatus = 'current' | 'ended' | 'upcoming'
+
+export function cycleStatus(period: { startDate: string; endDate: string }, today: string): CycleStatus {
+  if (period.startDate <= today && period.endDate >= today) return 'current'
+  if (period.endDate < today) return 'ended'
+  return 'upcoming'
+}
+
+export function sortBudgetPeriods<T extends { startDate: string; endDate: string }>(periods: T[]): T[] {
+  return [...periods].sort((a, b) => {
+    const start = a.startDate.localeCompare(b.startDate)
+    if (start !== 0) return start
+    return a.endDate.localeCompare(b.endDate)
+  })
+}
+
+export function pickDefaultPeriodId(
+  periods: { id: string; startDate: string; endDate: string }[],
+  today: string,
+): string | null {
+  if (periods.length === 0) return null
+  const current = periods.find(p => cycleStatus(p, today) === 'current')
+  if (current) return current.id
+  const past = periods.filter(p => p.endDate < today)
+  if (past.length > 0) {
+    return past.reduce((best, p) => (p.endDate >= best.endDate ? p : best)).id
+  }
+  const upcoming = periods.filter(p => p.startDate > today)
+  if (upcoming.length > 0) {
+    return upcoming.reduce((soonest, p) => (p.startDate <= soonest.startDate ? p : soonest)).id
+  }
+  return periods[0].id
+}
+
+export function nextCycleWindow(period: { startDate: string; endDate: string }): {
+  start: string
+  end: string
+} {
+  const start = addDays(period.endDate, 1)
+  const spanDays = Math.round(
+    (new Date(`${period.endDate}T12:00:00`).getTime()
+      - new Date(`${period.startDate}T12:00:00`).getTime())
+    / 86_400_000,
+  )
+  return { start, end: addDays(start, spanDays) }
+}
+
+const OVERLAP_RANGE = /overlaps existing cycle \((\d{4}-\d{2}-\d{2}) – (\d{4}-\d{2}-\d{2})\)/
+
+export function parseOverlapRange(message: string): { start: string; end: string } | null {
+  const match = OVERLAP_RANGE.exec(message)
+  if (!match) return null
+  return { start: match[1], end: match[2] }
+}
+
 export function monthsOverlapCycle(month: string, startDate: string, endDate: string): boolean {
   const [y, m] = month.split('-').map(Number)
   const monthStart = `${month}-01`

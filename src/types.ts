@@ -306,6 +306,7 @@ export type BottomSheetType =
   | { type: 'scanReceipt' }
   | { type: 'editExpense'; expense: Expense }
   | { type: 'cycleDates'; mode?: 'current' | 'next' | 'create' | 'copy' }
+  | { type: 'cycleList'; highlightRange?: { start: string; end: string } }
   | { type: 'eventDetail'; eventId: string }
   | { type: 'inviteMember' }
   | { type: 'taskDetail'; taskId: string }

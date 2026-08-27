@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Copy, Plus, Wallet } from 'lucide-react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Copy, List, Plus, Wallet } from 'lucide-react'
 import type {
   AppHandlers,
   Budget,
@@ -11,7 +11,9 @@ import type {
 } from '../types'
 import { BUDGET_GROUPS } from '../types'
 import {
+  cycleStatus,
   formatCycleDateRange,
+  formatCycleDay,
   formatYearMonthTitle,
 } from '../api/adapters'
 import {
@@ -32,10 +34,15 @@ interface Props {
   tab: BudgetTab
   onSelectTab: (tab: BudgetTab) => void
   period: BudgetPeriod | null
+  periods: BudgetPeriod[]
+  selectedPeriodId: string | null
+  today: string
   subcategoryGroups: BudgetSubcategoryGroup[]
   spend: HouseholdSpend | null
   loadMonthExpenses: (month: string) => Promise<Expense[]>
   loading?: boolean
+  onSelectPeriod: (periodId: string) => void
+  onOpenCycleList: () => void
   onCreateCycle: () => void
   onCopyCycle: () => void
   onEditDates: () => void
@@ -62,10 +69,15 @@ export default function BudgetScreen({
   tab,
   onSelectTab,
   period,
+  periods,
+  selectedPeriodId,
+  today,
   subcategoryGroups,
   spend,
   loadMonthExpenses,
   loading,
+  onSelectPeriod,
+  onOpenCycleList,
   onCreateCycle,
   onCopyCycle,
   onEditDates,
@@ -84,6 +96,25 @@ export default function BudgetScreen({
         <Skeleton h={200} />
       </div>
     )
+  }
+
+  const currentPeriod = periods.find(p => cycleStatus(p, today) === 'current') ?? null
+  const selectedIndex = selectedPeriodId
+    ? periods.findIndex(p => p.id === selectedPeriodId)
+    : -1
+  const canGoPrev = selectedIndex > 0
+  const canGoNext = selectedIndex >= 0 && selectedIndex < periods.length - 1
+  const status = period ? cycleStatus(period, today) : null
+  const showGapBanner = Boolean(period && status === 'ended' && !currentPeriod)
+
+  const handlePrevCycle = () => {
+    if (!canGoPrev) return
+    onSelectPeriod(periods[selectedIndex - 1].id)
+  }
+
+  const handleNextCycle = () => {
+    if (!canGoNext) return
+    onSelectPeriod(periods[selectedIndex + 1].id)
   }
 
   return (
@@ -143,7 +174,7 @@ export default function BudgetScreen({
       {tab === 'spend' ? (
         <ExpensesScreen
           spend={spend}
-          budgetPeriod={period}
+          budgetPeriod={currentPeriod}
           loadMonthExpenses={loadMonthExpenses}
           openSheet={openSheet}
         />
@@ -158,7 +189,7 @@ export default function BudgetScreen({
         >
           {tab === 'insights' ? (
             <BudgetInsights period={period} />
-          ) : !period ? (
+          ) : periods.length === 0 ? (
             <>
               <EmptyState
                 icon={Wallet}
@@ -190,36 +221,101 @@ export default function BudgetScreen({
                 </button>
               </div>
             </>
-          ) : (
+          ) : period ? (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>
-                    {formatYearMonthTitle(period.labelMonth)}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handlePrevCycle}
+                    disabled={!canGoPrev}
+                    aria-label="Previous cycle"
+                    style={navArrow(canGoPrev)}
+                  >
+                    <ChevronLeft size={20} strokeWidth={1.75} />
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>
+                      {formatYearMonthTitle(period.labelMonth)}
+                    </div>
+                    <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
+                      {formatCycleDateRange(period.startDate, period.endDate)}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
-                    {formatCycleDateRange(period.startDate, period.endDate)}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleNextCycle}
+                    disabled={!canGoNext}
+                    aria-label="Next cycle"
+                    style={navArrow(canGoNext)}
+                  >
+                    <ChevronRight size={20} strokeWidth={1.75} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenCycleList}
+                    aria-label="All cycles"
+                    style={ghostBtn}
+                  >
+                    <List size={16} aria-hidden />
+                  </button>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={onEditDates}
-                    aria-label="Edit cycle dates"
-                    style={ghostBtn}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: status === 'current' ? t.primary : t.textTer,
+                      background: status === 'current' ? t.primarySubtle : t.surfaceMuted,
+                      borderRadius: r.pill,
+                      padding: '3px 8px',
+                    }}
                   >
-                    Dates
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onCopyCycle}
-                    aria-label="Copy from last cycle"
-                    style={ghostBtn}
-                  >
-                    <Copy size={14} aria-hidden />
-                  </button>
+                    {status === 'current' ? 'Current' : status === 'ended' ? 'Ended' : 'Upcoming'}
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={onEditDates}
+                      aria-label="Edit cycle dates"
+                      style={ghostBtn}
+                    >
+                      Dates
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCopyCycle}
+                      aria-label="Copy from this cycle"
+                      style={ghostBtn}
+                    >
+                      <Copy size={14} aria-hidden />
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {showGapBanner && (
+                <div
+                  style={{
+                    background: t.surface,
+                    border: `1px solid ${t.border}`,
+                    borderRadius: r.lg,
+                    padding: '12px 14px',
+                  }}
+                >
+                  <p style={{ fontSize: 13, color: t.text, margin: 0, lineHeight: 1.45 }}>
+                    This cycle ended {formatCycleDay(period.endDate)}. Nothing is planned for today.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button type="button" onClick={onCreateCycle} style={ghostBtn}>
+                      Start next
+                    </button>
+                    <button type="button" onClick={onCopyCycle} style={ghostBtn}>
+                      Copy from this cycle
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <MonthlySummaryCard period={period} />
 
@@ -249,12 +345,27 @@ export default function BudgetScreen({
                 )
               })}
             </>
-          )}
+          ) : null}
         </div>
       )}
     </div>
   )
 }
+
+const navArrow = (enabled: boolean): React.CSSProperties => ({
+  width: 36,
+  height: 36,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  background: 'transparent',
+  borderRadius: r.md,
+  cursor: enabled ? 'pointer' : 'default',
+  color: enabled ? t.text : t.textTer,
+  opacity: enabled ? 1 : 0.4,
+  flexShrink: 0,
+})
 
 const ghostBtn: React.CSSProperties = {
   border: `1px solid ${t.border}`,

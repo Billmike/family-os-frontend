@@ -15,6 +15,7 @@ export const usePeriodExpenses = (
       return
     }
     let cancelled = false
+    setEntries([])
     setLoadingEntries(true)
     void loadPeriodExpenses(periodId).then(rows => {
       if (cancelled) return

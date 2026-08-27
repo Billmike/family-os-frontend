@@ -1,7 +1,18 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Plus, Receipt, Wallet } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronRight, Plus, Receipt, Wallet } from 'lucide-react'
 import type { Budget, Expense, BudgetPeriod, AppHandlers } from '../types'
-import { t, r, EmptyState, SectionLabel, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS } from '../ui'
+import {
+  t,
+  r,
+  EmptyState,
+  SectionLabel,
+  Skeleton,
+  FAB,
+  ExpenseCategoryIcon,
+  BudgetGroupIcon,
+  BUDGET_GROUP_COLORS,
+} from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
 import { MonthSwitcher } from '../components/MonthSwitcher'
@@ -29,15 +40,22 @@ interface Props {
   openSheet: AppHandlers['openSheet']
 }
 
-interface CategorySpendRow {
-  category: string
-  group: string
+interface SubcategorySpendRow {
+  subcategoryId: string
+  name: string
   total: number
   budget: Budget | null
 }
 
-const cycleCategoryRows = (period: BudgetPeriod, entries: Expense[]): CategorySpendRow[] => {
-  const totals = new Map<string, CategorySpendRow>()
+interface SpendGroup {
+  group: string
+  actual: number
+  expected: number
+  lines: SubcategorySpendRow[]
+}
+
+const cycleSpendGroups = (period: BudgetPeriod, entries: Expense[]): SpendGroup[] => {
+  const totals = new Map<string, { group: string; name: string; total: number }>()
   for (const expense of entries) {
     if (expense.direction !== 'outflow') continue
     const existing = totals.get(expense.subcategoryId)
@@ -46,20 +64,50 @@ const cycleCategoryRows = (period: BudgetPeriod, entries: Expense[]): CategorySp
       continue
     }
     totals.set(expense.subcategoryId, {
-      category: `${expense.group} · ${expense.subcategoryName}`,
       group: expense.group,
+      name: expense.subcategoryName,
       total: expense.amount,
-      budget: null,
     })
   }
   const linesBySub = new Map(
-    period.groups.flatMap(group => group.lines).map(line => [line.subcategoryId, line]),
+    period.groups.flatMap(block => block.lines).map(line => [line.subcategoryId, line]),
   )
-  for (const [subcategoryId, row] of totals) {
-    row.budget = linesBySub.get(subcategoryId) ?? null
-  }
-  return [...totals.values()].sort((a, b) => b.total - a.total || a.category.localeCompare(b.category))
+
+  return period.groups
+    .filter(block => block.direction === 'outflow')
+    .map(block => {
+      const lines = [...totals.entries()]
+        .filter(([, row]) => row.group === block.group)
+        .map(([subcategoryId, row]) => ({
+          subcategoryId,
+          name: row.name,
+          total: row.total,
+          budget: linesBySub.get(subcategoryId) ?? null,
+        }))
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+      return {
+        group: block.group,
+        actual: block.actual,
+        expected: block.expected,
+        lines,
+      }
+    })
+    .filter(group => group.lines.length > 0)
 }
+
+const defaultExpandedGroups = (groups: SpendGroup[]): Record<string, boolean> => {
+  const next: Record<string, boolean> = {}
+  for (const group of groups) {
+    next[group.group] = group.lines.length <= 1
+  }
+  return next
+}
+
+const groupPanelId = (group: string) =>
+  `spend-group-${group.toLowerCase().replace(/\s+/g, '-')}`
+
+const lineCountLabel = (count: number) =>
+  count === 1 ? '1 line' : `${count} lines`
 
 export default function ExpensesScreen({
   period,
@@ -104,7 +152,7 @@ export default function ExpensesScreen({
   const outflowEntries = entries.filter(expense => expense.direction === 'outflow')
   const entryCount = outflowEntries.length
   const average = entryCount > 0 ? used / entryCount : 0
-  const categories = cycleCategoryRows(period, entries)
+  const spendGroups = cycleSpendGroups(period, entries)
   const chartBuckets = periods.slice(-CHART_CYCLE_LIMIT).map(row => ({
     id: row.id,
     total: row.summary.totalExpensesActual,
@@ -223,29 +271,14 @@ export default function ExpensesScreen({
         </div>
       )}
 
-      {categories.length > 0 && (
+      {spendGroups.length > 0 && (
         <>
-          <SectionLabel>Categories</SectionLabel>
-          <div style={{
-            margin: '0 16px 8px',
-            background: t.surface,
-            borderRadius: r.lg,
-            border: `1px solid ${t.border}`,
-            overflow: 'hidden',
-          }}>
-            {categories.map((row, i) => (
-              <CategoryRow
-                key={row.category}
-                category={row.category}
-                amount={row.total}
-                currency={period.currency}
-                share={used > 0 ? row.total / used : 0}
-                budget={row.budget}
-                color={BUDGET_GROUP_COLORS[row.group] ?? t.primary}
-                divider={i > 0}
-              />
-            ))}
-          </div>
+          <SectionLabel>Spending by group</SectionLabel>
+          <SpendGroupList
+            key={period.id}
+            groups={spendGroups}
+            currency={period.currency}
+          />
         </>
       )}
 
@@ -368,7 +401,182 @@ export default function ExpensesScreen({
   )
 }
 
-function CategoryRow({ category, amount, currency, share, budget, color, divider }: {
+function SpendGroupList({
+  groups,
+  currency,
+}: {
+  groups: SpendGroup[]
+  currency: string
+}) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => defaultExpandedGroups(groups))
+
+  useEffect(() => {
+    setExpanded(prev => {
+      const next = { ...prev }
+      let changed = false
+      for (const group of groups) {
+        if (!(group.group in next)) {
+          next[group.group] = group.lines.length <= 1
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [groups])
+
+  const handleToggle = (group: string) => {
+    setExpanded(prev => ({ ...prev, [group]: !prev[group] }))
+  }
+
+  return (
+    <div style={{
+      margin: '0 16px 8px',
+      background: t.surface,
+      borderRadius: r.lg,
+      border: `1px solid ${t.border}`,
+      overflow: 'hidden',
+    }}>
+      {groups.map((group, i) => {
+        const isOpen = Boolean(expanded[group.group])
+        const panelId = groupPanelId(group.group)
+        const color = BUDGET_GROUP_COLORS[group.group] ?? t.primary
+        return (
+          <div key={group.group} style={{ borderTop: i > 0 ? `1px solid ${t.border}` : 'none' }}>
+            <SpendGroupHeader
+              group={group}
+              currency={currency}
+              expanded={isOpen}
+              panelId={panelId}
+              color={color}
+              onToggle={() => handleToggle(group.group)}
+            />
+            <div
+              id={panelId}
+              role="region"
+              aria-label={`${group.group} lines`}
+              hidden={!isOpen}
+            >
+              {isOpen && group.lines.map(line => (
+                <CategoryRow
+                  key={line.subcategoryId}
+                  category={line.name}
+                  amount={line.total}
+                  currency={currency}
+                  share={group.actual > 0 ? line.total / group.actual : 0}
+                  budget={line.budget}
+                  color={color}
+                  divider
+                  nested
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SpendGroupHeader({
+  group,
+  currency,
+  expanded,
+  panelId,
+  color,
+  onToggle,
+}: {
+  group: SpendGroup
+  currency: string
+  expanded: boolean
+  panelId: string
+  color: string
+  onToggle: () => void
+}) {
+  const hasLimit = group.expected > 0
+  const { percentUsed, state } = deriveBudgetState(group.actual, group.expected)
+  const moneyLabel = hasLimit
+    ? `${formatMoney(group.actual, currency)} / ${formatMoney(group.expected, currency)}`
+    : formatMoney(group.actual, currency)
+  const linesLabel = lineCountLabel(group.lines.length)
+  const ariaLabel = hasLimit
+    ? `${group.group}, ${formatMoney(group.actual, currency)} of ${formatMoney(group.expected, currency)}, ${linesLabel}`
+    : `${group.group}, ${formatMoney(group.actual, currency)}, ${linesLabel}`
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      aria-controls={panelId}
+      aria-label={ariaLabel}
+      style={{
+        width: '100%',
+        padding: '12px 16px',
+        border: 'none',
+        background: 'none',
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontFamily: 'var(--ds-font)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            background: t.surfaceMuted,
+            color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <BudgetGroupIcon group={group.group} size={16} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: t.text, fontWeight: 500 }}>{group.group}</div>
+            <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>{linesLabel}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: t.text,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {moneyLabel}
+          </span>
+          {expanded
+            ? <ChevronDown size={16} color={t.textTer} aria-hidden />
+            : <ChevronRight size={16} color={t.textTer} aria-hidden />}
+        </div>
+      </div>
+      {hasLimit ? (
+        <div
+          aria-hidden
+          style={{
+            marginTop: 8,
+            height: 6,
+            borderRadius: 9999,
+            background: t.surfaceMuted,
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{
+            width: `${Math.min(Math.max(percentUsed, 0), 100)}%`,
+            height: '100%',
+            borderRadius: 9999,
+            background: state === 'over' ? t.error : budgetStateColor(state),
+          }} />
+        </div>
+      ) : null}
+    </button>
+  )
+}
+
+function CategoryRow({ category, amount, currency, share, budget, color, divider, nested }: {
   category: string
   amount: number
   currency: string
@@ -376,6 +584,7 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
   budget?: Budget | null
   color: string
   divider: boolean
+  nested?: boolean
 }) {
   const hasBudget = Boolean(budget && budget.amount > 0)
   const fillPercent = hasBudget && budget
@@ -387,7 +596,7 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
 
   return (
     <div style={{
-      padding: '12px 16px',
+      padding: nested ? '12px 16px 12px 60px' : '12px 16px',
       borderTop: divider ? `1px solid ${t.border}` : 'none',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

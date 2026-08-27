@@ -72,6 +72,7 @@ import {
   sortBudgetPeriods,
   pickDefaultPeriodId,
   parseOverlapRange,
+  cycleStatus,
   toShoppingItem,
   toShoppingLocation,
   toShoppingSession,
@@ -495,13 +496,24 @@ function MainApp() {
     }
   }, [family.id]);
 
-  const loadMonthExpenses = useCallback(
-    async (month: string) => {
-      const rows = await expensesApi.listExpenses(family.id, month);
+  const loadPeriodExpenses = useCallback(
+    async (periodId: string) => {
+      const rows = await expensesApi.listExpenses(family.id, { periodId });
       return rows.map(toExpense);
     },
     [family.id],
   );
+
+  const handleOpenSpend = useCallback(() => {
+    const current = budgetPeriods.find((p) => cycleStatus(p, today) === "current");
+    if (current) {
+      setSelectedPeriodId(current.id);
+    } else {
+      const fallback = pickDefaultPeriodId(budgetPeriods, today);
+      if (fallback) setSelectedPeriodId(fallback);
+    }
+    navigateToScreen("budgetSpend");
+  }, [budgetPeriods, today, navigateToScreen]);
 
   useEffect(() => {
     void loadAll();
@@ -1663,10 +1675,14 @@ function MainApp() {
                 tasks={tasks}
                 shopping={shopping}
                 activeSession={activeSession}
-                spend={householdSpend}
+                currentPeriod={
+                  budgetPeriods.find((p) => cycleStatus(p, today) === "current") ?? null
+                }
+                periods={budgetPeriods}
                 memberName={dashGreeting}
                 dateLabel={dashDateLabel}
                 today={today}
+                onOpenSpend={handleOpenSpend}
                 {...handlers}
               />
             )}
@@ -1701,8 +1717,11 @@ function MainApp() {
             )}
             {screen === "budgetActivity" && (
               <ExpenseActivityScreen
-                spend={householdSpend}
-                loadMonthExpenses={loadMonthExpenses}
+                period={budgetPeriod}
+                periods={budgetPeriods}
+                selectedPeriodId={selectedPeriodId}
+                loadPeriodExpenses={loadPeriodExpenses}
+                onSelectPeriod={setSelectedPeriodId}
                 {...handlers}
               />
             )}
@@ -1715,8 +1734,7 @@ function MainApp() {
                 selectedPeriodId={selectedPeriodId}
                 today={today}
                 subcategoryGroups={subcategoryGroups}
-                spend={householdSpend}
-                loadMonthExpenses={loadMonthExpenses}
+                loadPeriodExpenses={loadPeriodExpenses}
                 loading={loading}
                 onSelectPeriod={setSelectedPeriodId}
                 onOpenCycleList={() => setSheet({ type: 'cycleList' })}

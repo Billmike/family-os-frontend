@@ -89,12 +89,12 @@ client/
 │   │   └── session.tsx      # SessionProvider + useSession hook
 │   ├── components/          # Shared UI components
 │   │   ├── ExpenseSheet.tsx     # Add/edit expense bottom sheet
-│   │   ├── MonthSwitcher.tsx    # Month navigation control
-│   │   ├── SpendBarChart.tsx    # Household spend bar chart
+│   │   ├── MonthSwitcher.tsx    # Cycle (or titled) prev/next control
+│   │   ├── SpendBarChart.tsx    # Household spend bar chart (cycle buckets)
 │   │   ├── TaskDateSheet.tsx    # Task due-date picker sheet
 │   │   └── TaskDetailSheet.tsx  # Full task detail bottom sheet
 │   ├── hooks/
-│   │   └── useMonthExpenses.ts  # Data fetching hook for monthly expenses
+│   │   └── usePeriodExpenses.ts # Data fetching hook for cycle expenses
 │   ├── invite/
 │   │   └── pendingInvite.ts     # Captures and stores invite tokens from URL
 │   ├── lib/
@@ -170,7 +170,7 @@ Routes are defined declaratively in `src/routing.ts` as a bidirectional `Screen 
 | `/login` | Onboarding / Login |
 | `/invite/:token` | Auto-join via invite link |
 
-Retired paths are redirected by `legacyPathRedirect`: `/expenses` → `/budget/spend`, `/expenses/activity` → `/budget/activity` (the `?month=` query is preserved), and `/insights` → `/budget`.
+Retired paths are redirected by `legacyPathRedirect`: `/expenses` → `/budget/spend`, `/expenses/activity` → `/budget/activity` (legacy `?month=` is mapped onto the overlapping cycle, then replaced with `?period=`), and `/insights` → `/budget`. Spend and activity are cycle-scoped; Insights stays calendar-month.
 
 The mobile bottom nav shows five destinations — Home, Calendar, Tasks, Shopping, Budget — and highlights Budget for any path in the budget section. The desktop sidebar additionally lists Spend and Notifications.
 

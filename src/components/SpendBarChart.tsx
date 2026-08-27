@@ -1,38 +1,50 @@
 import { t } from '../ui'
-import type { MonthlySpend } from '../types'
-import { formatMoney, formatMonthShort } from '../api/adapters'
+import { formatMoney } from '../api/adapters'
+
+export interface SpendBucket {
+  id: string
+  total: number
+  label: string
+  shortLabel: string
+}
 
 interface ChartProps {
-  months: MonthlySpend[]
-  selectedMonth: string
+  buckets: SpendBucket[]
+  selectedId: string
   currency: string
-  onSelect: (month: string) => void
+  onSelect: (id: string) => void
+  ariaLabel?: string
 }
 
 const BAR_MAX = 112
 
-export function SpendBarChart({ months, selectedMonth, currency, onSelect }: ChartProps) {
-  const max = Math.max(...months.map(row => row.total), 0)
+export function SpendBarChart({
+  buckets,
+  selectedId,
+  currency,
+  onSelect,
+  ariaLabel = 'Household spend by cycle',
+}: ChartProps) {
+  const max = Math.max(...buckets.map(row => row.total), 0)
 
   return (
     <div
       role="group"
-      aria-label="Household spend by month"
+      aria-label={ariaLabel}
       style={{ display: 'flex', alignItems: 'stretch', gap: 2, height: 148, padding: '4px 4px 0' }}
     >
-      {months.map(row => {
-        const selected = row.month === selectedMonth
+      {buckets.map(row => {
+        const selected = row.id === selectedId
         const height = max <= 0
           ? 2
           : Math.max(row.total > 0 ? 6 : 2, Math.round((row.total / max) * BAR_MAX))
-        const label = formatMonthShort(row.month)
         return (
           <button
-            key={row.month}
+            key={row.id}
             type="button"
             aria-pressed={selected}
-            aria-label={`${label}, ${formatMoney(row.total, currency)}`}
-            onClick={() => onSelect(row.month)}
+            aria-label={`${row.label}, ${formatMoney(row.total, currency)}`}
+            onClick={() => onSelect(row.id)}
             style={{
               flex: 1,
               minWidth: 0,
@@ -73,7 +85,7 @@ export function SpendBarChart({ months, selectedMonth, currency, onSelect }: Cha
               color: selected ? t.primary : t.textTer,
               letterSpacing: '-0.02em',
             }}>
-              {selected ? label : label.slice(0, 1)}
+              {selected ? row.label : row.shortLabel}
             </span>
           </button>
         )
@@ -83,20 +95,20 @@ export function SpendBarChart({ months, selectedMonth, currency, onSelect }: Cha
 }
 
 interface SparklineProps {
-  months: MonthlySpend[]
+  buckets: Array<{ id: string; total: number }>
 }
 
-export function SpendSparkline({ months }: SparklineProps) {
-  const max = Math.max(...months.map(row => row.total), 0)
+export function SpendSparkline({ buckets }: SparklineProps) {
+  const max = Math.max(...buckets.map(row => row.total), 0)
   const h = 28
 
   return (
     <div aria-hidden="true" style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: h }}>
-      {months.map(row => {
+      {buckets.map(row => {
         const height = max <= 0 ? 2 : Math.max(row.total > 0 ? 4 : 2, Math.round((row.total / max) * h))
         return (
           <svg
-            key={row.month}
+            key={row.id}
             width={8}
             height={h}
             viewBox={`0 0 8 ${h}`}

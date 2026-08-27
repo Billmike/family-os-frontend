@@ -1,8 +1,8 @@
-import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, HouseholdSpend, AppHandlers } from '../types'
+import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, BudgetPeriod, AppHandlers } from '../types'
 import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus } from 'lucide-react'
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
-import { formatMoney, formatMonthShort, formatCycleDateRange, formatYearMonthTitle } from '../api/adapters'
+import { formatMoney, formatCycleDateRange, formatYearMonthTitle, deriveBudgetState } from '../api/adapters'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
 import { SpendSparkline } from '../components/SpendBarChart'
 
@@ -11,17 +11,19 @@ interface Props extends Partial<AppHandlers> {
   tasks: Task[]
   shopping: ShoppingItem[]
   activeSession: ShoppingSession | null
-  spend: HouseholdSpend | null
+  currentPeriod: BudgetPeriod | null
+  periods: BudgetPeriod[]
   memberName: string
   dateLabel: string
   today: string
   navigate: AppHandlers['navigate']
+  onOpenSpend: () => void
   openSheet: AppHandlers['openSheet']
   completeTask: AppHandlers['completeTask']
   addToBasket: AppHandlers['addToBasket']
 }
 
-export default function Dashboard({ events, tasks, shopping, activeSession, spend, memberName, dateLabel, today, navigate, openSheet, completeTask, addToBasket }: Props) {
+export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, periods, memberName, dateLabel, today, navigate, onOpenSpend, openSheet, completeTask, addToBasket }: Props) {
   const tomorrow = (() => {
     const d = new Date(today + 'T12:00:00')
     d.setDate(d.getDate() + 1)
@@ -60,11 +62,11 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
       <DashSection
         icon={<BarChart3 size={16} color={t.primary} strokeWidth={1.75} />}
         title="Spend"
-        count="this month"
-        onViewAll={() => navigate('budgetSpend')}
+        count="this cycle"
+        onViewAll={onOpenSpend}
         viewLabel="Expenses"
       >
-        <SpendSnapshot spend={spend} onOpen={() => navigate('budgetSpend')} />
+        <SpendSnapshot period={currentPeriod} periods={periods} onOpen={onOpenSpend} />
       </DashSection>
 
       {/* ─── Today section ──────────────────────────────────────────────────── */}
@@ -224,18 +226,16 @@ export default function Dashboard({ events, tasks, shopping, activeSession, spen
   )
 }
 
-function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen: () => void }) {
-  const thisMonth = spend?.months.find(row => row.month === spend.currentMonth)
-    ?? (spend
-      ? { month: spend.currentMonth, total: 0, entryCount: 0, average: 0, categories: [] as HouseholdSpend['months'][number]['categories'] }
-      : undefined)
-  const previous = spend && spend.months.length > 1 ? spend.months[spend.months.length - 2] : undefined
-  const sparkMonths = spend?.months.slice(-6) ?? []
-  const hasSpend = Boolean(spend && (spend.yearToDateTotal > 0 || spend.months.some(row => row.entryCount > 0)))
-  const hasBudget = Boolean(spend?.budget)
-  const budget = spend?.budget
-
-  if (!spend || !thisMonth || (!hasSpend && !hasBudget)) {
+function SpendSnapshot({
+  period,
+  periods,
+  onOpen,
+}: {
+  period: BudgetPeriod | null
+  periods: BudgetPeriod[]
+  onOpen: () => void
+}) {
+  if (!period) {
     return (
       <button
         type="button"
@@ -246,25 +246,24 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
           color: t.textTer, fontSize: 14,
         }}
       >
-        Add an expense to see spend
+        Plan a cycle to track spend
       </button>
     )
   }
 
-  const monthTotal = thisMonth.total
-  const delta = previous ? monthTotal - previous.total : 0
-  const comparison = !previous
-    ? null
-    : Math.abs(delta) < 0.005
-      ? { text: `Same as ${formatMonthShort(previous.month)}`, color: t.textSec }
-      : delta > 0
-        ? { text: `${formatMoney(delta, spend.currency)} more than ${formatMonthShort(previous.month)}`, color: t.error }
-        : { text: `${formatMoney(Math.abs(delta), spend.currency)} less than ${formatMonthShort(previous.month)}`, color: t.success }
-
-  const budgetCaption = budget
-    ? budget.remaining >= 0
-      ? `${formatMoney(budget.remaining, spend.currency)} left of ${formatMoney(budget.amount, spend.currency)}`
-      : `${formatMoney(Math.abs(budget.remaining), spend.currency)} over ${formatMoney(budget.amount, spend.currency)}`
+  const used = period.summary.totalExpensesActual
+  const expected = period.summary.totalExpensesExpected
+  const remaining = expected - used
+  const { percentUsed, state } = deriveBudgetState(used, expected)
+  const sparkBuckets = periods.slice(-6).map(row => ({
+    id: row.id,
+    total: row.summary.totalExpensesActual,
+  }))
+  const hasSpend = periods.some(row => row.summary.totalExpensesActual > 0) || used > 0
+  const budgetCaption = expected > 0
+    ? remaining >= 0
+      ? `${formatMoney(remaining, period.currency)} left of ${formatMoney(expected, period.currency)}`
+      : `${formatMoney(Math.abs(remaining), period.currency)} over ${formatMoney(expected, period.currency)}`
     : null
 
   return (
@@ -272,9 +271,9 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
       type="button"
       onClick={onOpen}
       aria-label={
-        budget
-          ? `This month spend ${formatMoney(monthTotal, spend.currency)}. ${budgetCaption}. Open Expenses`
-          : `This month spend ${formatMoney(monthTotal, spend.currency)}. Open Expenses`
+        budgetCaption
+          ? `This cycle spend ${formatMoney(used, period.currency)}. ${budgetCaption}. Open Expenses`
+          : `This cycle spend ${formatMoney(used, period.currency)}. Open Expenses`
       }
       style={{
         width: '100%', padding: '14px 20px', border: 'none', background: 'none',
@@ -287,31 +286,32 @@ function SpendSnapshot({ spend, onOpen }: { spend: HouseholdSpend | null; onOpen
           fontSize: 24, fontWeight: 600, color: t.text, letterSpacing: '-0.03em',
           fontVariantNumeric: 'tabular-nums', margin: 0, lineHeight: 1.15,
         }}>
-          {formatMoney(monthTotal, spend.currency)}
+          {formatMoney(used, period.currency)}
         </p>
-        {comparison && !budget && (
-          <p style={{ fontSize: 12, color: comparison.color, marginTop: 4 }}>{comparison.text}</p>
-        )}
-        {budget && budgetCaption ? (
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
-            <p style={{ fontSize: 12, color: t.textSec, margin: 0 }}>
-              {formatYearMonthTitle(budget.labelMonth)}
-              {' · '}
-              {formatCycleDateRange(budget.startDate, budget.endDate)}
-            </p>
-            <BudgetBar
-              percentUsed={budget.percentUsed}
-              state={budget.state}
-              ariaLabel={`Household budget ${Math.round(budget.percentUsed)} percent used`}
-              height={4}
-            />
-            <p style={{ fontSize: 12, color: budgetStateColor(budget.state), marginTop: 6 }}>
-              {budgetCaption}
-            </p>
-          </div>
-        ) : null}
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
+          <p style={{ fontSize: 12, color: t.textSec, margin: 0 }}>
+            {formatYearMonthTitle(period.labelMonth)}
+            {' · '}
+            {formatCycleDateRange(period.startDate, period.endDate)}
+          </p>
+          {expected > 0 ? (
+            <>
+              <BudgetBar
+                percentUsed={percentUsed}
+                state={state}
+                ariaLabel={`Household budget ${Math.round(percentUsed)} percent used`}
+                height={4}
+              />
+              {budgetCaption ? (
+                <p style={{ fontSize: 12, color: budgetStateColor(state), marginTop: 6 }}>
+                  {budgetCaption}
+                </p>
+              ) : null}
+            </>
+          ) : null}
+        </div>
       </div>
-      {hasSpend && <SpendSparkline months={sparkMonths} />}
+      {hasSpend && sparkBuckets.length > 0 && <SpendSparkline buckets={sparkBuckets} />}
     </button>
   )
 }

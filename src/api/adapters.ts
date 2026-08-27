@@ -5,6 +5,7 @@ import type {
   BudgetGroupBlock,
   BudgetPeriod,
   BudgetPeriodSummary,
+  BudgetState,
   BudgetSubcategory,
   BudgetSubcategoryGroup,
   BudgetSummary,
@@ -401,6 +402,28 @@ export function monthsOverlapCycle(month: string, startDate: string, endDate: st
   const lastDay = new Date(y, m, 0).getDate()
   const monthEnd = `${month}-${String(lastDay).padStart(2, '0')}`
   return startDate <= monthEnd && endDate >= monthStart
+}
+
+export function periodForMonth<T extends { labelMonth: string; startDate: string; endDate: string }>(
+  periods: T[],
+  month: string,
+): T | null {
+  const labeled = periods.find(period => period.labelMonth === month)
+  if (labeled) return labeled
+  const overlapping = periods.filter(period =>
+    monthsOverlapCycle(month, period.startDate, period.endDate),
+  )
+  if (overlapping.length === 0) return null
+  return overlapping[overlapping.length - 1]
+}
+
+export function deriveBudgetState(used: number, amount: number): { percentUsed: number; state: BudgetState } {
+  if (amount <= 0) {
+    return { percentUsed: used > 0 ? 100 : 0, state: used > 0 ? 'over' : 'ok' }
+  }
+  const percentUsed = Math.round((used / amount) * 100)
+  const state: BudgetState = percentUsed >= 100 ? 'over' : percentUsed >= 80 ? 'warning' : 'ok'
+  return { percentUsed, state }
 }
 
 export function toHouseholdSpend(spend: HouseholdSpendOut): HouseholdSpend {

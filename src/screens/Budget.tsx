@@ -7,7 +7,6 @@ import type {
   BudgetPeriod,
   BudgetSubcategoryGroup,
   Expense,
-  HouseholdSpend,
 } from '../types'
 import { BUDGET_GROUPS } from '../types'
 import {
@@ -38,8 +37,7 @@ interface Props {
   selectedPeriodId: string | null
   today: string
   subcategoryGroups: BudgetSubcategoryGroup[]
-  spend: HouseholdSpend | null
-  loadMonthExpenses: (month: string) => Promise<Expense[]>
+  loadPeriodExpenses: (periodId: string) => Promise<Expense[]>
   loading?: boolean
   onSelectPeriod: (periodId: string) => void
   onOpenCycleList: () => void
@@ -73,8 +71,7 @@ export default function BudgetScreen({
   selectedPeriodId,
   today,
   subcategoryGroups,
-  spend,
-  loadMonthExpenses,
+  loadPeriodExpenses,
   loading,
   onSelectPeriod,
   onOpenCycleList,
@@ -173,9 +170,11 @@ export default function BudgetScreen({
       {/* The Spend tab renders full-bleed: ExpensesScreen carries its own card insets. */}
       {tab === 'spend' ? (
         <ExpensesScreen
-          spend={spend}
-          budgetPeriod={currentPeriod}
-          loadMonthExpenses={loadMonthExpenses}
+          period={period}
+          periods={periods}
+          loadPeriodExpenses={loadPeriodExpenses}
+          onSelectPeriod={onSelectPeriod}
+          onCreateCycle={onCreateCycle}
           openSheet={openSheet}
         />
       ) : (

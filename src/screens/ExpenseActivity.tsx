@@ -1,30 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, ChevronLeft, ChevronRight, Pencil, Plus, Receipt } from 'lucide-react'
-import type { Expense, HouseholdSpend, AppHandlers } from '../types'
+import { ChevronLeft, ChevronRight, Pencil, Plus, Receipt, Wallet } from 'lucide-react'
+import type { BudgetPeriod, Expense, AppHandlers } from '../types'
 import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS } from '../ui'
 import { MonthSwitcher } from '../components/MonthSwitcher'
-import { useMonthExpenses } from '../hooks/useMonthExpenses'
+import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
   expenseTitle,
   formatMoney,
-  formatMonthShort,
   formatSessionDate,
   formatYearMonthTitle,
-  shiftYearMonth,
+  formatCycleDateRange,
+  periodForMonth,
 } from '../api/adapters'
-import { budgetActivityPath, parseYearMonth } from '../routing'
+import { budgetActivityPath, parsePeriodId, parseYearMonth } from '../routing'
 
 interface Props {
-  spend: HouseholdSpend | null
-  loadMonthExpenses: (month: string) => Promise<Expense[]>
+  period: BudgetPeriod | null
+  periods: BudgetPeriod[]
+  selectedPeriodId: string | null
+  loadPeriodExpenses: (periodId: string) => Promise<Expense[]>
+  onSelectPeriod: (periodId: string) => void
   openSheet: AppHandlers['openSheet']
 }
 
 const PAGE_SIZE = 10
-
-const hasAnySpend = (spend: HouseholdSpend) =>
-  spend.months.some(row => row.entryCount > 0) || spend.yearToDateTotal > 0
 
 const thStyle = {
   fontSize: 11,
@@ -46,26 +46,41 @@ const tdStyle = {
   verticalAlign: 'middle' as const,
 }
 
-export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSheet }: Props) {
+export default function ExpenseActivityScreen({
+  period,
+  periods,
+  selectedPeriodId,
+  loadPeriodExpenses,
+  onSelectPeriod,
+  openSheet,
+}: Props) {
   const location = useLocation()
   const routerNavigate = useNavigate()
-  const queryMonth = parseYearMonth(new URLSearchParams(location.search).get('month'))
-  const { selectedMonth, setSelectedMonth, entries, loadingEntries } = useMonthExpenses(
-    spend,
-    loadMonthExpenses,
-    queryMonth,
-  )
+  const params = new URLSearchParams(location.search)
+  const queryPeriod = parsePeriodId(params.get('period'))
+  const queryMonth = parseYearMonth(params.get('month'))
+  const { entries, loadingEntries } = usePeriodExpenses(period?.id ?? null, loadPeriodExpenses)
   const [page, setPage] = useState(0)
 
   useEffect(() => {
-    setPage(0)
-  }, [selectedMonth])
+    if (queryPeriod && periods.some(row => row.id === queryPeriod)) {
+      if (queryPeriod !== selectedPeriodId) onSelectPeriod(queryPeriod)
+      return
+    }
+    if (!queryMonth) return
+    const match = periodForMonth(periods, queryMonth)
+    if (match && match.id !== selectedPeriodId) onSelectPeriod(match.id)
+  }, [queryPeriod, queryMonth, periods, selectedPeriodId, onSelectPeriod])
 
   useEffect(() => {
-    if (!selectedMonth) return
-    if (queryMonth === selectedMonth) return
-    routerNavigate(budgetActivityPath(selectedMonth), { replace: true })
-  }, [selectedMonth, queryMonth, routerNavigate])
+    setPage(0)
+  }, [period?.id])
+
+  useEffect(() => {
+    if (!selectedPeriodId) return
+    if (queryPeriod === selectedPeriodId && !queryMonth) return
+    routerNavigate(budgetActivityPath(selectedPeriodId), { replace: true })
+  }, [selectedPeriodId, queryPeriod, queryMonth, routerNavigate])
 
   const handleAdd = () => {
     openSheet({ type: 'chooseExpenseEntry' })
@@ -76,15 +91,13 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
     openSheet({ type: 'editExpense', expense })
   }
 
-  if (!spend || !hasAnySpend(spend)) {
+  if (periods.length === 0 || !period) {
     return (
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         <EmptyState
-          icon={BarChart3}
-          title="No spending yet"
-          body="Add an expense or complete a shopping trip to see activity."
-          action="Add expense"
-          onAction={handleAdd}
+          icon={Wallet}
+          title="No budget cycle yet"
+          body="Plan a pay cycle to see expenses for that window."
         />
         <FAB onClick={handleAdd} aria-label="Add expense">
           <Plus size={24} color={t.onPrimary} />
@@ -93,20 +106,18 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
     )
   }
 
-  const firstMonth = spend.months[0]?.month
-  const lastMonth = spend.months[spend.months.length - 1]?.month ?? spend.currentMonth
-  const month = selectedMonth || spend.currentMonth
-  const canGoPrev = Boolean(firstMonth && month > firstMonth)
-  const canGoNext = Boolean(lastMonth && month < lastMonth)
+  const selectedIndex = periods.findIndex(row => row.id === period.id)
+  const canGoPrev = selectedIndex > 0
+  const canGoNext = selectedIndex >= 0 && selectedIndex < periods.length - 1
 
   const handlePrev = () => {
     if (!canGoPrev) return
-    setSelectedMonth(shiftYearMonth(month, -1))
+    onSelectPeriod(periods[selectedIndex - 1].id)
   }
 
   const handleNext = () => {
     if (!canGoNext) return
-    setSelectedMonth(shiftYearMonth(month, 1))
+    onSelectPeriod(periods[selectedIndex + 1].id)
   }
 
   const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE))
@@ -117,7 +128,8 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
   return (
     <div style={{ padding: '8px 0 32px', maxWidth: 800, margin: '0 auto' }}>
       <MonthSwitcher
-        monthTitle={formatYearMonthTitle(month)}
+        title={formatYearMonthTitle(period.labelMonth)}
+        subtitle={formatCycleDateRange(period.startDate, period.endDate)}
         canGoPrev={canGoPrev}
         canGoNext={canGoNext}
         onPrev={handlePrev}
@@ -141,12 +153,11 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
           <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
             <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
-              No expenses in {formatMonthShort(month)}.
+              No expenses in this cycle.
             </p>
           </div>
         ) : (
           <>
-            {/* Mobile: card list (same layout as Expenses overview) */}
             <div className="hide-desktop">
               {pagedEntries.map((expense, i) => {
                 const isManual = expense.sourceType === 'manual'
@@ -206,7 +217,6 @@ export default function ExpenseActivityScreen({ spend, loadMonthExpenses, openSh
               })}
             </div>
 
-            {/* Desktop: table */}
             <div className="hide-mobile" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
                 <thead>

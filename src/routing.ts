@@ -45,11 +45,18 @@ export function parseYearMonth(value: string | null | undefined): string | null 
   return value
 }
 
-export function budgetActivityPath(month?: string | null): string {
+const PERIOD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function parsePeriodId(value: string | null | undefined): string | null {
+  if (!value || !PERIOD_ID.test(value)) return null
+  return value
+}
+
+export function budgetActivityPath(periodId?: string | null): string {
   const path = SCREEN_PATHS.budgetActivity
-  const parsed = parseYearMonth(month)
+  const parsed = parsePeriodId(periodId)
   if (!parsed) return path
-  return `${path}?month=${parsed}`
+  return `${path}?period=${parsed}`
 }
 
 export function isBudgetSection(screen: Screen): boolean {

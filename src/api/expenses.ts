@@ -17,9 +17,15 @@ export function createExpense(familyId: string, data: ExpenseCreate) {
   })
 }
 
-export function listExpenses(familyId: string, month: string) {
+export function listExpenses(
+  familyId: string,
+  filter: { month: string } | { periodId: string },
+) {
+  const query = 'month' in filter
+    ? `month=${encodeURIComponent(filter.month)}`
+    : `period_id=${encodeURIComponent(filter.periodId)}`
   return apiRequest<ExpenseOut[]>(
-    `/api/families/${familyId}/expenses?month=${encodeURIComponent(month)}`,
+    `/api/families/${familyId}/expenses?${query}`,
   )
 }
 

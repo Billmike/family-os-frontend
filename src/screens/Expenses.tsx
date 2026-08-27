@@ -1,69 +1,90 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, BarChart3, Plus, Receipt } from 'lucide-react'
-import type { Budget, Expense, HouseholdSpend, BudgetPeriod, AppHandlers } from '../types'
+import { ArrowRight, Plus, Receipt, Wallet } from 'lucide-react'
+import type { Budget, Expense, BudgetPeriod, AppHandlers } from '../types'
 import { t, r, EmptyState, SectionLabel, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
 import { MonthSwitcher } from '../components/MonthSwitcher'
-import { useMonthExpenses } from '../hooks/useMonthExpenses'
+import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
+  deriveBudgetState,
   expenseTitle,
   formatMoney,
-  formatMonthShort,
   formatSessionDate,
   formatYearMonthTitle,
   formatCycleDateRange,
-  monthsOverlapCycle,
-  shiftYearMonth,
+  formatCycleDay,
 } from '../api/adapters'
 import { budgetActivityPath } from '../routing'
 
 const ACTIVITY_PREVIEW_LIMIT = 5
+const CHART_CYCLE_LIMIT = 12
 
 interface Props {
-  spend: HouseholdSpend | null
-  budgetPeriod: BudgetPeriod | null
-  loadMonthExpenses: (month: string) => Promise<Expense[]>
+  period: BudgetPeriod | null
+  periods: BudgetPeriod[]
+  loadPeriodExpenses: (periodId: string) => Promise<Expense[]>
+  onSelectPeriod: (periodId: string) => void
+  onCreateCycle: () => void
   openSheet: AppHandlers['openSheet']
 }
 
-const hasAnySpend = (spend: HouseholdSpend) =>
-  spend.months.some(row => row.entryCount > 0) || spend.yearToDateTotal > 0
+interface CategorySpendRow {
+  category: string
+  group: string
+  total: number
+  budget: Budget | null
+}
 
-const emptyMonth = (month: string) => ({
-  month,
-  total: 0,
-  entryCount: 0,
-  average: 0,
-  categories: [] as HouseholdSpend['months'][number]['categories'],
-})
-
-export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses, openSheet }: Props) {
-  const navigate = useNavigate()
-  const { selectedMonth, setSelectedMonth, entries, loadingEntries } = useMonthExpenses(
-    spend,
-    loadMonthExpenses,
+const cycleCategoryRows = (period: BudgetPeriod, entries: Expense[]): CategorySpendRow[] => {
+  const totals = new Map<string, CategorySpendRow>()
+  for (const expense of entries) {
+    if (expense.direction !== 'outflow') continue
+    const existing = totals.get(expense.subcategoryId)
+    if (existing) {
+      existing.total += expense.amount
+      continue
+    }
+    totals.set(expense.subcategoryId, {
+      category: `${expense.group} · ${expense.subcategoryName}`,
+      group: expense.group,
+      total: expense.amount,
+      budget: null,
+    })
+  }
+  const linesBySub = new Map(
+    period.groups.flatMap(group => group.lines).map(line => [line.subcategoryId, line]),
   )
+  for (const [subcategoryId, row] of totals) {
+    row.budget = linesBySub.get(subcategoryId) ?? null
+  }
+  return [...totals.values()].sort((a, b) => b.total - a.total || a.category.localeCompare(b.category))
+}
+
+export default function ExpensesScreen({
+  period,
+  periods,
+  loadPeriodExpenses,
+  onSelectPeriod,
+  onCreateCycle,
+  openSheet,
+}: Props) {
+  const navigate = useNavigate()
+  const { entries, loadingEntries } = usePeriodExpenses(period?.id ?? null, loadPeriodExpenses)
 
   const handleAdd = () => {
     openSheet({ type: 'chooseExpenseEntry' })
   }
 
-  const cycleSummary = spend?.budget ?? null
-  const showCategoryBudgets = Boolean(
-    budgetPeriod
-    && monthsOverlapCycle(selectedMonth, budgetPeriod.startDate, budgetPeriod.endDate),
-  )
-
-  if (!spend || !hasAnySpend(spend)) {
+  if (periods.length === 0 || !period) {
     return (
       <div>
         <EmptyState
-          icon={BarChart3}
-          title="No spending yet"
-          body="Add an expense or complete a shopping trip to see a monthly breakdown."
-          action="Add expense"
-          onAction={handleAdd}
+          icon={Wallet}
+          title="No budget cycle yet"
+          body="Plan a pay cycle to see spend against your budget. Expenses follow the cycle dates, not the calendar month."
+          action="Start this cycle"
+          onAction={onCreateCycle}
         />
         <FAB onClick={handleAdd} aria-label="Add expense">
           <Plus size={24} color={t.onPrimary} />
@@ -72,34 +93,43 @@ export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses,
     )
   }
 
-  const firstMonth = spend.months[0]?.month
-  const lastMonth = spend.months[spend.months.length - 1]?.month ?? spend.currentMonth
-  const selected = spend.months.find(row => row.month === selectedMonth)
-    ?? emptyMonth(selectedMonth)
-  const selectedIndex = spend.months.findIndex(row => row.month === selectedMonth)
-  const previous = selectedIndex > 0 ? spend.months[selectedIndex - 1] : undefined
-  const monthTitle = formatYearMonthTitle(selected.month)
-  const canGoPrev = Boolean(firstMonth && selected.month > firstMonth)
-  const canGoNext = Boolean(lastMonth && selected.month < lastMonth)
+  const selectedIndex = periods.findIndex(row => row.id === period.id)
+  const previous = selectedIndex > 0 ? periods[selectedIndex - 1] : undefined
+  const canGoPrev = selectedIndex > 0
+  const canGoNext = selectedIndex >= 0 && selectedIndex < periods.length - 1
+  const used = period.summary.totalExpensesActual
+  const expected = period.summary.totalExpensesExpected
+  const remaining = expected - used
+  const { percentUsed, state } = deriveBudgetState(used, expected)
+  const outflowEntries = entries.filter(expense => expense.direction === 'outflow')
+  const entryCount = outflowEntries.length
+  const average = entryCount > 0 ? used / entryCount : 0
+  const categories = cycleCategoryRows(period, entries)
+  const chartBuckets = periods.slice(-CHART_CYCLE_LIMIT).map(row => ({
+    id: row.id,
+    total: row.summary.totalExpensesActual,
+    label: formatCycleDay(row.endDate),
+    shortLabel: String(new Date(`${row.endDate}T12:00:00`).getDate()),
+  }))
 
   const comparison = previous
     ? (() => {
-        const delta = selected.total - previous.total
-        const prevName = formatMonthShort(previous.month)
+        const delta = used - previous.summary.totalExpensesActual
+        const prevName = formatCycleDateRange(previous.startDate, previous.endDate)
         if (Math.abs(delta) < 0.005) return { text: `Same as ${prevName}`, color: t.textSec }
-        if (delta > 0) return { text: `${formatMoney(delta, spend.currency)} more than ${prevName}`, color: t.error }
-        return { text: `${formatMoney(Math.abs(delta), spend.currency)} less than ${prevName}`, color: t.success }
+        if (delta > 0) return { text: `${formatMoney(delta, period.currency)} more than ${prevName}`, color: t.error }
+        return { text: `${formatMoney(Math.abs(delta), period.currency)} less than ${prevName}`, color: t.success }
       })()
     : null
 
   const handlePrev = () => {
     if (!canGoPrev) return
-    setSelectedMonth(shiftYearMonth(selected.month, -1))
+    onSelectPeriod(periods[selectedIndex - 1].id)
   }
 
   const handleNext = () => {
     if (!canGoNext) return
-    setSelectedMonth(shiftYearMonth(selected.month, 1))
+    onSelectPeriod(periods[selectedIndex + 1].id)
   }
 
   const handleOpenExpense = (expense: Expense) => {
@@ -111,13 +141,14 @@ export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses,
   const showViewMore = entries.length > ACTIVITY_PREVIEW_LIMIT
 
   const handleViewMore = () => {
-    navigate(budgetActivityPath(selected.month))
+    navigate(budgetActivityPath(period.id))
   }
 
   return (
     <div style={{ padding: '8px 0 32px' }}>
       <MonthSwitcher
-        monthTitle={monthTitle}
+        title={formatYearMonthTitle(period.labelMonth)}
+        subtitle={formatCycleDateRange(period.startDate, period.endDate)}
         canGoPrev={canGoPrev}
         canGoNext={canGoNext}
         onPrev={handlePrev}
@@ -134,64 +165,34 @@ export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses,
           fontVariantNumeric: 'tabular-nums',
           margin: 0,
         }}>
-          {formatMoney(selected.total, spend.currency)}
+          {formatMoney(used, period.currency)}
         </p>
         {comparison && (
           <p style={{ fontSize: 13, color: comparison.color, marginTop: 8 }}>
             {comparison.text}
           </p>
         )}
+        {expected > 0 ? (
+          <>
+            <p style={{
+              fontSize: 14,
+              color: budgetStateColor(state),
+              margin: '12px 0 0',
+            }}>
+              {formatMoney(used, period.currency)} of {formatMoney(expected, period.currency)}
+              {' · '}
+              {remaining >= 0
+                ? `${formatMoney(remaining, period.currency)} left`
+                : `${formatMoney(Math.abs(remaining), period.currency)} over`}
+            </p>
+            <BudgetBar
+              percentUsed={percentUsed}
+              state={state}
+              ariaLabel={`Cycle budget ${Math.round(percentUsed)} percent used`}
+            />
+          </>
+        ) : null}
       </div>
-
-      {(cycleSummary || budgetPeriod) && (
-        <div style={{
-          margin: '0 16px 20px',
-          background: t.surface,
-          borderRadius: r.lg,
-          border: `1px solid ${t.border}`,
-          padding: '14px 16px',
-        }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: t.textSec, margin: 0, letterSpacing: '0.02em' }}>
-              This cycle · {formatYearMonthTitle(cycleSummary?.labelMonth ?? budgetPeriod!.labelMonth)}
-            </p>
-            <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>
-              {formatCycleDateRange(
-                cycleSummary?.startDate ?? budgetPeriod!.startDate,
-                cycleSummary?.endDate ?? budgetPeriod!.endDate,
-              )}
-            </p>
-          </div>
-          {cycleSummary ? (
-            <>
-              <p style={{
-                fontSize: 14,
-                color: budgetStateColor(cycleSummary.state),
-                margin: '12px 0 0',
-              }}>
-                {formatMoney(cycleSummary.used, spend.currency)} of{' '}
-                {formatMoney(cycleSummary.amount, spend.currency)}
-                {' · '}
-                {cycleSummary.remaining >= 0
-                  ? `${formatMoney(cycleSummary.remaining, spend.currency)} left`
-                  : `${formatMoney(Math.abs(cycleSummary.remaining), spend.currency)} over`}
-              </p>
-              <BudgetBar
-                percentUsed={cycleSummary.percentUsed}
-                state={cycleSummary.state}
-                ariaLabel={`Cycle budget ${Math.round(cycleSummary.percentUsed)} percent used`}
-              />
-            </>
-          ) : (
-            <p style={{ fontSize: 13, color: t.textSec, margin: '12px 0 0' }}>
-              No household limit set for this cycle. Category limits still apply.
-            </p>
-          )}
-          <p style={{ fontSize: 11, color: t.textTer, margin: '10px 0 0', lineHeight: 1.4 }}>
-            Budgets follow your pay cycle, not the calendar month.
-          </p>
-        </div>
-      )}
 
       <div style={{
         margin: '0 16px 20px',
@@ -199,29 +200,30 @@ export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses,
         borderRadius: r.lg,
         border: `1px solid ${t.border}`,
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
+        gridTemplateColumns: '1fr 1fr',
       }}>
-        <StatCell label="Entries" value={String(selected.entryCount)} />
-        <StatCell label="Avg" value={formatMoney(selected.average, spend.currency)} />
-        <StatCell label="Year to date" value={formatMoney(spend.yearToDateTotal, spend.currency)} last />
+        <StatCell label="Entries" value={String(entryCount)} />
+        <StatCell label="Avg" value={formatMoney(average, period.currency)} last />
       </div>
 
-      <div style={{
-        margin: '0 16px 8px',
-        background: t.surface,
-        borderRadius: r.lg,
-        border: `1px solid ${t.border}`,
-        padding: '16px 8px 12px',
-      }}>
-        <SpendBarChart
-          months={spend.months}
-          selectedMonth={selected.month}
-          currency={spend.currency}
-          onSelect={setSelectedMonth}
-        />
-      </div>
+      {chartBuckets.length > 0 && (
+        <div style={{
+          margin: '0 16px 8px',
+          background: t.surface,
+          borderRadius: r.lg,
+          border: `1px solid ${t.border}`,
+          padding: '16px 8px 12px',
+        }}>
+          <SpendBarChart
+            buckets={chartBuckets}
+            selectedId={period.id}
+            currency={period.currency}
+            onSelect={onSelectPeriod}
+          />
+        </div>
+      )}
 
-      {selected.categories.length > 0 && (
+      {categories.length > 0 && (
         <>
           <SectionLabel>Categories</SectionLabel>
           <div style={{
@@ -231,19 +233,15 @@ export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses,
             border: `1px solid ${t.border}`,
             overflow: 'hidden',
           }}>
-            {selected.categories.map((row, i) => (
+            {categories.map((row, i) => (
               <CategoryRow
                 key={row.category}
                 category={row.category}
                 amount={row.total}
-                currency={spend.currency}
-                share={selected.total > 0 ? row.total / selected.total : 0}
-                budget={showCategoryBudgets && row.subcategoryId
-                  ? budgetPeriod?.groups
-                      .flatMap(g => g.lines)
-                      .find(b => b.subcategoryId === row.subcategoryId) ?? null
-                  : null}
-                color={BUDGET_GROUP_COLORS[row.group ?? ''] ?? t.primary}
+                currency={period.currency}
+                share={used > 0 ? row.total / used : 0}
+                budget={row.budget}
+                color={BUDGET_GROUP_COLORS[row.group] ?? t.primary}
                 divider={i > 0}
               />
             ))}
@@ -300,7 +298,7 @@ export default function ExpensesScreen({ spend, budgetPeriod, loadMonthExpenses,
           <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
             <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
-              No expenses in {formatMonthShort(selected.month)}.
+              No expenses in this cycle.
             </p>
           </div>
         ) : (
@@ -379,9 +377,9 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
   color: string
   divider: boolean
 }) {
-  const hasBudget = Boolean(budget)
+  const hasBudget = Boolean(budget && budget.amount > 0)
   const fillPercent = hasBudget && budget
-    ? Math.min((amount / budget.amount) * 100, 100)
+    ? Math.min((budget.used / budget.amount) * 100, 100)
     : Math.max(share * 100, share > 0 ? 4 : 0)
   const barColor = hasBudget && budget
     ? budget.state === 'over' ? t.error : budgetStateColor(budget.state)

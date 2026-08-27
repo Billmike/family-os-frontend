@@ -2,14 +2,26 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { t, r } from '../ui'
 
 interface Props {
-  monthTitle: string
+  title: string
+  subtitle?: string
   canGoPrev: boolean
   canGoNext: boolean
   onPrev: () => void
   onNext: () => void
+  prevAriaLabel?: string
+  nextAriaLabel?: string
 }
 
-export const MonthSwitcher = ({ monthTitle, canGoPrev, canGoNext, onPrev, onNext }: Props) => {
+export const MonthSwitcher = ({
+  title,
+  subtitle,
+  canGoPrev,
+  canGoNext,
+  onPrev,
+  onNext,
+  prevAriaLabel = 'Previous cycle',
+  nextAriaLabel = 'Next cycle',
+}: Props) => {
   return (
     <div style={{
       display: 'flex',
@@ -19,7 +31,7 @@ export const MonthSwitcher = ({ monthTitle, canGoPrev, canGoNext, onPrev, onNext
     }}>
       <button
         type="button"
-        aria-label="Previous month"
+        aria-label={prevAriaLabel}
         onClick={onPrev}
         disabled={!canGoPrev}
         style={{
@@ -30,12 +42,17 @@ export const MonthSwitcher = ({ monthTitle, canGoPrev, canGoNext, onPrev, onNext
       >
         <ChevronLeft size={20} strokeWidth={1.75} />
       </button>
-      <h2 style={{ fontSize: 16, fontWeight: 600, color: t.text, letterSpacing: '-0.02em', margin: 0 }}>
-        {monthTitle}
-      </h2>
+      <div style={{ textAlign: 'center', minWidth: 0, padding: '0 8px' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: t.text, letterSpacing: '-0.02em', margin: 0 }}>
+          {title}
+        </h2>
+        {subtitle ? (
+          <p style={{ fontSize: 12, color: t.textSec, margin: '2px 0 0' }}>{subtitle}</p>
+        ) : null}
+      </div>
       <button
         type="button"
-        aria-label="Next month"
+        aria-label={nextAriaLabel}
         onClick={onNext}
         disabled={!canGoNext}
         style={{

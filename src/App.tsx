@@ -812,6 +812,30 @@ function MainApp() {
     }
   }
 
+  async function renameBudgetSubcategory(subcategoryId: string, name: string): Promise<boolean> {
+    try {
+      await budgetSubcategoriesApi.updateBudgetSubcategory(subcategoryId, { name })
+      await refreshSubcategories()
+      void refreshBudgets()
+      void refreshSpend()
+      return true
+    } catch (e) {
+      handleError(e)
+      return false
+    }
+  }
+
+  async function removeBudgetLine(budgetId: string, name: string) {
+    try {
+      await budgetsApi.deleteBudget(budgetId)
+      showToast(`${name} removed from this cycle`)
+      void refreshBudgets()
+      void refreshSpend()
+    } catch (e) {
+      handleError(e)
+    }
+  }
+
   async function settleBudgetLine(budgetId: string) {
     try {
       const period = await budgetsApi.settleBudget(budgetId)
@@ -1744,6 +1768,8 @@ function MainApp() {
                 onUpdateExpected={updateBudgetExpected}
                 onAddLine={addBudgetLine}
                 onAddSubcategory={addBudgetSubcategory}
+                onRenameSubcategory={renameBudgetSubcategory}
+                onRemoveLine={removeBudgetLine}
                 onSettle={settleBudgetLine}
                 onUnsettle={unsettleBudgetLine}
                 {...handlers}

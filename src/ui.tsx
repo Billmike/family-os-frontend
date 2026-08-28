@@ -450,7 +450,7 @@ const inputBase: CSSProperties = {
 export function Input({ placeholder, value, onChange, autoFocus, type = 'text', inputMode, onBlur, 'aria-label': ariaLabel }: {
   placeholder?: string; value?: string; onChange?: (v: string) => void;
   autoFocus?: boolean; type?: string; inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode']
-  onBlur?: () => void
+  onBlur?: (value: string) => void
   'aria-label'?: string
 }) {
   return (
@@ -467,7 +467,7 @@ export function Input({ placeholder, value, onChange, autoFocus, type = 'text', 
       onBlur={e => {
         e.target.style.borderColor = 'var(--ds-border-strong)'
         e.target.style.boxShadow = 'none'
-        onBlur?.()
+        onBlur?.(e.target.value)
       }}
     />
   )

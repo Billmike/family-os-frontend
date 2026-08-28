@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Copy, List, Plus, Wallet } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Copy, List, Plus, Wallet, X } from 'lucide-react'
 import type {
   AppHandlers,
   Budget,
@@ -47,6 +47,8 @@ interface Props {
   onUpdateExpected: (budgetId: string, amount: number) => void
   onAddLine: (subcategoryId: string, amount: number) => void
   onAddSubcategory: (group: string, name: string) => Promise<string | null>
+  onRenameSubcategory: (subcategoryId: string, name: string) => Promise<boolean>
+  onRemoveLine: (budgetId: string, name: string) => void
   onSettle: (budgetId: string) => void
   onUnsettle: (budgetId: string) => void
   openSheet: AppHandlers['openSheet']
@@ -81,6 +83,8 @@ export default function BudgetScreen({
   onUpdateExpected,
   onAddLine,
   onAddSubcategory,
+  onRenameSubcategory,
+  onRemoveLine,
   onSettle,
   onUnsettle,
   openSheet,
@@ -338,6 +342,8 @@ export default function BudgetScreen({
                     onUpdateExpected={onUpdateExpected}
                     onAddLine={onAddLine}
                     onAddSubcategory={onAddSubcategory}
+                    onRenameSubcategory={onRenameSubcategory}
+                    onRemoveLine={onRemoveLine}
                     onSettle={onSettle}
                     onUnsettle={onUnsettle}
                   />
@@ -557,6 +563,8 @@ function GroupCard({
   onUpdateExpected,
   onAddLine,
   onAddSubcategory,
+  onRenameSubcategory,
+  onRemoveLine,
   onSettle,
   onUnsettle,
 }: {
@@ -565,6 +573,8 @@ function GroupCard({
   onUpdateExpected: (budgetId: string, amount: number) => void
   onAddLine: (subcategoryId: string, amount: number) => void
   onAddSubcategory: (group: string, name: string) => Promise<string | null>
+  onRenameSubcategory: (subcategoryId: string, name: string) => Promise<boolean>
+  onRemoveLine: (budgetId: string, name: string) => void
   onSettle: (budgetId: string) => void
   onUnsettle: (budgetId: string) => void
 }) {
@@ -626,7 +636,7 @@ function GroupCard({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '28px 1.5fr 1fr',
+              gridTemplateColumns: '28px 1.5fr 1fr 28px',
               gap: 0,
               padding: '8px 12px',
               fontSize: 11,
@@ -639,6 +649,7 @@ function GroupCard({
             <span aria-hidden>✓</span>
             <span>Subcategory</span>
             <span style={{ textAlign: 'right' }}>Amount</span>
+            <span aria-hidden />
           </div>
 
           {block.lines.map(line => (
@@ -646,6 +657,8 @@ function GroupCard({
               key={line.id}
               line={line}
               onUpdateExpected={onUpdateExpected}
+              onRename={onRenameSubcategory}
+              onRemove={onRemoveLine}
               onSettle={onSettle}
               onUnsettle={onUnsettle}
             />
@@ -694,7 +707,7 @@ function GroupCard({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '28px 1.5fr 1fr',
+              gridTemplateColumns: '28px 1.5fr 1fr 28px',
               padding: '10px 12px',
               background: color,
               color: '#fff',
@@ -705,6 +718,7 @@ function GroupCard({
             <span />
             <span>Total</span>
             <span style={{ textAlign: 'right' }}>{euro(block.expected)}</span>
+            <span />
           </div>
         </>
       )}
@@ -715,20 +729,37 @@ function GroupCard({
 function BudgetLineRow({
   line,
   onUpdateExpected,
+  onRename,
+  onRemove,
   onSettle,
   onUnsettle,
 }: {
   line: Budget
   onUpdateExpected: (budgetId: string, amount: number) => void
+  onRename: (subcategoryId: string, name: string) => Promise<boolean>
+  onRemove: (budgetId: string, name: string) => void
   onSettle: (budgetId: string) => void
   onUnsettle: (budgetId: string) => void
 }) {
   const [amount, setAmount] = useState(String(line.amount))
+  const [name, setName] = useState(line.subcategoryName)
+  const nameRef = useRef(line.subcategoryName)
+
   useEffect(() => {
     setAmount(String(line.amount))
   }, [line.amount])
 
-  const handleBlur = () => {
+  useEffect(() => {
+    nameRef.current = line.subcategoryName
+    setName(line.subcategoryName)
+  }, [line.subcategoryName])
+
+  const handleNameChange = (value: string) => {
+    nameRef.current = value
+    setName(value)
+  }
+
+  const handleAmountBlur = () => {
     const parsed = Number.parseFloat(amount.replace(',', '.'))
     if (!Number.isFinite(parsed) || parsed <= 0) {
       setAmount(String(line.amount))
@@ -737,11 +768,35 @@ function BudgetLineRow({
     if (parsed !== line.amount) onUpdateExpected(line.id, parsed)
   }
 
+  const handleNameBlur = async (raw?: string) => {
+    const next = (raw ?? nameRef.current).trim()
+    if (!next || next.toLowerCase() === line.subcategoryName.toLowerCase()) {
+      nameRef.current = line.subcategoryName
+      setName(line.subcategoryName)
+      return
+    }
+    const ok = await onRename(line.subcategoryId, next)
+    if (!ok) {
+      nameRef.current = line.subcategoryName
+      setName(line.subcategoryName)
+    }
+  }
+
+  const handleRemove = () => {
+    if (line.settled) {
+      const confirmed = window.confirm(
+        `Remove ${line.subcategoryName} from this cycle? The settled payment for this line will be cleared. Past spend stays.`,
+      )
+      if (!confirmed) return
+    }
+    onRemove(line.id, line.subcategoryName)
+  }
+
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '28px 1.5fr 1fr',
+        gridTemplateColumns: '28px 1.5fr 1fr 28px',
         gap: 8,
         padding: '8px 12px',
         borderBottom: `1px dashed ${t.border}`,
@@ -770,16 +825,42 @@ function BudgetLineRow({
       >
         {line.settled ? <Check size={12} strokeWidth={3} aria-hidden /> : null}
       </button>
-      <span style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>{line.subcategoryName}</span>
+      <div style={{ background: 'var(--ds-surface-muted)', borderRadius: r.sm }}>
+        <Input
+          value={name}
+          onChange={handleNameChange}
+          onBlur={handleNameBlur}
+          aria-label={`${line.subcategoryName} name`}
+        />
+      </div>
       <div style={{ background: 'var(--ds-surface-muted)', borderRadius: r.sm }}>
         <Input
           inputMode="decimal"
           value={amount}
           onChange={setAmount}
-          onBlur={handleBlur}
+          onBlur={handleAmountBlur}
           aria-label={`${line.subcategoryName} amount`}
         />
       </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        aria-label={`Remove ${line.subcategoryName} from this cycle`}
+        style={{
+          width: 22,
+          height: 22,
+          border: 'none',
+          background: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: t.textTer,
+        }}
+      >
+        <X size={14} strokeWidth={2} aria-hidden />
+      </button>
     </div>
   )
 }

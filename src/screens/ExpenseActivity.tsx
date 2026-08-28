@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Pencil, Plus, Receipt, Wallet } from 'lucide-react'
 import type { BudgetPeriod, Expense, AppHandlers } from '../types'
 import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS } from '../ui'
+import { CycleExpensesLoadError } from '../components/ErrorBoundary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
@@ -19,7 +20,7 @@ interface Props {
   period: BudgetPeriod | null
   periods: BudgetPeriod[]
   selectedPeriodId: string | null
-  loadPeriodExpenses: (periodId: string) => Promise<Expense[]>
+  loadPeriodExpenses: (periodId: string, signal?: AbortSignal) => Promise<Expense[]>
   onSelectPeriod: (periodId: string) => void
   openSheet: AppHandlers['openSheet']
 }
@@ -59,18 +60,21 @@ export default function ExpenseActivityScreen({
   const params = new URLSearchParams(location.search)
   const queryPeriod = parsePeriodId(params.get('period'))
   const queryMonth = parseYearMonth(params.get('month'))
-  const { entries, loadingEntries } = usePeriodExpenses(period?.id ?? null, loadPeriodExpenses)
+  const { entries, loadingEntries, loadError, retry } = usePeriodExpenses(
+    period?.id ?? null,
+    loadPeriodExpenses,
+  )
   const [page, setPage] = useState(0)
 
   useEffect(() => {
     if (queryPeriod && periods.some(row => row.id === queryPeriod)) {
-      if (queryPeriod !== selectedPeriodId) onSelectPeriod(queryPeriod)
+      onSelectPeriod(queryPeriod)
       return
     }
     if (!queryMonth) return
     const match = periodForMonth(periods, queryMonth)
-    if (match && match.id !== selectedPeriodId) onSelectPeriod(match.id)
-  }, [queryPeriod, queryMonth, periods, selectedPeriodId, onSelectPeriod])
+    if (match) onSelectPeriod(match.id)
+  }, [queryPeriod, queryMonth, periods, onSelectPeriod])
 
   useEffect(() => {
     setPage(0)
@@ -79,7 +83,9 @@ export default function ExpenseActivityScreen({
   useEffect(() => {
     if (!selectedPeriodId) return
     if (queryPeriod === selectedPeriodId && !queryMonth) return
-    routerNavigate(budgetActivityPath(selectedPeriodId), { replace: true })
+    if (!queryPeriod || queryMonth) {
+      routerNavigate(budgetActivityPath(selectedPeriodId), { replace: true })
+    }
   }, [selectedPeriodId, queryPeriod, queryMonth, routerNavigate])
 
   const handleAdd = () => {
@@ -110,14 +116,19 @@ export default function ExpenseActivityScreen({
   const canGoPrev = selectedIndex > 0
   const canGoNext = selectedIndex >= 0 && selectedIndex < periods.length - 1
 
+  const handleSelectCycle = (periodId: string) => {
+    onSelectPeriod(periodId)
+    routerNavigate(budgetActivityPath(periodId), { replace: true })
+  }
+
   const handlePrev = () => {
     if (!canGoPrev) return
-    onSelectPeriod(periods[selectedIndex - 1].id)
+    handleSelectCycle(periods[selectedIndex - 1].id)
   }
 
   const handleNext = () => {
     if (!canGoNext) return
-    onSelectPeriod(periods[selectedIndex + 1].id)
+    handleSelectCycle(periods[selectedIndex + 1].id)
   }
 
   const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE))
@@ -150,12 +161,15 @@ export default function ExpenseActivityScreen({
             <Skeleton h={16} w="70%" />
           </div>
         ) : entries.length === 0 ? (
-          <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
-            <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
-              No expenses in this cycle.
-            </p>
-          </div>
+          <>
+            <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
+              <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
+                No expenses in this cycle.
+              </p>
+            </div>
+            {loadError && <CycleExpensesLoadError onRetry={retry} />}
+          </>
         ) : (
           <>
             <div className="hide-desktop">
@@ -283,6 +297,7 @@ export default function ExpenseActivityScreen({
                 </tbody>
               </table>
             </div>
+            {loadError && <CycleExpensesLoadError onRetry={retry} />}
           </>
         )}
       </div>

@@ -37,7 +37,7 @@ interface Props {
   selectedPeriodId: string | null
   today: string
   subcategoryGroups: BudgetSubcategoryGroup[]
-  loadPeriodExpenses: (periodId: string) => Promise<Expense[]>
+  loadPeriodExpenses: (periodId: string, signal?: AbortSignal) => Promise<Expense[]>
   loading?: boolean
   onSelectPeriod: (periodId: string) => void
   onOpenCycleList: () => void

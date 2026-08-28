@@ -27,6 +27,7 @@ import {
   formatCycleDay,
 } from '../api/adapters'
 import { budgetActivityPath } from '../routing'
+import { CycleExpensesLoadError } from '../components/ErrorBoundary'
 
 const ACTIVITY_PREVIEW_LIMIT = 5
 const CHART_CYCLE_LIMIT = 12
@@ -34,7 +35,7 @@ const CHART_CYCLE_LIMIT = 12
 interface Props {
   period: BudgetPeriod | null
   periods: BudgetPeriod[]
-  loadPeriodExpenses: (periodId: string) => Promise<Expense[]>
+  loadPeriodExpenses: (periodId: string, signal?: AbortSignal) => Promise<Expense[]>
   onSelectPeriod: (periodId: string) => void
   onCreateCycle: () => void
   openSheet: AppHandlers['openSheet']
@@ -118,7 +119,10 @@ export default function ExpensesScreen({
   openSheet,
 }: Props) {
   const navigate = useNavigate()
-  const { entries, loadingEntries } = usePeriodExpenses(period?.id ?? null, loadPeriodExpenses)
+  const { entries, loadingEntries, loadError, retry } = usePeriodExpenses(
+    period?.id ?? null,
+    loadPeriodExpenses,
+  )
 
   const handleAdd = () => {
     openSheet({ type: 'chooseExpenseEntry' })
@@ -328,14 +332,18 @@ export default function ExpensesScreen({
             <Skeleton h={16} w="70%" />
           </div>
         ) : entries.length === 0 ? (
-          <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
-            <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
-              No expenses in this cycle.
-            </p>
-          </div>
+          <>
+            <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
+              <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
+                No expenses in this cycle.
+              </p>
+            </div>
+            {loadError && <CycleExpensesLoadError onRetry={retry} />}
+          </>
         ) : (
-          previewEntries.map((expense, i) => {
+          <>
+          {previewEntries.map((expense, i) => {
             const isManual = expense.sourceType === 'manual'
             const title = expenseTitle(expense)
             const itemCount = expense.sourceItemCount
@@ -390,7 +398,9 @@ export default function ExpensesScreen({
                 </span>
               </button>
             )
-          })
+          })}
+            {loadError && <CycleExpensesLoadError onRetry={retry} />}
+          </>
         )}
       </div>
 

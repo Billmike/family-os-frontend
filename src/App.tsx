@@ -98,6 +98,7 @@ import CycleDatesSheet from "./components/CycleDatesSheet";
 import CycleListSheet from "./components/CycleListSheet";
 import ExpenseEntryChooser from "./components/ExpenseEntryChooser";
 import ReceiptScanSheet from "./components/ReceiptScanSheet";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import ShoppingItemSheet from "./components/ShoppingItemSheet";
 import BudgetScreen, { type BudgetTab } from "./screens/Budget";
 import {
@@ -295,7 +296,11 @@ function AppRoot() {
     );
   }
 
-  return <MainApp />;
+  return (
+    <ErrorBoundary>
+      <MainApp />
+    </ErrorBoundary>
+  );
 }
 
 function MainApp() {
@@ -437,7 +442,10 @@ function MainApp() {
         ? sortBudgetPeriods(listedPeriods.periods.map(toBudgetPeriod))
         : [];
       setBudgetPeriods(nextPeriods);
-      setSelectedPeriodId(pickDefaultPeriodId(nextPeriods, today));
+      setSelectedPeriodId((prev) => {
+        if (prev && nextPeriods.some((p) => p.id === prev)) return prev;
+        return pickDefaultPeriodId(nextPeriods, today);
+      });
       if (subcats) setSubcategoryGroups(toBudgetSubcategoryGroups(subcats));
 
       const groceries =
@@ -497,8 +505,8 @@ function MainApp() {
   }, [family.id]);
 
   const loadPeriodExpenses = useCallback(
-    async (periodId: string) => {
-      const rows = await expensesApi.listExpenses(family.id, { periodId });
+    async (periodId: string, signal?: AbortSignal) => {
+      const rows = await expensesApi.listExpenses(family.id, { periodId }, signal);
       return rows.map(toExpense);
     },
     [family.id],

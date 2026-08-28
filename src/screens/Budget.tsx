@@ -55,8 +55,8 @@ interface Props {
 }
 
 const TABS: { id: BudgetTab; label: string }[] = [
-  { id: 'plan', label: 'Plan' },
   { id: 'spend', label: 'Spend' },
+  { id: 'plan', label: 'Plan' },
   { id: 'insights', label: 'Insights' },
 ]
 

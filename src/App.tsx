@@ -5,7 +5,6 @@ import {
   Calendar,
   CheckSquare,
   ShoppingCart,
-  BarChart3,
   Wallet,
   Bell,
   ArrowLeft,
@@ -122,13 +121,12 @@ const BOTTOM_NAV = [
   { screen: "calendar" as Screen, icon: Calendar, label: "Calendar" },
   { screen: "tasks" as Screen, icon: CheckSquare, label: "Tasks" },
   { screen: "shopping" as Screen, icon: ShoppingCart, label: "Shopping" },
-  { screen: "budget" as Screen, icon: Wallet, label: "Budget" },
+  { screen: "budgetSpend" as Screen, icon: Wallet, label: "Budget" },
 ];
 
-/** The sidebar has room for the Budget sub-views the bottom nav folds into one tab. */
+/** The sidebar has room for Notifications; Budget is one item like the bottom nav. */
 const DESKTOP_NAV = [
   ...BOTTOM_NAV,
-  { screen: "budgetSpend" as Screen, icon: BarChart3, label: "Spend" },
   { screen: "notifications" as Screen, icon: Bell, label: "Notifications" },
 ];
 
@@ -320,7 +318,7 @@ function MainApp() {
     routerNavigate(legacyPath, { replace: true });
   }, [location.search, routerNavigate]);
 
-  // Retired routes: /expenses → /budget/spend (query string carries the month over)
+  // Retired routes: /expenses → /budget, /budget/spend → /budget
   useEffect(() => {
     const target = legacyPathRedirect(location.pathname);
     if (!target) return;
@@ -1454,8 +1452,7 @@ function MainApp() {
           const Icon = item.icon;
           const active =
             screen === item.screen ||
-            (item.screen === "budget" && screen === "budgetInsights") ||
-            (item.screen === "budgetSpend" && screen === "budgetActivity");
+            (item.screen === "budgetSpend" && isBudgetSection(screen));
           return (
             <button
               key={item.screen}
@@ -1562,7 +1559,7 @@ function MainApp() {
           const Icon = item.icon;
           const active =
             screen === item.screen ||
-            (item.screen === "budget" && isBudgetSection(screen));
+            (item.screen === "budgetSpend" && isBudgetSection(screen));
           return (
             <button
               key={item.screen}

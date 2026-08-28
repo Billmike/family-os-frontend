@@ -10,8 +10,8 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   calendar: '/calendar',
   tasks: '/tasks',
   shopping: '/shopping',
-  budget: '/budget',
-  budgetSpend: '/budget/spend',
+  budget: '/budget/plan',
+  budgetSpend: '/budget',
   budgetInsights: '/budget/insights',
   budgetActivity: '/budget/activity',
   notifications: '/notifications',
@@ -24,8 +24,8 @@ const PATH_TO_SCREEN: Record<string, Screen> = {
   '/calendar': 'calendar',
   '/tasks': 'tasks',
   '/shopping': 'shopping',
-  '/budget': 'budget',
-  '/budget/spend': 'budgetSpend',
+  '/budget': 'budgetSpend',
+  '/budget/plan': 'budget',
   '/budget/insights': 'budgetInsights',
   '/budget/activity': 'budgetActivity',
   '/notifications': 'notifications',
@@ -37,7 +37,8 @@ const PATH_TO_SCREEN: Record<string, Screen> = {
 const LEGACY_PATH_REDIRECTS: Record<string, string> = {
   '/expenses': SCREEN_PATHS.budgetSpend,
   '/expenses/activity': SCREEN_PATHS.budgetActivity,
-  '/insights': SCREEN_PATHS.budget,
+  '/insights': SCREEN_PATHS.budgetInsights,
+  '/budget/spend': SCREEN_PATHS.budgetSpend,
 }
 
 export function parseYearMonth(value: string | null | undefined): string | null {

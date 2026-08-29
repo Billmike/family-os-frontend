@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'budget' | 'budgetSpend' | 'budgetInsights' | 'budgetActivity' | 'notifications' | 'family' | 'settings'
+export type Screen = 'dashboard' | 'calendar' | 'tasks' | 'shopping' | 'budget' | 'budgetSpend' | 'budgetInsights' | 'budgetActivity' | 'personal' | 'personalActivity' | 'notifications' | 'family' | 'settings'
 
 export interface Member {
   id: string
@@ -100,6 +100,56 @@ export const BUDGET_GROUPS = [
   'Savings',
   'Investment',
 ] as const
+
+export const PERSONAL_EXPENSE_CATEGORIES = [
+  'Dining',
+  'Transport',
+  'Shopping',
+  'Health',
+  'Entertainment',
+  'Travel',
+  'Subscriptions',
+  'Other',
+] as const
+
+export type PersonalExpenseCategory = (typeof PERSONAL_EXPENSE_CATEGORIES)[number]
+
+export interface PersonalExpenseAccount {
+  id: string
+  name: string
+  currency: string
+  sortOrder: number
+  currentMonthTotal: number
+  currentMonthCount: number
+}
+
+export interface PersonalAccountSummary {
+  timezone: string
+  currentMonth: string
+  currentMonthTotal: number
+  currentMonthCount: number
+  currency: string
+  accounts: PersonalExpenseAccount[]
+}
+
+export interface PersonalExpense {
+  id: string
+  accountId: string
+  amount: number
+  currency: string
+  category: string
+  merchant: string | null
+  note: string | null
+  occurredAt: string
+}
+
+export interface PersonalExpenseDraft {
+  amount: number
+  category: string
+  merchant: string | null
+  note: string | null
+  occurredAt: string
+}
 
 export type BudgetGroup = (typeof BUDGET_GROUPS)[number]
 
@@ -305,6 +355,10 @@ export type BottomSheetType =
   | { type: 'chooseExpenseEntry' }
   | { type: 'scanReceipt' }
   | { type: 'editExpense'; expense: Expense }
+  | { type: 'addPersonalExpense' }
+  | { type: 'editPersonalExpense'; expense: PersonalExpense }
+  | { type: 'createPersonalAccount' }
+  | { type: 'editPersonalAccount'; account: PersonalExpenseAccount }
   | { type: 'cycleDates'; mode?: 'current' | 'next' | 'create' | 'copy' }
   | { type: 'cycleList'; highlightRange?: { start: string; end: string } }
   | { type: 'eventDetail'; eventId: string }

@@ -11,6 +11,7 @@ export interface UserOut {
   email: string
   name: string
   avatar_url: string | null
+  timezone: string | null
   created_at: string
   updated_at: string
 }
@@ -304,6 +305,39 @@ export interface ExpenseOut {
   source_type: 'manual' | 'shopping_session' | 'receipt' | 'budget_line'
   source_id: string | null
   source_item_count: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PersonalAccountOut {
+  id: string
+  name: string
+  currency: string
+  sort_order: number
+  current_month_total: string
+  current_month_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PersonalAccountListOut {
+  timezone: string
+  current_month: string
+  current_month_total: string
+  current_month_count: number
+  currency: string
+  accounts: PersonalAccountOut[]
+}
+
+export interface PersonalExpenseOut {
+  id: string
+  account_id: string
+  amount: string
+  currency: string
+  category: string
+  merchant: string | null
+  note: string | null
+  occurred_at: string
   created_at: string
   updated_at: string
 }

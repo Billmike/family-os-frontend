@@ -26,6 +26,7 @@ import {
 } from '../ui'
 import BudgetInsights from '../components/BudgetInsights'
 import ExpensesScreen from './Expenses'
+import { MoneyScopeSwitch } from '../components/MoneyScopeSwitch'
 
 export type BudgetTab = 'plan' | 'spend' | 'insights'
 
@@ -51,6 +52,7 @@ interface Props {
   onRemoveLine: (budgetId: string, name: string) => void
   onSettle: (budgetId: string) => void
   onUnsettle: (budgetId: string) => void
+  onSelectPersonal: () => void
   openSheet: AppHandlers['openSheet']
 }
 
@@ -87,14 +89,24 @@ export default function BudgetScreen({
   onRemoveLine,
   onSettle,
   onUnsettle,
+  onSelectPersonal,
   openSheet,
 }: Props) {
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `0 ${SIDE_PAD}px` }}>
-        <Skeleton h={120} />
-        <Skeleton h={200} />
-        <Skeleton h={200} />
+      <div style={{ padding: '0 0 24px' }}>
+        <div style={{ padding: `8px ${SIDE_PAD}px 12px` }}>
+          <MoneyScopeSwitch
+            scope="family"
+            onSelectFamily={() => undefined}
+            onSelectPersonal={onSelectPersonal}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `0 ${SIDE_PAD}px` }}>
+          <Skeleton h={120} />
+          <Skeleton h={200} />
+          <Skeleton h={200} />
+        </div>
       </div>
     )
   }
@@ -130,6 +142,11 @@ export default function BudgetScreen({
           padding: `8px ${SIDE_PAD}px 12px`,
         }}
       >
+        <MoneyScopeSwitch
+          scope="family"
+          onSelectFamily={() => undefined}
+          onSelectPersonal={onSelectPersonal}
+        />
         <div
           role="tablist"
           aria-label="Budget views"

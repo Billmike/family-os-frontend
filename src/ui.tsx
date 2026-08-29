@@ -1,6 +1,6 @@
 import { type CSSProperties, type InputHTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, CreditCard, Equal, Heart, Home, Minus, MoreHorizontal, PiggyBank, Plus, Settings2, ShoppingCart, TrendingUp, User, UtensilsCrossed, Wallet, X, Zap } from 'lucide-react'
+import { Check, CheckSquare, Baby, Car, ChevronDown, ChevronsDown, ChevronsUp, CreditCard, Equal, Film, Heart, Home, Minus, MoreHorizontal, PiggyBank, Plane, Plus, Repeat, Settings2, ShoppingCart, TrendingUp, User, UtensilsCrossed, Wallet, X, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Member } from './types'
 import { TASK_CATEGORIES } from './types'
@@ -687,6 +687,9 @@ const EXPENSE_CATEGORY_ICONS: Record<string, LucideIcon> = {
   Investment: TrendingUp,
   Groceries: ShoppingCart,
   Transport: Car,
+  Entertainment: Film,
+  Travel: Plane,
+  Subscriptions: Repeat,
 }
 
 export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
@@ -698,6 +701,10 @@ export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
   Health: 'var(--ds-success)',
   Childcare: 'var(--ds-member-3)',
   Other: 'var(--ds-text-tertiary)',
+  Transport: 'var(--ds-info)',
+  Entertainment: 'var(--ds-member-5)',
+  Travel: 'var(--ds-member-2)',
+  Subscriptions: 'var(--ds-text-secondary)',
 }
 
 export const BUDGET_GROUP_COLORS: Record<string, string> = {

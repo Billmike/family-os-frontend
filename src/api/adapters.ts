@@ -12,6 +12,9 @@ import type {
   HouseholdSpend,
   Member,
   Notification,
+  PersonalAccountSummary,
+  PersonalExpense,
+  PersonalExpenseAccount,
   Receipt,
   ReceiptItem,
   Screen,
@@ -33,6 +36,9 @@ import type {
   HouseholdSpendOut,
   MemberOut,
   NotificationOut,
+  PersonalAccountListOut,
+  PersonalAccountOut,
+  PersonalExpenseOut,
   ReceiptItemOut,
   ReceiptOut,
   ShoppingItemOut,
@@ -464,6 +470,45 @@ export function toExpense(expense: ExpenseOut): Expense {
     sourceId: expense.source_id,
     sourceItemCount: expense.source_item_count,
   };
+}
+
+export function toPersonalAccount(account: PersonalAccountOut): PersonalExpenseAccount {
+  return {
+    id: account.id,
+    name: account.name,
+    currency: account.currency,
+    sortOrder: account.sort_order,
+    currentMonthTotal: Number(account.current_month_total),
+    currentMonthCount: account.current_month_count,
+  }
+}
+
+export function toPersonalAccountSummary(data: PersonalAccountListOut): PersonalAccountSummary {
+  return {
+    timezone: data.timezone,
+    currentMonth: data.current_month,
+    currentMonthTotal: Number(data.current_month_total),
+    currentMonthCount: data.current_month_count,
+    currency: data.currency,
+    accounts: data.accounts.map(toPersonalAccount),
+  }
+}
+
+export function toPersonalExpense(expense: PersonalExpenseOut): PersonalExpense {
+  return {
+    id: expense.id,
+    accountId: expense.account_id,
+    amount: Number(expense.amount),
+    currency: expense.currency,
+    category: expense.category,
+    merchant: expense.merchant,
+    note: expense.note,
+    occurredAt: expense.occurred_at,
+  }
+}
+
+export function personalExpenseTitle(expense: PersonalExpense): string {
+  return expense.merchant || expense.category
 }
 
 function parseOptionalNumber(value: string | null | undefined): number | null {

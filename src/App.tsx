@@ -27,6 +27,9 @@ import type {
   Member,
   TaskUpdatePatch,
   ExpenseDraft,
+  PersonalAccountSummary,
+  PersonalExpense,
+  PersonalExpenseDraft,
   ShoppingItemPatch,
 } from "./types";
 import { TASK_CATEGORIES } from "./types";
@@ -66,6 +69,8 @@ import {
   toNotification,
   toExpense,
   toHouseholdSpend,
+  toPersonalAccountSummary,
+  toPersonalExpense,
   toBudgetPeriod,
   toBudgetSubcategoryGroups,
   sortBudgetPeriods,
@@ -86,6 +91,8 @@ import * as shoppingApi from "./api/shopping";
 import * as shoppingLocationsApi from "./api/shoppingLocations";
 import * as shoppingSessionsApi from "./api/shoppingSessions";
 import * as expensesApi from "./api/expenses";
+import * as personalAccountsApi from "./api/personalAccounts";
+import * as personalExpensesApi from "./api/personalExpenses";
 import * as budgetsApi from "./api/budgets";
 import * as budgetSubcategoriesApi from "./api/budgetSubcategories";
 import * as notificationsApi from "./api/notifications";
@@ -115,6 +122,10 @@ import {
   screenToPath,
 } from "./routing";
 import ExpenseActivityScreen from "./screens/ExpenseActivity";
+import PersonalExpensesScreen from "./screens/PersonalExpenses";
+import PersonalActivityScreen from "./screens/PersonalActivity";
+import PersonalExpenseSheet from "./components/PersonalExpenseSheet";
+import PersonalAccountSheet from "./components/PersonalAccountSheet";
 
 const BOTTOM_NAV = [
   { screen: "dashboard" as Screen, icon: Home, label: "Home" },
@@ -139,6 +150,8 @@ const SCREEN_TITLES: Record<Screen, string> = {
   budgetSpend: "Budget",
   budgetInsights: "Budget",
   budgetActivity: "Activity",
+  personal: "Personal",
+  personalActivity: "Activity",
   notifications: "Notifications",
   family: "Your Family",
   settings: "Settings",
@@ -158,6 +171,9 @@ const BUDGET_TAB_BY_SCREEN: Partial<Record<Screen, BudgetTab>> = {
 
 /** Stepper taps arrive in bursts, so coalesce them into a single request. */
 const ITEM_EDIT_DEBOUNCE_MS = 400;
+
+const personalAccountStorageKey = (userId: string) =>
+  `familyos_personal_account_${userId}`;
 
 interface PendingEdit<T> {
   timer: number;
@@ -363,6 +379,10 @@ function MainApp() {
   const budgetPeriod =
     budgetPeriods.find((p) => p.id === selectedPeriodId) ?? null;
   const [subcategoryGroups, setSubcategoryGroups] = useState<BudgetSubcategoryGroup[]>([]);
+  const [personalSummary, setPersonalSummary] = useState<PersonalAccountSummary | null>(null);
+  const [selectedPersonalAccountId, setSelectedPersonalAccountId] = useState<string | null>(null);
+  const [selectedPersonalMonth, setSelectedPersonalMonth] = useState(() => today.slice(0, 7));
+  const [personalListEpoch, setPersonalListEpoch] = useState(0);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? "");
   const [dashDateLabel, setDashDateLabel] = useState(formatLongDate(today));
@@ -410,7 +430,7 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`;
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`;
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, listedPeriods, subcats] =
+      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, listedPeriods, subcats, personal] =
         await Promise.all([
           dashboardApi.getDashboard(familyId),
           eventsApi.listEvents(familyId, from, to),
@@ -423,6 +443,7 @@ function MainApp() {
           expensesApi.getSpend(familyId).catch(() => null),
           budgetsApi.listBudgetPeriods(familyId).catch(() => null),
           budgetSubcategoriesApi.listBudgetSubcategories(familyId).catch(() => null),
+          personalAccountsApi.listAccounts().catch(() => null),
         ]);
 
       setFamilyName(dash.family_name);
@@ -445,6 +466,24 @@ function MainApp() {
         return pickDefaultPeriodId(nextPeriods, today);
       });
       if (subcats) setSubcategoryGroups(toBudgetSubcategoryGroups(subcats));
+      if (personal) {
+        const nextSummary = toPersonalAccountSummary(personal);
+        setPersonalSummary(nextSummary);
+        setSelectedPersonalMonth((prev) =>
+          prev > nextSummary.currentMonth ? nextSummary.currentMonth : prev || nextSummary.currentMonth,
+        );
+        const stored = session.user
+          ? localStorage.getItem(personalAccountStorageKey(session.user.id))
+          : null;
+        setSelectedPersonalAccountId((prev) => {
+          const candidate = prev ?? stored;
+          if (candidate && nextSummary.accounts.some((row) => row.id === candidate)) {
+            return candidate;
+          }
+          return nextSummary.accounts[0]?.id ?? null;
+        });
+        setPersonalListEpoch((n) => n + 1);
+      }
 
       const groceries =
         lists.find((l) => l.name.toLowerCase() === "groceries") ??
@@ -467,7 +506,7 @@ function MainApp() {
     } finally {
       setLoading(false);
     }
-  }, [family.id, timeZone, today, session.recoverFromLostFamily]);
+  }, [family.id, timeZone, today, session.recoverFromLostFamily, session.user]);
 
   const refreshSpend = useCallback(async () => {
     try {
@@ -509,6 +548,53 @@ function MainApp() {
     },
     [family.id],
   );
+
+  const refreshPersonalSummary = useCallback(async (selectId?: string) => {
+    try {
+      const data = await personalAccountsApi.listAccounts();
+      const nextSummary = toPersonalAccountSummary(data);
+      setPersonalSummary(nextSummary);
+      setSelectedPersonalMonth((prev) =>
+        prev > nextSummary.currentMonth ? nextSummary.currentMonth : prev || nextSummary.currentMonth,
+      );
+      setSelectedPersonalAccountId((prev) => {
+        const candidate = selectId ?? prev;
+        if (candidate && nextSummary.accounts.some((row) => row.id === candidate)) {
+          return candidate;
+        }
+        return nextSummary.accounts[0]?.id ?? null;
+      });
+      setPersonalListEpoch((n) => n + 1);
+    } catch {
+      /* keep last known personal totals */
+    }
+  }, []);
+
+  const handleSelectPersonalAccount = useCallback(
+    (accountId: string) => {
+      setSelectedPersonalAccountId(accountId);
+      if (session.user) {
+        localStorage.setItem(personalAccountStorageKey(session.user.id), accountId);
+      }
+    },
+    [session.user],
+  );
+
+  const loadPersonalMonthExpenses = useCallback(
+    async (accountId: string, month: string, signal?: AbortSignal) => {
+      const rows = await personalExpensesApi.listPersonalExpenses(accountId, month, signal);
+      return rows.map(toPersonalExpense);
+    },
+    [personalListEpoch],
+  );
+
+  useEffect(() => {
+    if (!session.user || !selectedPersonalAccountId) return;
+    localStorage.setItem(
+      personalAccountStorageKey(session.user.id),
+      selectedPersonalAccountId,
+    );
+  }, [session.user, selectedPersonalAccountId]);
 
   const handleOpenSpend = useCallback(() => {
     const current = budgetPeriods.find((p) => cycleStatus(p, today) === "current");
@@ -929,6 +1015,95 @@ function MainApp() {
     }
   }
 
+  async function createPersonalAccount(name: string) {
+    try {
+      const row = await personalAccountsApi.createAccount({
+        name,
+        timezone: family.timezone,
+      });
+      setSheet(null);
+      showToast("Account created");
+      handleSelectPersonalAccount(row.id);
+      await refreshPersonalSummary(row.id);
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  async function updatePersonalAccount(accountId: string, name: string) {
+    try {
+      await personalAccountsApi.updateAccount(accountId, { name });
+      setSheet(null);
+      showToast("Account updated");
+      await refreshPersonalSummary(accountId);
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  async function deletePersonalAccount(accountId: string) {
+    try {
+      await personalAccountsApi.deleteAccount(accountId);
+      setSheet(null);
+      showToast("Account deleted");
+      if (session.user && selectedPersonalAccountId === accountId) {
+        localStorage.removeItem(personalAccountStorageKey(session.user.id));
+      }
+      await refreshPersonalSummary();
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  async function addPersonalExpense(input: PersonalExpenseDraft) {
+    if (!selectedPersonalAccountId) {
+      showToast("Create an account first", "error");
+      return;
+    }
+    try {
+      await personalExpensesApi.createPersonalExpense(selectedPersonalAccountId, {
+        amount: input.amount,
+        category: input.category,
+        merchant: input.merchant,
+        note: input.note,
+        occurred_at: input.occurredAt,
+      });
+      setSheet(null);
+      showToast("Expense added");
+      await refreshPersonalSummary(selectedPersonalAccountId);
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  async function updatePersonalExpenseRow(id: string, input: PersonalExpenseDraft) {
+    try {
+      await personalExpensesApi.updatePersonalExpense(id, {
+        amount: input.amount,
+        category: input.category,
+        merchant: input.merchant,
+        note: input.note,
+        occurred_at: input.occurredAt,
+      });
+      setSheet(null);
+      showToast("Expense updated");
+      await refreshPersonalSummary(selectedPersonalAccountId ?? undefined);
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  async function deletePersonalExpenseRow(id: string) {
+    try {
+      await personalExpensesApi.deletePersonalExpense(id);
+      setSheet(null);
+      showToast("Expense deleted");
+      await refreshPersonalSummary(selectedPersonalAccountId ?? undefined);
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
   function handleReceiptConfirmed() {
     setSheet(null);
     showToast("Expense added from receipt");
@@ -1253,11 +1428,16 @@ function MainApp() {
     screen === "notifications" ||
     screen === "family" ||
     screen === "settings" ||
-    screen === "budgetActivity";
+    screen === "budgetActivity" ||
+    screen === "personalActivity";
   const headerBackScreen: Screen =
-    screen === "budgetActivity" ? "budgetSpend" : "dashboard";
+    screen === "budgetActivity"
+      ? "budgetSpend"
+      : screen === "personalActivity"
+        ? "personal"
+        : "dashboard";
   const showHeaderTitle =
-    !isDashboard && (!isSubScreen || screen === "budgetActivity");
+    !isDashboard && (!isSubScreen || screen === "budgetActivity" || screen === "personalActivity");
 
   function AppHeader() {
     return (
@@ -1712,6 +1892,8 @@ function MainApp() {
                 dateLabel={dashDateLabel}
                 today={today}
                 onOpenSpend={handleOpenSpend}
+                onOpenPersonal={() => navigateToScreen("personal")}
+                personalSummary={personalSummary}
                 {...handlers}
               />
             )}
@@ -1754,6 +1936,33 @@ function MainApp() {
                 {...handlers}
               />
             )}
+            {(screen === "personal" || screen === "personalActivity") && (
+              screen === "personalActivity" ? (
+                <PersonalActivityScreen
+                  summary={personalSummary}
+                  selectedAccountId={selectedPersonalAccountId}
+                  selectedMonth={selectedPersonalMonth}
+                  todayMonth={personalSummary?.currentMonth ?? today.slice(0, 7)}
+                  loadMonthExpenses={loadPersonalMonthExpenses}
+                  onSelectAccount={handleSelectPersonalAccount}
+                  onSelectMonth={setSelectedPersonalMonth}
+                  {...handlers}
+                />
+              ) : (
+                <PersonalExpensesScreen
+                  summary={personalSummary}
+                  selectedAccountId={selectedPersonalAccountId}
+                  selectedMonth={selectedPersonalMonth}
+                  todayMonth={personalSummary?.currentMonth ?? today.slice(0, 7)}
+                  loading={loading}
+                  loadMonthExpenses={loadPersonalMonthExpenses}
+                  onSelectAccount={handleSelectPersonalAccount}
+                  onSelectMonth={setSelectedPersonalMonth}
+                  onSelectFamily={() => navigateToScreen("budgetSpend")}
+                  {...handlers}
+                />
+              )
+            )}
             {budgetTab && (
               <BudgetScreen
                 tab={budgetTab}
@@ -1777,6 +1986,7 @@ function MainApp() {
                 onRemoveLine={removeBudgetLine}
                 onSettle={settleBudgetLine}
                 onUnsettle={unsettleBudgetLine}
+                onSelectPersonal={() => navigateToScreen("personal")}
                 {...handlers}
               />
             )}
@@ -1928,6 +2138,36 @@ function MainApp() {
           onClose={() => setSheet(null)}
           onSave={(input) => handlers.updateExpense(sheet.expense.id, input)}
           onDelete={handlers.deleteExpense}
+        />
+      )}
+      {sheet?.type === "addPersonalExpense" && (
+        <PersonalExpenseSheet
+          today={today}
+          onClose={() => setSheet(null)}
+          onSave={(input) => void addPersonalExpense(input)}
+        />
+      )}
+      {sheet?.type === "editPersonalExpense" && (
+        <PersonalExpenseSheet
+          expense={sheet.expense}
+          today={today}
+          onClose={() => setSheet(null)}
+          onSave={(input) => void updatePersonalExpenseRow(sheet.expense.id, input)}
+          onDelete={(id) => void deletePersonalExpenseRow(id)}
+        />
+      )}
+      {sheet?.type === "createPersonalAccount" && (
+        <PersonalAccountSheet
+          onClose={() => setSheet(null)}
+          onSave={(name) => void createPersonalAccount(name)}
+        />
+      )}
+      {sheet?.type === "editPersonalAccount" && (
+        <PersonalAccountSheet
+          account={sheet.account}
+          onClose={() => setSheet(null)}
+          onSave={(name) => void updatePersonalAccount(sheet.account.id, name)}
+          onDelete={(id) => void deletePersonalAccount(id)}
         />
       )}
       {sheet?.type === "cycleDates" && (

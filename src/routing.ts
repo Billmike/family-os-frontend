@@ -14,6 +14,8 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   budgetSpend: '/budget',
   budgetInsights: '/budget/insights',
   budgetActivity: '/budget/activity',
+  personal: '/personal',
+  personalActivity: '/personal/activity',
   notifications: '/notifications',
   family: '/family',
   settings: '/settings',
@@ -28,6 +30,8 @@ const PATH_TO_SCREEN: Record<string, Screen> = {
   '/budget/plan': 'budget',
   '/budget/insights': 'budgetInsights',
   '/budget/activity': 'budgetActivity',
+  '/personal': 'personal',
+  '/personal/activity': 'personalActivity',
   '/notifications': 'notifications',
   '/family': 'family',
   '/settings': 'settings',
@@ -60,12 +64,28 @@ export function budgetActivityPath(periodId?: string | null): string {
   return `${path}?period=${parsed}`
 }
 
+export function personalActivityPath(accountId?: string | null, month?: string | null): string {
+  const path = SCREEN_PATHS.personalActivity
+  const params = new URLSearchParams()
+  const parsedAccount = parsePeriodId(accountId)
+  const parsedMonth = parseYearMonth(month)
+  if (parsedAccount) params.set('account', parsedAccount)
+  if (parsedMonth) params.set('month', parsedMonth)
+  const query = params.toString()
+  return query ? `${path}?${query}` : path
+}
+
+export function isPersonalSection(screen: Screen): boolean {
+  return screen === 'personal' || screen === 'personalActivity'
+}
+
 export function isBudgetSection(screen: Screen): boolean {
   return (
     screen === 'budget'
     || screen === 'budgetSpend'
     || screen === 'budgetInsights'
     || screen === 'budgetActivity'
+    || isPersonalSection(screen)
   )
 }
 

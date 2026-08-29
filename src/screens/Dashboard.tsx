@@ -1,5 +1,5 @@
-import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, BudgetPeriod, AppHandlers } from '../types'
-import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus } from 'lucide-react'
+import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, BudgetPeriod, AppHandlers, PersonalAccountSummary } from '../types'
+import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus, Wallet } from 'lucide-react'
 import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
 import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
 import { formatMoney, formatCycleDateRange, formatYearMonthTitle, deriveBudgetState } from '../api/adapters'
@@ -13,17 +13,19 @@ interface Props extends Partial<AppHandlers> {
   activeSession: ShoppingSession | null
   currentPeriod: BudgetPeriod | null
   periods: BudgetPeriod[]
+  personalSummary: PersonalAccountSummary | null
   memberName: string
   dateLabel: string
   today: string
   navigate: AppHandlers['navigate']
   onOpenSpend: () => void
+  onOpenPersonal: () => void
   openSheet: AppHandlers['openSheet']
   completeTask: AppHandlers['completeTask']
   addToBasket: AppHandlers['addToBasket']
 }
 
-export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, periods, memberName, dateLabel, today, navigate, onOpenSpend, openSheet, completeTask, addToBasket }: Props) {
+export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, periods, personalSummary, memberName, dateLabel, today, navigate, onOpenSpend, onOpenPersonal, openSheet, completeTask, addToBasket }: Props) {
   const tomorrow = (() => {
     const d = new Date(today + 'T12:00:00')
     d.setDate(d.getDate() + 1)
@@ -67,6 +69,16 @@ export default function Dashboard({ events, tasks, shopping, activeSession, curr
         viewLabel="Expenses"
       >
         <SpendSnapshot period={currentPeriod} periods={periods} onOpen={onOpenSpend} />
+      </DashSection>
+
+      <DashSection
+        icon={<Wallet size={16} color={t.primary} strokeWidth={1.75} />}
+        title="Personal"
+        count="this month"
+        onViewAll={onOpenPersonal}
+        viewLabel="Details"
+      >
+        <PersonalSpendSnapshot summary={personalSummary} onOpen={onOpenPersonal} />
       </DashSection>
 
       {/* ─── Today section ──────────────────────────────────────────────────── */}
@@ -312,6 +324,62 @@ function SpendSnapshot({
         </div>
       </div>
       {hasSpend && sparkBuckets.length > 0 && <SpendSparkline buckets={sparkBuckets} />}
+    </button>
+  )
+}
+
+function PersonalSpendSnapshot({
+  summary,
+  onOpen,
+}: {
+  summary: PersonalAccountSummary | null
+  onOpen: () => void
+}) {
+  const accounts = summary?.accounts ?? []
+  if (accounts.length === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label="Create a personal expense account"
+        style={{
+          width: '100%', padding: '16px 20px', border: 'none', background: 'none',
+          cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+          color: t.textTer, fontSize: 14,
+        }}
+      >
+        Create an account to track personal spend
+      </button>
+    )
+  }
+
+  const total = summary?.currentMonthTotal ?? 0
+  const currency = summary?.currency ?? 'EUR'
+  const caption = total === 0
+    ? 'No personal spend this month'
+    : accounts.length === 1
+      ? accounts[0].name
+      : `across ${accounts.length} accounts`
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Personal spend ${formatMoney(total, currency)} this month. Open Personal`}
+      style={{
+        width: '100%', padding: '16px 20px', border: 'none', background: 'none',
+        cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+      }}
+    >
+      <p style={{
+        fontSize: 24, fontWeight: 600, color: t.text, letterSpacing: '-0.03em',
+        fontVariantNumeric: 'tabular-nums', margin: 0, lineHeight: 1.15,
+      }}>
+        {formatMoney(total, currency)}
+      </p>
+      <p style={{ fontSize: 12, color: t.textSec, margin: '8px 0 0' }}>
+        {caption}
+      </p>
     </button>
   )
 }

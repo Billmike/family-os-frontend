@@ -12,6 +12,7 @@ import {
   weekdayShort,
 } from '../api/adapters'
 import { BottomSheet, t, r } from '../ui'
+import { CalendarDayCell } from './CalendarDayCell'
 
 interface Props {
   today: string
@@ -174,27 +175,17 @@ function CalendarMonth({
         {cells.map((day, i) => {
           if (day === null) return <div key={`empty-${i}`} />
           const date = toIso(day)
-          const disabled = isDisabled(date)
-          const isToday = date === today
-          const isSelected = date === selected
           return (
-            <button
+            <CalendarDayCell
               key={date}
-              onClick={() => !disabled && onSelect(date)}
-              disabled={disabled}
-              aria-label={date}
-              aria-pressed={isSelected}
-              style={{
-                width: '100%', aspectRatio: '1', border: 'none', borderRadius: 9999,
-                background: isSelected ? t.primary : isToday ? t.errorSub : 'transparent',
-                color: isSelected ? t.onPrimary : disabled ? t.textTer : isToday ? t.error : t.text,
-                fontSize: 14, fontWeight: isToday || isSelected ? 600 : 400,
-                cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1,
-                fontFamily: 'var(--ds-font)',
-              }}
-            >
-              {day}
-            </button>
+              date={date}
+              dayNum={day}
+              selected={date === selected}
+              isToday={date === today}
+              disabled={isDisabled(date)}
+              todayMark="tint"
+              onSelect={onSelect}
+            />
           )
         })}
       </div>

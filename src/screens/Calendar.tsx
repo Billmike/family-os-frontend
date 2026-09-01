@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { CalendarEvent, Member, AppHandlers } from '../types'
-import { t, r, FAB, SegmentedControl, SectionLabel } from '../ui'
+import { t, r, FAB, SegmentedControl, SectionLabel, MemberAvatar } from '../ui'
+import { CalendarDayCell } from '../components/CalendarDayCell'
 import { getMember, formatTime } from '../data'
 
-const EVENT_DOT = t.warning
 const WEEKDAY_HEADERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 interface Props {
@@ -191,44 +191,19 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-              {monthCells.map(cell => {
-                const active = cell.date === selectedDate
-                const hasEvents = (grouped[cell.date]?.length ?? 0) > 0
-                const isToday = cell.date === today
-                return (
-                  <button
-                    key={cell.date}
-                    type="button"
-                    onClick={() => selectDay(cell.date)}
-                    style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      minHeight: 44, padding: '6px 0', border: 'none', borderRadius: r.md, cursor: 'pointer',
-                      background: active ? t.primary : 'transparent',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <span style={{
-                      fontSize: 14,
-                      fontWeight: active || isToday ? 600 : 400,
-                      color: active
-                        ? t.onPrimary
-                        : !cell.inMonth
-                          ? t.textTer
-                          : isToday
-                            ? t.primary
-                            : t.text,
-                    }}>
-                      {cell.dayNum}
-                    </span>
-                    <div style={{
-                      width: 4, height: 4, borderRadius: 9999, marginTop: 3,
-                      background: hasEvents
-                        ? (active ? 'color-mix(in srgb, var(--ds-on-primary) 85%, transparent)' : EVENT_DOT)
-                        : 'transparent',
-                    }} />
-                  </button>
-                )
-              })}
+              {monthCells.map(cell => (
+                <CalendarDayCell
+                  key={cell.date}
+                  date={cell.date}
+                  dayNum={cell.dayNum}
+                  selected={cell.date === selectedDate}
+                  isToday={cell.date === today}
+                  inMonth={cell.inMonth}
+                  hasEvents={(grouped[cell.date]?.length ?? 0) > 0}
+                  todayMark="ink"
+                  onSelect={selectDay}
+                />
+              ))}
             </div>
           </div>
 
@@ -262,15 +237,23 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
 
 function EventRow({ event, divider, onClick }: { event: CalendarEvent; divider: boolean; onClick: () => void }) {
   const member = getMember(event.memberId)
+  const timeLabel = formatTime(event.startTime)
+  const handleClick = () => onClick()
+
   return (
-    <button onClick={onClick} style={{
-      width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-      padding: '13px 16px', border: 'none', background: 'none',
-      borderTop: divider ? `1px solid ${t.border}` : 'none',
-      cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
-    }}>
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={`${event.title}, ${timeLabel}, ${member.name}`}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+        padding: '13px 16px', border: 'none', background: 'none',
+        borderTop: divider ? `1px solid ${t.border}` : 'none',
+        cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+      }}
+    >
       <div style={{ minWidth: 52, flexShrink: 0, textAlign: 'right' }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: t.textSec }}>{formatTime(event.startTime)}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: t.textSec }}>{timeLabel}</span>
       </div>
       <div style={{ width: 3, height: 32, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -284,6 +267,9 @@ function EventRow({ event, divider, onClick }: { event: CalendarEvent; divider: 
           )}
         </div>
       </div>
+      <span aria-hidden style={{ flexShrink: 0 }}>
+        <MemberAvatar member={member} size={24} />
+      </span>
     </button>
   )
 }

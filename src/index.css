@@ -235,6 +235,13 @@ html, body, #root {
   .bottom-sheet-panel { animation: none !important; }
 }
 
+.calendar-day-cell:focus {
+  outline: none;
+}
+.calendar-day-cell:focus-visible .calendar-day-mark {
+  box-shadow: 0 0 0 2px var(--ds-bg), 0 0 0 4px var(--ds-primary);
+}
+
 /* Responsive layout helpers */
 .hide-mobile  { display: none !important; }
 .hide-desktop { display: block; }

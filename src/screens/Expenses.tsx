@@ -21,7 +21,6 @@ import {
   expenseTitle,
   formatMoney,
   formatSessionDate,
-  formatCycleDateRange,
   formatCycleDay,
 } from '../api/adapters'
 import { budgetActivityPath } from '../routing'
@@ -143,8 +142,6 @@ export default function ExpensesScreen({
     )
   }
 
-  const selectedIndex = periods.findIndex(row => row.id === period.id)
-  const previous = selectedIndex > 0 ? periods[selectedIndex - 1] : undefined
   const used = period.summary.totalExpensesActual
   const expected = period.summary.totalExpensesExpected
   const remaining = expected - used
@@ -159,16 +156,6 @@ export default function ExpensesScreen({
     label: formatCycleDay(row.endDate),
     shortLabel: String(new Date(`${row.endDate}T12:00:00`).getDate()),
   }))
-
-  const comparison = previous
-    ? (() => {
-        const delta = used - previous.summary.totalExpensesActual
-        const prevName = formatCycleDateRange(previous.startDate, previous.endDate)
-        if (Math.abs(delta) < 0.005) return { text: `Same as ${prevName}`, color: t.textSec }
-        if (delta > 0) return { text: `${formatMoney(delta, period.currency)} more than ${prevName}`, color: t.error }
-        return { text: `${formatMoney(Math.abs(delta), period.currency)} less than ${prevName}`, color: t.success }
-      })()
-    : null
 
   const handleOpenExpense = (expense: Expense) => {
     if (expense.sourceType === 'shopping_session') return
@@ -198,11 +185,6 @@ export default function ExpensesScreen({
           }}>
             {formatMoney(used, period.currency)}
           </p>
-        {comparison && (
-          <p style={{ fontSize: 13, color: comparison.color, marginTop: 8 }}>
-            {comparison.text}
-          </p>
-        )}
         {expected > 0 ? (
           <>
             <p style={{

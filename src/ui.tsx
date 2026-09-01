@@ -542,7 +542,7 @@ export function SegmentedControl({ options, value, onChange }: {
       {options.map(opt => {
         const active = opt === value
         return (
-          <button key={opt} role="tab" aria-selected={active} onClick={() => onChange(opt)} style={{
+          <button key={opt} type="button" role="tab" aria-selected={active} onClick={() => onChange(opt)} style={{
             flex: 1, padding: '10px 10px 12px', minHeight: 44, border: 'none', borderRadius: 0,
             background: 'transparent',
             color: active ? t.text : t.textSec,

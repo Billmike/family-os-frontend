@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { t, fonts } from '../ui'
+import { t, SegmentedControl } from '../ui'
 import { MoneyScopeSwitch, type MoneyScope } from './MoneyScopeSwitch'
 
 export type FamilyMoneyView = 'plan' | 'spend' | 'insights'
@@ -21,6 +21,9 @@ const FAMILY_VIEWS: { id: FamilyMoneyView; label: string }[] = [
   { id: 'insights', label: 'Insights' },
 ]
 
+const familyViewLabel = (view: FamilyMoneyView | 'activity' | undefined): string =>
+  FAMILY_VIEWS.find(item => item.id === view)?.label ?? 'Overview'
+
 export const MoneyChrome = ({
   scope,
   onSelectFamily,
@@ -32,6 +35,12 @@ export const MoneyChrome = ({
   children,
 }: Props) => {
   const showFamilyViews = scope === 'family' && familyView !== 'activity'
+
+  const handleSelectFamilyView = (label: string) => {
+    const next = FAMILY_VIEWS.find(item => item.label === label)
+    if (!next || !onSelectFamilyView) return
+    onSelectFamilyView(next.id)
+  }
 
   return (
     <div style={{ padding: '0 0 24px' }}>
@@ -52,43 +61,12 @@ export const MoneyChrome = ({
           />
         </div>
         {showFamilyViews && onSelectFamilyView && (
-          <div
-            role="tablist"
-            aria-label="Budget views"
-            style={{
-              display: 'flex',
-              gap: 4,
-              marginTop: 8,
-              borderBottom: `1px solid ${t.border}`,
-            }}
-          >
-            {FAMILY_VIEWS.map(item => {
-              const active = familyView === item.id
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => onSelectFamilyView(item.id)}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    color: active ? t.text : t.textSec,
-                    fontWeight: active ? 500 : 400,
-                    fontSize: 14,
-                    padding: '10px 12px 12px',
-                    minHeight: 44,
-                    cursor: 'pointer',
-                    fontFamily: fonts.ui,
-                    borderBottom: active ? `2px solid ${t.primary}` : '2px solid transparent',
-                    marginBottom: -1,
-                  }}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
+          <div style={{ marginTop: 8 }}>
+            <SegmentedControl
+              options={FAMILY_VIEWS.map(item => item.label)}
+              value={familyViewLabel(familyView)}
+              onChange={handleSelectFamilyView}
+            />
           </div>
         )}
         {switcher && (

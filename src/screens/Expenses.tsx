@@ -15,14 +15,12 @@ import {
 } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
-import { MonthSwitcher } from '../components/MonthSwitcher'
 import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
   deriveBudgetState,
   expenseTitle,
   formatMoney,
   formatSessionDate,
-  formatYearMonthTitle,
   formatCycleDateRange,
   formatCycleDay,
 } from '../api/adapters'
@@ -147,8 +145,6 @@ export default function ExpensesScreen({
 
   const selectedIndex = periods.findIndex(row => row.id === period.id)
   const previous = selectedIndex > 0 ? periods[selectedIndex - 1] : undefined
-  const canGoPrev = selectedIndex > 0
-  const canGoNext = selectedIndex >= 0 && selectedIndex < periods.length - 1
   const used = period.summary.totalExpensesActual
   const expected = period.summary.totalExpensesExpected
   const remaining = expected - used
@@ -174,16 +170,6 @@ export default function ExpensesScreen({
       })()
     : null
 
-  const handlePrev = () => {
-    if (!canGoPrev) return
-    onSelectPeriod(periods[selectedIndex - 1].id)
-  }
-
-  const handleNext = () => {
-    if (!canGoNext) return
-    onSelectPeriod(periods[selectedIndex + 1].id)
-  }
-
   const handleOpenExpense = (expense: Expense) => {
     if (expense.sourceType === 'shopping_session') return
     openSheet({ type: 'editExpense', expense })
@@ -197,28 +183,21 @@ export default function ExpensesScreen({
   }
 
   return (
-    <div style={{ padding: '8px 0 32px' }}>
-      <MonthSwitcher
-        title={formatYearMonthTitle(period.labelMonth)}
-        subtitle={formatCycleDateRange(period.startDate, period.endDate)}
-        canGoPrev={canGoPrev}
-        canGoNext={canGoNext}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
-
-      <div style={{ padding: '12px 20px 20px' }}>
-        <p style={{
-          fontSize: 40,
-          fontWeight: 600,
-          color: t.text,
-          letterSpacing: '-0.03em',
-          lineHeight: 1.1,
-          fontVariantNumeric: 'tabular-nums',
-          margin: 0,
-        }}>
-          {formatMoney(used, period.currency)}
-        </p>
+    <div style={{ padding: '8px 20px 32px' }}>
+      <div className="canvas-split">
+        <div>
+          <p style={{
+            fontSize: 44,
+            fontWeight: 500,
+            color: t.text,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.1,
+            fontVariantNumeric: 'tabular-nums',
+            margin: 0,
+            fontFamily: 'var(--ds-font-display)',
+          }}>
+            {formatMoney(used, period.currency)}
+          </p>
         {comparison && (
           <p style={{ fontSize: 13, color: comparison.color, marginTop: 8 }}>
             {comparison.text}
@@ -244,28 +223,19 @@ export default function ExpensesScreen({
             />
           </>
         ) : null}
-      </div>
 
       <div style={{
-        margin: '0 16px 20px',
-        background: t.surface,
-        borderRadius: r.lg,
-        border: `1px solid ${t.border}`,
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
+        gap: 24,
+        marginTop: 20,
       }}>
         <StatCell label="Entries" value={String(entryCount)} />
         <StatCell label="Avg" value={formatMoney(average, period.currency)} last />
       </div>
 
       {chartBuckets.length > 0 && (
-        <div style={{
-          margin: '0 16px 8px',
-          background: t.surface,
-          borderRadius: r.lg,
-          border: `1px solid ${t.border}`,
-          padding: '16px 8px 12px',
-        }}>
+        <div style={{ marginTop: 20 }}>
           <SpendBarChart
             buckets={chartBuckets}
             selectedId={period.id}
@@ -274,7 +244,9 @@ export default function ExpensesScreen({
           />
         </div>
       )}
+        </div>
 
+        <div>
       {spendGroups.length > 0 && (
         <>
           <SectionLabel>Spending by group</SectionLabel>
@@ -318,14 +290,7 @@ export default function ExpensesScreen({
           </button>
         )}
       </div>
-      <div style={{
-        margin: '0 16px',
-        background: t.surface,
-        borderRadius: r.lg,
-        border: `1px solid ${t.border}`,
-        overflow: 'hidden',
-        minHeight: 56,
-      }}>
+      <div style={{ minHeight: 56 }}>
         {loadingEntries ? (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Skeleton h={16} />
@@ -403,6 +368,8 @@ export default function ExpensesScreen({
           </>
         )}
       </div>
+        </div>
+      </div>
 
       <FAB onClick={handleAdd} aria-label="Add expense">
         <Plus size={24} color={t.onPrimary} />
@@ -439,13 +406,7 @@ function SpendGroupList({
   }
 
   return (
-    <div style={{
-      margin: '0 16px 8px',
-      background: t.surface,
-      borderRadius: r.lg,
-      border: `1px solid ${t.border}`,
-      overflow: 'hidden',
-    }}>
+    <div>
       {groups.map((group, i) => {
         const isOpen = Boolean(expanded[group.group])
         const panelId = groupPanelId(group.group)

@@ -6,8 +6,8 @@ import path from 'node:path'
 
 import siteConfiguration from './.figma/make/site.json' with { type: 'json' }
 
-const PWA_THEME_COLOR = '#4338CA'
-const PWA_BACKGROUND_COLOR = '#4338CA'
+const PWA_THEME_COLOR = '#F3EDE4'
+const PWA_BACKGROUND_COLOR = '#F3EDE4'
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {

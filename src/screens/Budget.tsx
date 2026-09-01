@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Copy, List, Plus, Wallet, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Copy, Plus, Wallet, X } from 'lucide-react'
 import type {
   AppHandlers,
   Budget,
@@ -23,10 +23,12 @@ import {
   Skeleton,
   t,
   r,
+  fonts,
 } from '../ui'
 import BudgetInsights from '../components/BudgetInsights'
 import ExpensesScreen from './Expenses'
-import { MoneyScopeSwitch } from '../components/MoneyScopeSwitch'
+import { MoneyChrome } from '../components/MoneyChrome'
+import { MonthSwitcher } from '../components/MonthSwitcher'
 
 export type BudgetTab = 'plan' | 'spend' | 'insights'
 
@@ -55,12 +57,6 @@ interface Props {
   onSelectPersonal: () => void
   openSheet: AppHandlers['openSheet']
 }
-
-const TABS: { id: BudgetTab; label: string }[] = [
-  { id: 'spend', label: 'Spend' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'insights', label: 'Insights' },
-]
 
 const euro = (n: number) =>
   `€${n.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -94,20 +90,19 @@ export default function BudgetScreen({
 }: Props) {
   if (loading) {
     return (
-      <div style={{ padding: '0 0 24px' }}>
-        <div style={{ padding: `8px ${SIDE_PAD}px 12px` }}>
-          <MoneyScopeSwitch
-            scope="family"
-            onSelectFamily={() => undefined}
-            onSelectPersonal={onSelectPersonal}
-          />
-        </div>
+      <MoneyChrome
+        scope="family"
+        familyView={tab}
+        onSelectFamily={() => undefined}
+        onSelectPersonal={onSelectPersonal}
+        onSelectFamilyView={onSelectTab}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `0 ${SIDE_PAD}px` }}>
           <Skeleton h={120} />
           <Skeleton h={200} />
           <Skeleton h={200} />
         </div>
-      </div>
+      </MoneyChrome>
     )
   }
 
@@ -130,65 +125,27 @@ export default function BudgetScreen({
     onSelectPeriod(periods[selectedIndex + 1].id)
   }
 
-  return (
-    <div style={{ padding: '0 0 24px' }}>
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          background: t.bgGlass,
-          backdropFilter: 'blur(12px)',
-          padding: `8px ${SIDE_PAD}px 12px`,
-        }}
-      >
-        <MoneyScopeSwitch
-          scope="family"
-          onSelectFamily={() => undefined}
-          onSelectPersonal={onSelectPersonal}
-        />
-        <div
-          role="tablist"
-          aria-label="Budget views"
-          style={{
-            display: 'flex',
-            gap: 4,
-            padding: 4,
-            background: t.surfaceMuted,
-            borderRadius: r.md,
-          }}
-        >
-          {TABS.map(item => {
-            const active = tab === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                tabIndex={0}
-                onClick={() => onSelectTab(item.id)}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  background: active ? t.surface : 'transparent',
-                  color: active ? t.text : t.textSec,
-                  fontWeight: active ? 600 : 500,
-                  fontSize: 13,
-                  padding: '8px 12px',
-                  borderRadius: r.sm,
-                  cursor: 'pointer',
-                  boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                }}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+  const cycleSwitcher = period ? (
+    <MonthSwitcher
+      title={formatYearMonthTitle(period.labelMonth)}
+      subtitle={formatCycleDateRange(period.startDate, period.endDate)}
+      canGoPrev={canGoPrev}
+      canGoNext={canGoNext}
+      onPrev={handlePrevCycle}
+      onNext={handleNextCycle}
+      onAllCycles={onOpenCycleList}
+    />
+  ) : null
 
-      {/* The Spend tab renders full-bleed: ExpensesScreen carries its own card insets. */}
+  return (
+    <MoneyChrome
+      scope="family"
+      familyView={tab}
+      onSelectFamily={() => undefined}
+      onSelectPersonal={onSelectPersonal}
+      onSelectFamilyView={onSelectTab}
+      switcher={cycleSwitcher}
+    >
       {tab === 'spend' ? (
         <ExpensesScreen
           period={period}
@@ -224,16 +181,17 @@ export default function BudgetScreen({
                   onClick={onCopyCycle}
                   style={{
                     border: `1px solid ${t.border}`,
-                    background: t.surface,
+                    background: t.surfaceElev,
                     borderRadius: r.md,
                     padding: '10px 14px',
                     fontSize: 13,
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: 'pointer',
                     color: t.text,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
+                    fontFamily: fonts.ui,
                   }}
                 >
                   <Copy size={14} aria-hidden />
@@ -243,74 +201,26 @@ export default function BudgetScreen({
             </>
           ) : period ? (
             <>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={handlePrevCycle}
-                    disabled={!canGoPrev}
-                    aria-label="Previous cycle"
-                    style={navArrow(canGoPrev)}
-                  >
-                    <ChevronLeft size={20} strokeWidth={1.75} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: status === 'current' ? t.primary : t.textTer,
+                    background: status === 'current' ? t.primarySubtle : t.surfaceMuted,
+                    borderRadius: r.pill,
+                    padding: '4px 10px',
+                  }}
+                >
+                  {status === 'current' ? 'Current' : status === 'ended' ? 'Ended' : 'Upcoming'}
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={onEditDates} aria-label="Edit cycle dates" style={ghostBtn}>
+                    Dates
                   </button>
-                  <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>
-                      {formatYearMonthTitle(period.labelMonth)}
-                    </div>
-                    <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
-                      {formatCycleDateRange(period.startDate, period.endDate)}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleNextCycle}
-                    disabled={!canGoNext}
-                    aria-label="Next cycle"
-                    style={navArrow(canGoNext)}
-                  >
-                    <ChevronRight size={20} strokeWidth={1.75} />
+                  <button type="button" onClick={onCopyCycle} aria-label="Copy from this cycle" style={ghostBtn}>
+                    <Copy size={14} aria-hidden />
                   </button>
-                  <button
-                    type="button"
-                    onClick={onOpenCycleList}
-                    aria-label="All cycles"
-                    style={ghostBtn}
-                  >
-                    <List size={16} aria-hidden />
-                  </button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10 }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: status === 'current' ? t.primary : t.textTer,
-                      background: status === 'current' ? t.primarySubtle : t.surfaceMuted,
-                      borderRadius: r.pill,
-                      padding: '3px 8px',
-                    }}
-                  >
-                    {status === 'current' ? 'Current' : status === 'ended' ? 'Ended' : 'Upcoming'}
-                  </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={onEditDates}
-                      aria-label="Edit cycle dates"
-                      style={ghostBtn}
-                    >
-                      Dates
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onCopyCycle}
-                      aria-label="Copy from this cycle"
-                      style={ghostBtn}
-                    >
-                      <Copy size={14} aria-hidden />
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -370,24 +280,9 @@ export default function BudgetScreen({
           ) : null}
         </div>
       )}
-    </div>
+    </MoneyChrome>
   )
 }
-
-const navArrow = (enabled: boolean): React.CSSProperties => ({
-  width: 36,
-  height: 36,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 'none',
-  background: 'transparent',
-  borderRadius: r.md,
-  cursor: enabled ? 'pointer' : 'default',
-  color: enabled ? t.text : t.textTer,
-  opacity: enabled ? 1 : 0.4,
-  flexShrink: 0,
-})
 
 const ghostBtn: React.CSSProperties = {
   border: `1px solid ${t.border}`,
@@ -406,13 +301,13 @@ const ghostBtn: React.CSSProperties = {
 function CollapsibleHeader({
   expanded,
   onToggle,
-  background,
+  markColor,
   children,
   ariaLabel,
 }: {
   expanded: boolean
   onToggle: () => void
-  background: string
+  markColor: string
   children: React.ReactNode
   ariaLabel: string
 }) {
@@ -424,34 +319,25 @@ function CollapsibleHeader({
       aria-label={ariaLabel}
       style={{
         width: '100%',
-        background,
-        color: '#fff',
+        background: 'transparent',
+        color: t.text,
         border: 'none',
-        fontWeight: 700,
-        fontSize: 13,
-        letterSpacing: 0.3,
-        padding: '10px 12px',
+        fontWeight: 500,
+        fontSize: 14,
+        padding: '12px 4px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
+        gap: 10,
         cursor: 'pointer',
-        fontFamily: 'var(--ds-font)',
-        position: 'relative',
+        fontFamily: fonts.ui,
+        textAlign: 'left',
       }}
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <span aria-hidden style={{ width: 3, height: 16, borderRadius: 9999, background: markColor, flexShrink: 0 }} />
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flex: 1 }}>
         {children}
       </span>
-      <span
-        style={{
-          position: 'absolute',
-          right: 12,
-          display: 'flex',
-          alignItems: 'center',
-        }}
-        aria-hidden
-      >
+      <span aria-hidden style={{ display: 'flex', alignItems: 'center', color: t.textTer }}>
         {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
       </span>
     </button>
@@ -485,7 +371,7 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
       <CollapsibleHeader
         expanded={expanded}
         onToggle={() => setExpanded(v => !v)}
-        background={BUDGET_GROUP_COLORS.Summary}
+        markColor={BUDGET_GROUP_COLORS.Summary}
         ariaLabel={expanded ? 'Collapse monthly summary' : 'Expand monthly summary'}
       >
         Monthly Summary
@@ -558,8 +444,8 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
             <span
               style={{
                 textAlign: 'right',
-                background: s.leftOverExpected >= 0 ? '#2F6B4F' : t.error,
-                color: '#fff',
+                background: s.leftOverExpected >= 0 ? t.primarySubtle : t.attentionSub,
+                color: s.leftOverExpected >= 0 ? t.primary : t.attentionText,
                 borderRadius: r.sm,
                 padding: '4px 8px',
                 justifySelf: 'end',
@@ -627,16 +513,14 @@ function GroupCard({
     <section
       aria-label={block.group}
       style={{
-        borderRadius: r.lg,
-        overflow: 'hidden',
-        border: `1px solid ${t.border}`,
-        background: t.surface,
+        padding: '4px 0 8px',
+        borderBottom: `1px solid ${t.border}`,
       }}
     >
       <CollapsibleHeader
         expanded={expanded}
         onToggle={() => setExpanded(v => !v)}
-        background={color}
+        markColor={color}
         ariaLabel={expanded ? `Collapse ${block.group}` : `Expand ${block.group}`}
       >
         <BudgetGroupIcon group={block.group} size={16} />
@@ -726,10 +610,10 @@ function GroupCard({
               display: 'grid',
               gridTemplateColumns: '28px 1.5fr 1fr 28px',
               padding: '10px 12px',
-              background: color,
-              color: '#fff',
-              fontWeight: 700,
+              fontWeight: 500,
               fontSize: 13,
+              color: t.text,
+              borderTop: `1px solid ${t.border}`,
             }}
           >
             <span />

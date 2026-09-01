@@ -233,7 +233,7 @@ export default function SettingsScreen({
     <div style={{ minHeight: '100%', paddingBottom: 40 }}>
       <section style={{ margin: '16px 16px 20px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Account</p>
-        <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+        <div style={{ background: t.surfaceElev, borderRadius: r.md, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 14, borderBottom: `1px solid ${t.border}`, minWidth: 0 }}>
             <MemberAvatar member={displayMember} size={52} />
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -275,7 +275,7 @@ export default function SettingsScreen({
             On iPhone and iPad, install FamilyOS to your Home Screen to enable push notifications.
           </p>
         )}
-        <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+        <div style={{ background: t.surfaceElev, borderRadius: r.md, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           {showPushToggle && (
             <>
               <ToggleRow
@@ -313,7 +313,7 @@ export default function SettingsScreen({
 
       <section style={{ margin: '0 16px 20px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Family</p>
-        <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+        <div style={{ background: t.surfaceElev, borderRadius: r.md, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           <SettingsRow label="Family settings" onClick={() => navigate('family')} />
           <SettingsRow label="Invite a member" onClick={() => navigate('family')} divider />
           <SettingsRow label="Sign out" danger divider onClick={onSignOut} />
@@ -322,7 +322,7 @@ export default function SettingsScreen({
 
       <section style={{ margin: '0 16px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>App</p>
-        <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+        <div style={{ background: t.surfaceElev, borderRadius: r.md, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           <SettingsRow
             label={installLabel}
             onClick={pwa.mode === 'installed' ? undefined : () => void onInstallRowClick()}
@@ -333,7 +333,7 @@ export default function SettingsScreen({
 
       <section style={{ margin: '0 16px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Danger zone</p>
-        <div style={{ background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+        <div style={{ background: t.surfaceElev, borderRadius: r.md, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
           <SettingsRow label="Leave family" danger onClick={() => setConfirm('leave')} />
           {isOwner && (
             <SettingsRow label="Delete family" danger divider onClick={() => setConfirm('delete')} />

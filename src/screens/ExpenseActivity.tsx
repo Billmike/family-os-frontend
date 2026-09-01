@@ -5,6 +5,7 @@ import type { BudgetPeriod, Expense, AppHandlers } from '../types'
 import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS } from '../ui'
 import { CycleExpensesLoadError } from '../components/ErrorBoundary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
+import { MoneyChrome } from '../components/MoneyChrome'
 import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
   expenseTitle,
@@ -22,6 +23,8 @@ interface Props {
   selectedPeriodId: string | null
   loadPeriodExpenses: (periodId: string, signal?: AbortSignal) => Promise<Expense[]>
   onSelectPeriod: (periodId: string) => void
+  onSelectPersonal: () => void
+  onOpenCycleList?: () => void
   openSheet: AppHandlers['openSheet']
 }
 
@@ -53,6 +56,8 @@ export default function ExpenseActivityScreen({
   selectedPeriodId,
   loadPeriodExpenses,
   onSelectPeriod,
+  onSelectPersonal,
+  onOpenCycleList,
   openSheet,
 }: Props) {
   const location = useLocation()
@@ -99,7 +104,12 @@ export default function ExpenseActivityScreen({
 
   if (periods.length === 0 || !period) {
     return (
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <MoneyChrome
+        scope="family"
+        familyView="activity"
+        onSelectFamily={() => undefined}
+        onSelectPersonal={onSelectPersonal}
+      >
         <EmptyState
           icon={Wallet}
           title="No budget cycle yet"
@@ -108,7 +118,7 @@ export default function ExpenseActivityScreen({
         <FAB onClick={handleAdd} aria-label="Add expense">
           <Plus size={24} color={t.onPrimary} />
         </FAB>
-      </div>
+      </MoneyChrome>
     )
   }
 
@@ -137,24 +147,24 @@ export default function ExpenseActivityScreen({
   const canPageNext = page < totalPages - 1
 
   return (
-    <div style={{ padding: '8px 0 32px', maxWidth: 800, margin: '0 auto' }}>
-      <MonthSwitcher
-        title={formatYearMonthTitle(period.labelMonth)}
-        subtitle={formatCycleDateRange(period.startDate, period.endDate)}
-        canGoPrev={canGoPrev}
-        canGoNext={canGoNext}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
-
-      <div style={{
-        margin: '12px 16px 0',
-        background: t.surface,
-        borderRadius: r.lg,
-        border: `1px solid ${t.border}`,
-        overflow: 'hidden',
-        minHeight: 56,
-      }}>
+    <MoneyChrome
+      scope="family"
+      familyView="activity"
+      onSelectFamily={() => undefined}
+      onSelectPersonal={onSelectPersonal}
+      switcher={
+        <MonthSwitcher
+          title={formatYearMonthTitle(period.labelMonth)}
+          subtitle={formatCycleDateRange(period.startDate, period.endDate)}
+          canGoPrev={canGoPrev}
+          canGoNext={canGoNext}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onAllCycles={onOpenCycleList}
+        />
+      }
+    >
+      <div style={{ padding: '8px 16px 32px' }}>
         {loadingEntries ? (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Skeleton h={16} />
@@ -365,6 +375,6 @@ export default function ExpenseActivityScreen({
       <FAB onClick={handleAdd} aria-label="Add expense">
         <Plus size={24} color={t.onPrimary} />
       </FAB>
-    </div>
+    </MoneyChrome>
   )
 }

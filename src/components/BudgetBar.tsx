@@ -2,9 +2,9 @@ import type { BudgetState } from '../types'
 import { t } from '../ui'
 
 const stateColor = (state: BudgetState) => {
-  if (state === 'over') return t.error
-  if (state === 'warning') return t.warning
-  return t.primary
+  if (state === 'over') return t.attention
+  if (state === 'warning') return t.attention
+  return t.text
 }
 
 interface Props {

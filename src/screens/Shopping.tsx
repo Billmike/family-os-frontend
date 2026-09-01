@@ -4,6 +4,7 @@ import type {
   ShoppingItem,
   ShoppingLocation,
   ShoppingSession,
+  ShoppingSessionItem,
   Member,
   AppHandlers,
 } from '../types'
@@ -174,45 +175,6 @@ export default function ShoppingScreen({
     }, FLY_MS)
   }
 
-  if (view === 'basket') {
-    const items = activeSession?.items ?? []
-    return (
-      <div style={{ minHeight: '100%', paddingBottom: 80 }}>
-        <BasketHeader count={items.length} onBack={() => setView('list')} />
-        {items.length === 0 ? (
-          <EmptyState
-            icon={ShoppingCart}
-            title="Basket is empty"
-            body="Mark items as purchased to add them here."
-            action="Back to list"
-            onAction={() => setView('list')}
-          />
-        ) : (
-          <>
-            <div style={{ margin: '0 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-              {items.map((item, i) => (
-                <BasketRow
-                  key={item.id}
-                  item={item}
-                  divider={i > 0}
-                  secondary={storeNameFor(item)}
-                  onEdit={() => openSheet({ type: 'editBasketItem', sessionItemId: item.id })}
-                  onUndo={() => removeFromBasket(item.id)}
-                  onQuantityChange={(quantity) => updateBasketItem(item.id, { quantity })}
-                />
-              ))}
-            </div>
-            <div style={{ padding: '16px' }}>
-              <PrimaryButton onClick={() => openSheet({ type: 'completeShopping' })} fullWidth>
-                Complete shopping
-              </PrimaryButton>
-            </div>
-          </>
-        )}
-      </div>
-    )
-  }
-
   if (view === 'session-detail' && selectedSession) {
     const items = selectedSession.items ?? []
     const dateLabel = formatSessionDate(selectedSession.completedAt ?? selectedSession.startedAt)
@@ -229,14 +191,14 @@ export default function ShoppingScreen({
             <ArrowLeft size={20} color={t.text} />
           </button>
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 600, color: t.text, marginBottom: 2 }}>{dateLabel}</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 500, color: t.text, marginBottom: 2, fontFamily: 'var(--ds-font-display)' }}>{dateLabel}</h2>
             <p style={{ fontSize: 13, color: t.textSec }}>
               {items.length} item{items.length !== 1 ? 's' : ''}
               {costLabel ? ` · ${costLabel}` : ''}
             </p>
           </div>
         </div>
-        <div style={{ margin: '8px 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+        <div style={{ margin: '8px 16px' }}>
           {items.map((item, i) => (
             <BasketRow
               key={item.id}
@@ -299,41 +261,11 @@ export default function ShoppingScreen({
   const departingIds = new Set(departing.map(d => d.id))
 
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 80 }}>
-      <div style={{ padding: '16px 16px 4px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: t.text, letterSpacing: '-0.01em', marginBottom: 2 }}>Groceries</h2>
-          <p style={{ fontSize: 13, color: t.textSec }}>{totalActive} item{totalActive !== 1 ? 's' : ''} remaining</p>
-        </div>
-        <button
-          ref={cartRef}
-          onClick={() => setView('basket')}
-          aria-label={displayCount > 0 ? `Open basket with ${displayCount} items` : 'Open basket'}
-          className={`basket-target${cartPulse ? ' is-pulsing' : ''}`}
-          onAnimationEnd={() => setCartPulse(false)}
-          style={{
-            position: 'relative',
-            background: displayCount > 0 || flyers.length > 0 ? t.primarySubtle : t.surface,
-            border: `1px solid ${displayCount > 0 || flyers.length > 0 ? 'transparent' : t.border}`,
-            borderRadius: r.md,
-            padding: '8px 12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            minHeight: 38,
-          }}
-        >
-          <ShoppingCart size={18} color={displayCount > 0 || flyers.length > 0 ? t.primary : t.textSec} />
-          {displayCount > 0 && (
-            <span
-              aria-live="polite"
-              style={{ fontSize: 13, fontWeight: 600, color: t.primary, minWidth: 10, textAlign: 'center' }}
-            >
-              {displayCount}
-            </span>
-          )}
-        </button>
+    <div style={{ minHeight: '100%', paddingBottom: 140 }}>
+      <div style={{ padding: '16px 16px 4px' }}>
+        <p style={{ fontSize: 13, color: t.textSec, margin: 0 }}>
+          {totalActive} item{totalActive !== 1 ? 's' : ''} remaining
+        </p>
       </div>
 
       <div style={{ padding: '8px 16px 4px' }}>
@@ -342,11 +274,6 @@ export default function ShoppingScreen({
           value={groupBy}
           onChange={v => setGroupBy(v as 'Category' | 'Store')}
         />
-      </div>
-
-      <div style={{ margin: '8px 16px', padding: '8px 12px', background: t.primarySubtle, borderRadius: r.md, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 6, height: 6, borderRadius: 9999, background: t.primary, flexShrink: 0 }} />
-        <span style={{ fontSize: 13, color: t.primary }}>Live sync with your family</span>
       </div>
 
       {totalActive === 0 && departing.length === 0 && basketCount === 0 && sessionHistory.length === 0 && (
@@ -362,7 +289,7 @@ export default function ShoppingScreen({
       {orderedKeys.map(key => (
         <div key={key}>
           <SectionLabel>{key}</SectionLabel>
-          <div style={{ margin: '0 16px 6px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+          <div>
             {groups[key].map((item, i) => (
               <ShoppingRow
                 key={item.id}
@@ -388,7 +315,7 @@ export default function ShoppingScreen({
       {sessionHistory.length > 0 && (
         <div>
           <SectionLabel>Past trips</SectionLabel>
-          <div style={{ margin: '0 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+          <div>
             {sessionHistory.map((session, i) => {
               const dateLabel = formatSessionDate(session.completedAt ?? session.startedAt)
               const costLabel = formatSessionCost(session)
@@ -427,7 +354,53 @@ export default function ShoppingScreen({
         </div>
       )}
 
-      <FAB onClick={() => openSheet({ type: 'addShoppingItem' })}>
+      <button
+        ref={cartRef}
+        type="button"
+        onClick={() => setView('basket')}
+        aria-label={displayCount > 0 ? `Open basket with ${displayCount} items` : 'Open basket'}
+        className={`basket-target${cartPulse ? ' is-pulsing' : ''} fab`}
+        onAnimationEnd={() => setCartPulse(false)}
+        style={{
+          position: 'fixed',
+          left: 20,
+          right: 88,
+          height: 52,
+          borderRadius: r.xl,
+          background: t.surfaceElev,
+          border: `1px solid ${t.border}`,
+          boxShadow: 'var(--ds-shadow-md)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0 16px',
+          zIndex: 10,
+          fontFamily: 'var(--ds-font)',
+        }}
+      >
+        <ShoppingCart size={18} color={t.primary} />
+        <span style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 500, color: t.text }}>
+          Basket
+        </span>
+        <span aria-live="polite" style={{ fontSize: 14, fontWeight: 600, color: t.primary }}>
+          {displayCount}
+        </span>
+      </button>
+
+      {view === 'basket' && (
+        <BasketPanel
+          items={activeSession?.items ?? []}
+          storeNameFor={storeNameFor}
+          onClose={() => setView('list')}
+          onEdit={(id) => openSheet({ type: 'editBasketItem', sessionItemId: id })}
+          onUndo={removeFromBasket}
+          onQuantityChange={(id, quantity) => updateBasketItem(id, { quantity })}
+          onComplete={() => openSheet({ type: 'completeShopping' })}
+        />
+      )}
+
+      <FAB onClick={() => openSheet({ type: 'addShoppingItem' })} aria-label="Add item">
         <Plus size={24} color={t.onPrimary} />
       </FAB>
 
@@ -560,19 +533,84 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
   )
 }
 
-function BasketHeader({ count, onBack }: { count: number; onBack: () => void }) {
+function BasketPanel({
+  items,
+  storeNameFor,
+  onClose,
+  onEdit,
+  onUndo,
+  onQuantityChange,
+  onComplete,
+}: {
+  items: ShoppingSessionItem[]
+  storeNameFor: (item: { locationId?: string | null; locationName?: string | null }) => string
+  onClose: () => void
+  onEdit: (id: string) => void
+  onUndo: (id: string) => void
+  onQuantityChange: (id: string, quantity: number) => void
+  onComplete: () => void
+}) {
   return (
-    <div style={{ padding: '16px 16px 4px', display: 'flex', alignItems: 'center', gap: 12 }}>
-      <button
-        onClick={onBack}
-        aria-label="Back to shopping list"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 80, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Basket"
+    >
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: t.overlay, animation: 'fadeIn 0.2s ease' }} />
+      <div
+        className="bottom-sheet-panel"
+        style={{
+          position: 'relative',
+          background: t.surfaceElev,
+          borderRadius: '12px 12px 0 0',
+          boxShadow: 'var(--ds-shadow-high)',
+          maxHeight: '80dvh',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
       >
-        <ArrowLeft size={20} color={t.text} />
-      </button>
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 600, color: t.text, marginBottom: 2 }}>Basket</h2>
-        <p style={{ fontSize: 13, color: t.textSec }}>{count} item{count !== 1 ? 's' : ''}</p>
+        <div className="bottom-sheet-handle" style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 9999, background: t.border }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px' }}>
+          <span style={{ fontSize: 20, fontWeight: 500, fontFamily: 'var(--ds-font-display)', color: t.text }}>
+            Basket
+          </span>
+          <span style={{ fontSize: 13, color: t.textSec }}>{items.length} item{items.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 16px' }}>
+          {items.length === 0 ? (
+            <EmptyState
+              icon={ShoppingCart}
+              title="Basket is empty"
+              body="Tick items on the list to add them here."
+              action="Close"
+              onAction={onClose}
+            />
+          ) : (
+            items.map((item, i) => (
+              <BasketRow
+                key={item.id}
+                item={item}
+                divider={i > 0}
+                secondary={storeNameFor(item)}
+                onEdit={() => onEdit(item.id)}
+                onUndo={() => onUndo(item.id)}
+                onQuantityChange={(quantity) => onQuantityChange(item.id, quantity)}
+              />
+            ))
+          )}
+        </div>
+        {items.length > 0 && (
+          <div style={{ padding: '8px 16px 16px' }}>
+            <PrimaryButton onClick={onComplete} fullWidth>
+              Complete shopping
+            </PrimaryButton>
+          </div>
+        )}
       </div>
     </div>
   )

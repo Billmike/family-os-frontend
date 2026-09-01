@@ -12,6 +12,7 @@ export type TaskPriority = 'high' | 'medium' | 'low'
 export const t = {
   bg:           'var(--ds-bg)',
   surface:      'var(--ds-surface)',
+  surfaceElev:  'var(--ds-surface-elevated)',
   surfaceMuted: 'var(--ds-surface-muted)',
   bgGlass:      'var(--ds-bg-glass)',
   text:         'var(--ds-text-primary)',
@@ -23,6 +24,9 @@ export const t = {
   primaryHover: 'var(--ds-primary-hover)',
   primarySubtle:'var(--ds-primary-subtle)',
   onPrimary:    'var(--ds-on-primary)',
+  attention:    'var(--ds-attention)',
+  attentionSub: 'var(--ds-attention-subtle)',
+  attentionText:'var(--ds-attention-text)',
   success:      'var(--ds-success)',
   successSub:   'var(--ds-success-subtle)',
   warning:      'var(--ds-warning)',
@@ -35,6 +39,11 @@ export const t = {
   onInverse:    'var(--ds-on-inverse)',
   overlay:      'var(--ds-overlay)',
   toggleKnob:   'var(--ds-toggle-knob)',
+} as const
+
+export const fonts = {
+  ui: 'var(--ds-font)',
+  display: 'var(--ds-font-display)',
 } as const
 
 export const r = {
@@ -76,15 +85,21 @@ export function TaskCheckbox({ checked, onChange, size = 22 }: {
       onClick={e => { e.stopPropagation(); onChange() }}
       aria-label={checked ? 'Mark incomplete' : 'Mark complete'}
       style={{
-        width: size, height: size, borderRadius: 7, border: 'none', padding: 0,
-        background: checked ? t.success : 'transparent',
-        outline: `1.5px solid ${checked ? t.success : t.borderStrong}`,
-        cursor: 'pointer', flexShrink: 0,
+        width: 44, height: 44, borderRadius: 7, border: 'none', padding: 0,
+        background: 'transparent',
+        cursor: 'pointer', flexShrink: 0, margin: '-11px',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
       }}
     >
-      {checked && <Check size={size * 0.6} color={t.onPrimary} strokeWidth={2.5} />}
+      <span style={{
+        width: size, height: size, borderRadius: 6,
+        background: checked ? t.success : 'transparent',
+        outline: `1.5px solid ${checked ? t.success : t.borderStrong}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+      }}>
+        {checked && <Check size={size * 0.6} color={t.onPrimary} strokeWidth={2.5} />}
+      </span>
     </button>
   )
 }
@@ -95,8 +110,9 @@ export function ShoppingCheckbox({ checked, onChange }: { checked: boolean; onCh
   return (
     <button
       onClick={e => { e.stopPropagation(); onChange() }}
+      aria-label={checked ? 'Return to list' : 'Add to basket'}
       style={{
-        width: 22, height: 22, borderRadius: 9999, border: 'none', padding: 0,
+        width: 22, height: 22, minWidth: 22, minHeight: 22, borderRadius: 9999, border: 'none', padding: 0,
         background: checked ? t.success : 'transparent',
         outline: `1.5px solid ${checked ? t.success : t.borderStrong}`,
         cursor: 'pointer', flexShrink: 0,
@@ -269,9 +285,10 @@ export function Badge({ label, color, bg }: { label: string; color: string; bg: 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <p style={{
-      fontSize: 11, fontWeight: 700, color: t.textTer,
-      letterSpacing: '0.08em', textTransform: 'uppercase',
-      padding: '10px 16px 6px',
+      fontSize: 12, fontWeight: 500, color: t.textSec,
+      letterSpacing: '0.01em',
+      padding: '12px 16px 6px',
+      fontFamily: fonts.ui,
     }}>{children}</p>
   )
 }
@@ -283,18 +300,16 @@ export function EmptyState({ icon: Icon, title, body, action, onAction }: {
   title: string; body: string; action?: string; onAction?: () => void
 }) {
   return (
-    <div style={{ padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
-      <div style={{ width: 56, height: 56, borderRadius: r.xl, background: t.primarySubtle, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-        <Icon size={26} color={t.primary} strokeWidth={1.5} />
-      </div>
-      <p style={{ fontSize: 16, fontWeight: 600, color: t.text }}>{title}</p>
-      <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, maxWidth: 240 }}>{body}</p>
+    <div style={{ padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+      <Icon size={22} color={t.textTer} strokeWidth={1.5} />
+      <p style={{ fontSize: 18, fontWeight: 500, color: t.text, fontFamily: fonts.display, marginTop: 8 }}>{title}</p>
+      <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, maxWidth: 260 }}>{body}</p>
       {action && onAction && (
         <button onClick={onAction} style={{
-          marginTop: 8, padding: '9px 20px',
+          marginTop: 12, padding: '11px 20px', minHeight: 44,
           background: t.primary, color: t.onPrimary, border: 'none',
           borderRadius: r.md, fontSize: 14, fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'var(--ds-font)',
+          cursor: 'pointer', fontFamily: fonts.ui,
         }}>{action}</button>
       )}
     </div>
@@ -336,32 +351,29 @@ export function BottomSheet({ title, onClose, children, zIndex = 200, header, ar
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+      className="bottom-sheet-root"
+      style={{ position: 'fixed', inset: 0, zIndex, display: 'flex', flexDirection: 'column' }}
       role="dialog" aria-modal="true" aria-label={ariaLabel ?? title ?? 'Sheet'}
     >
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{ position: 'absolute', inset: 0, background: t.overlay, animation: 'fadeIn 0.2s ease' }}
       />
-      {/* Sheet */}
       <div ref={sheetRef} className="bottom-sheet-panel" style={{
-        position: 'relative', background: t.surface,
-        borderRadius: '20px 20px 0 0',
+        position: 'relative', background: t.surfaceElev,
+        borderRadius: '12px 12px 0 0',
         boxShadow: sh.high,
         maxHeight: '90dvh', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
-        animation: 'sheetUp 0.3s cubic-bezier(0.32,0.72,0,1)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}>
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+        <div className="bottom-sheet-handle" style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
           <div style={{ width: 36, height: 4, borderRadius: 9999, background: t.border }} />
         </div>
         {header ?? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
-            <span style={{ fontSize: 17, fontWeight: 600, color: t.text }}>{title}</span>
-            <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
+            <span style={{ fontSize: 20, fontWeight: 500, color: t.text, fontFamily: fonts.display }}>{title}</span>
+            <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 10, display: 'flex', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
               <X size={20} color={t.textSec} />
             </button>
           </div>
@@ -384,9 +396,9 @@ export function Toast({ message, type = 'success', onClose }: {
     <div style={{
       position: 'fixed', bottom: 96, left: '50%', transform: 'translateX(-50%)',
       display: 'flex', alignItems: 'center', gap: 10, zIndex: 300,
-      padding: '12px 16px', borderRadius: r.lg,
+      padding: '12px 16px', borderRadius: r.md,
       background: t.inverse, boxShadow: sh.high,
-      animation: 'toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+      animation: 'toastIn 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
       maxWidth: 'min(92vw, 420px)',
       boxSizing: 'border-box',
     }}>
@@ -412,10 +424,10 @@ export function PrimaryButton({ onClick, children, fullWidth, disabled }: {
   return (
     <button onClick={onClick} disabled={disabled} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-      padding: '12px 20px', background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
+      padding: '12px 20px', minHeight: 44, background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
       color: disabled ? 'var(--ds-disabled-text)' : t.onPrimary,
       border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
-      cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
+      cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: fonts.ui,
       width: fullWidth ? '100%' : undefined,
     }}>
       {children}
@@ -428,7 +440,7 @@ export function PrimaryButton({ onClick, children, fullWidth, disabled }: {
 export function FormField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: t.textSec, marginBottom: 6 }}>
         {label}
       </label>
       {children}
@@ -513,7 +525,7 @@ export function FAB({ onClick, children, 'aria-label': ariaLabel }: {
       width: 56, height: 56, borderRadius: 9999,
       background: t.primary, border: 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: sh.md, cursor: 'pointer', zIndex: 10,
+      boxShadow: sh.md, cursor: 'pointer', zIndex: 10, minWidth: 56, minHeight: 56,
     }}>
       {children}
     </button>
@@ -526,17 +538,19 @@ export function SegmentedControl({ options, value, onChange }: {
   options: string[]; value: string; onChange: (v: string) => void
 }) {
   return (
-    <div style={{ display: 'flex', width: '100%', background: t.surfaceMuted, borderRadius: r.md, padding: 3, gap: 2, boxSizing: 'border-box' }}>
+    <div role="tablist" style={{ display: 'flex', width: '100%', gap: 0, boxSizing: 'border-box', borderBottom: `1px solid ${t.border}` }}>
       {options.map(opt => {
         const active = opt === value
         return (
-          <button key={opt} onClick={() => onChange(opt)} style={{
-            flex: 1, padding: '7px 10px', border: 'none', borderRadius: 'var(--ds-radius-sm)',
-            background: active ? t.surface : 'transparent',
+          <button key={opt} role="tab" aria-selected={active} onClick={() => onChange(opt)} style={{
+            flex: 1, padding: '10px 10px 12px', minHeight: 44, border: 'none', borderRadius: 0,
+            background: 'transparent',
             color: active ? t.text : t.textSec,
-            fontSize: 13, fontWeight: active ? 500 : 400,
-            cursor: 'pointer', fontFamily: 'var(--ds-font)',
-            boxShadow: active ? sh.low : 'none', transition: 'all 0.15s',
+            fontSize: 14, fontWeight: active ? 500 : 400,
+            cursor: 'pointer', fontFamily: fonts.ui,
+            boxShadow: 'none',
+            borderBottom: active ? `2px solid ${t.primary}` : '2px solid transparent',
+            marginBottom: -1,
             whiteSpace: 'nowrap', minWidth: 0,
           }}>
             {opt}
@@ -708,13 +722,13 @@ export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
 }
 
 export const BUDGET_GROUP_COLORS: Record<string, string> = {
-  Income: '#2F6B4F',
-  'Fixed Expense': '#1E3A5F',
-  'Variable Expense': '#A67C52',
-  Debt: '#8B2E2E',
-  Savings: '#5B3A6E',
-  Investment: '#2F6B4F',
-  Summary: '#8B7355',
+  Income: '#3A4A32',
+  'Fixed Expense': '#4A4540',
+  'Variable Expense': '#8B6B4A',
+  Debt: '#8B4A3E',
+  Savings: '#5B4A5E',
+  Investment: '#3A4A32',
+  Summary: '#6B6558',
 }
 
 export const BUDGET_GROUP_ICONS: Record<string, LucideIcon> = {

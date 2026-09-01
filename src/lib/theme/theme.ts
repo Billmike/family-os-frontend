@@ -2,8 +2,8 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 export const THEME_STORAGE_KEY = 'familyos_theme'
-export const THEME_BG_LIGHT = '#F7F6F3'
-export const THEME_BG_DARK = '#1C1917'
+export const THEME_BG_LIGHT = '#F3EDE4'
+export const THEME_BG_DARK = '#16140F'
 
 export const isThemePreference = (value: unknown): value is ThemePreference =>
   value === 'light' || value === 'dark' || value === 'system'

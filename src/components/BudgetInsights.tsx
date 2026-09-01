@@ -46,10 +46,10 @@ const euro = (n: number) =>
   `€${n.toLocaleString('en-IE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
 const cardStyle: React.CSSProperties = {
-  background: t.surface,
-  border: `1px solid ${t.border}`,
-  borderRadius: r.lg,
-  padding: 14,
+  background: 'transparent',
+  border: 'none',
+  borderRadius: 0,
+  padding: '8px 0 16px',
   display: 'flex',
   flexDirection: 'column',
 }
@@ -184,6 +184,25 @@ export default function BudgetInsights({ period }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <section style={cardStyle}>
+        <SectionLabel>Income vs expenses</SectionLabel>
+        <div style={{ width: '100%', height: 240 }}>
+          <ResponsiveContainer>
+            <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={t.border} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: t.textSec }} />
+              <YAxis tick={{ fontSize: 11, fill: t.textSec }} tickFormatter={v => `€${v}`} width={48} />
+              <Tooltip formatter={(v) => euro(Number(v ?? 0))} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="Income" stroke={BUDGET_GROUP_COLORS.Income} strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Expenses" stroke={BUDGET_GROUP_COLORS['Fixed Expense']} strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Left Over" stroke={t.success} strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      <div className="canvas-split">
+      <section style={cardStyle}>
         <SectionLabel>Outflow by group</SectionLabel>
         <div style={{ width: '100%', height: 240 }}>
           <ResponsiveContainer>
@@ -257,24 +276,7 @@ export default function BudgetInsights({ period }: Props) {
           </ResponsiveContainer>
         </div>
       </section>
-
-      <section style={cardStyle}>
-        <SectionLabel>Income vs expenses</SectionLabel>
-        <div style={{ width: '100%', height: 240 }}>
-          <ResponsiveContainer>
-            <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={t.border} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: t.textSec }} />
-              <YAxis tick={{ fontSize: 11, fill: t.textSec }} tickFormatter={v => `€${v}`} width={48} />
-              <Tooltip formatter={(v) => euro(Number(v ?? 0))} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line type="monotone" dataKey="Income" stroke={BUDGET_GROUP_COLORS.Income} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Expenses" stroke={BUDGET_GROUP_COLORS['Fixed Expense']} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Left Over" stroke={t.success} strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+      </div>
 
       {movers.length > 0 && (
         <section style={cardStyle}>

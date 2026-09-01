@@ -43,7 +43,7 @@ export default function TasksScreen({ tasks, openSheet, completeTask, deleteTask
       <div style={{ padding: '16px 16px 4px' }}>
         {attention > 0
           ? <p style={{ fontSize: 13, color: t.textSec }}>{attention} task{attention !== 1 ? 's' : ''} need your attention</p>
-          : <p style={{ fontSize: 13, color: t.success }}>{"You're all caught up!"}</p>
+          : <p style={{ fontSize: 13, color: t.textSec }}>{"You're all caught up"}</p>
         }
       </div>
 
@@ -99,7 +99,7 @@ function TaskList({ tasks, today, onComplete, onDelete, menuOpen, onMenuOpen, op
   openSheet: AppHandlers['openSheet']
 }) {
   return (
-    <div style={{ margin: '0 16px 8px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'visible' }}>
+    <div>
       {tasks.map((task, i) => (
         <TaskRow
           key={task.id}
@@ -144,7 +144,7 @@ function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuO
       position: 'relative',
       padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12,
       borderTop: divider ? `1px solid ${t.border}` : 'none',
-      opacity: task.completed ? 0.45 : 1,
+      opacity: task.completed ? 0.55 : 1,
       transition: 'opacity 0.2s',
       background: t.surface,
     }}>

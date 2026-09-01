@@ -1,10 +1,9 @@
 import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, BudgetPeriod, AppHandlers, PersonalAccountSummary } from '../types'
-import { Calendar, CheckSquare, ShoppingCart, BarChart3, ArrowRight, Plus, Wallet } from 'lucide-react'
-import { t, r, MemberAvatar, TaskCheckbox, ShoppingCheckbox, PriorityIcon } from '../ui'
-import { getMember, TODAY, TOMORROW, formatTime, getGreeting } from '../data'
-import { formatMoney, formatCycleDateRange, formatYearMonthTitle, deriveBudgetState } from '../api/adapters'
+import { Plus } from 'lucide-react'
+import { t, fonts, MemberAvatar, TaskCheckbox, ShoppingCheckbox, Skeleton } from '../ui'
+import { getMember, formatTime, getGreeting } from '../data'
+import { formatMoney, formatYearMonthTitle, deriveBudgetState } from '../api/adapters'
 import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
-import { SpendSparkline } from '../components/SpendBarChart'
 
 interface Props extends Partial<AppHandlers> {
   events: CalendarEvent[]
@@ -15,8 +14,10 @@ interface Props extends Partial<AppHandlers> {
   periods: BudgetPeriod[]
   personalSummary: PersonalAccountSummary | null
   memberName: string
+  currentMemberId?: string
   dateLabel: string
   today: string
+  loading?: boolean
   navigate: AppHandlers['navigate']
   onOpenSpend: () => void
   onOpenPersonal: () => void
@@ -25,409 +26,350 @@ interface Props extends Partial<AppHandlers> {
   addToBasket: AppHandlers['addToBasket']
 }
 
-export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, periods, personalSummary, memberName, dateLabel, today, navigate, onOpenSpend, onOpenPersonal, openSheet, completeTask, addToBasket }: Props) {
-  const tomorrow = (() => {
-    const d = new Date(today + 'T12:00:00')
-    d.setDate(d.getDate() + 1)
-    return d.toISOString().slice(0, 10)
-  })()
+export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, personalSummary, memberName, currentMemberId, dateLabel, today, navigate, onOpenSpend, onOpenPersonal, openSheet, completeTask, addToBasket, loading }: Props) {
   const todayEvents = events.filter(e => e.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime))
-  const upcomingEvents = events.filter(e => e.date > today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)).slice(0, 5)
+  const nextEvent = events
+    .filter(e => e.date > today)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))[0]
   const openTasks = tasks.filter(tk => !tk.completed)
-  const dashTasks = openTasks.slice(0, 4)
-  const dashShopping = shopping.filter(i => !i.completed).slice(0, 5)
+  const assignedToMe = openTasks.filter(tk => currentMemberId && tk.assigneeId === currentMemberId)
+  const dashTasks = openTasks.slice(0, 3)
+  const dashShopping = shopping.filter(i => !i.completed).slice(0, 3)
   const basketCount = activeSession?.itemCount ?? 0
+  const showNeeds = dashTasks.length > 0 || dashShopping.length > 0
 
-  const daySection = (dateStr: string) => {
-    if (dateStr === today || dateStr === TODAY) return 'Today'
-    if (dateStr === tomorrow || dateStr === TOMORROW) return 'Tomorrow'
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  if (loading) {
+    return (
+      <div style={{ padding: '24px 20px' }}>
+        <Skeleton h={32} w={220} />
+        <div style={{ marginTop: 8 }}><Skeleton h={16} w={160} /></div>
+        <div style={{ marginTop: 28 }}><Skeleton h={88} /></div>
+        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Skeleton h={72} />
+          <Skeleton h={72} />
+          <Skeleton h={72} />
+          <Skeleton h={72} />
+        </div>
+      </div>
+    )
   }
 
-  const upcomingGrouped: Record<string, CalendarEvent[]> = {}
-  upcomingEvents.forEach(ev => {
-    const key = daySection(ev.date)
-    ;(upcomingGrouped[key] ??= []).push(ev)
-  })
-
   return (
-    <div style={{ padding: '0 0 24px', maxWidth: 600, margin: '0 auto' }}>
-      {/* ─── Greeting ──────────────────────────────────────────────────────── */}
-      <div style={{ padding: '24px 20px 20px' }}>
-        <h1 style={{ fontSize: 26, fontWeight: 600, color: t.text, letterSpacing: '-0.02em', marginBottom: 4 }}>
-          {getGreeting()}, {memberName}
-        </h1>
-        <p style={{ fontSize: 14, color: t.textSec }}>{dateLabel}</p>
-      </div>
+    <div style={{ padding: '8px 0 32px' }}>
+      <div className="canvas-split" style={{ padding: '8px 20px 0', maxWidth: 1120, margin: '0 auto' }}>
+        <div>
+          <h1 style={{
+            fontFamily: fonts.display,
+            fontSize: 32,
+            fontWeight: 500,
+            color: t.text,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2,
+            margin: '16px 0 4px',
+          }}>
+            {getGreeting()}, {memberName}
+          </h1>
+          <p style={{ fontSize: 14, color: t.textSec, margin: 0 }}>{dateLabel}</p>
 
-      <DashSection
-        icon={<BarChart3 size={16} color={t.primary} strokeWidth={1.75} />}
-        title="Spend"
-        count="this cycle"
-        onViewAll={onOpenSpend}
-        viewLabel="Expenses"
-      >
-        <SpendSnapshot period={currentPeriod} periods={periods} onOpen={onOpenSpend} />
-      </DashSection>
-
-      <DashSection
-        icon={<Wallet size={16} color={t.primary} strokeWidth={1.75} />}
-        title="Personal"
-        count="this month"
-        onViewAll={onOpenPersonal}
-        viewLabel="Details"
-      >
-        <PersonalSpendSnapshot summary={personalSummary} onOpen={onOpenPersonal} />
-      </DashSection>
-
-      {/* ─── Today section ──────────────────────────────────────────────────── */}
-      <DashSection
-        icon={<Calendar size={16} color={t.primary} strokeWidth={1.75} />}
-        title="Today"
-        count={`${todayEvents.length} event${todayEvents.length !== 1 ? 's' : ''}`}
-        onViewAll={() => navigate('calendar')}
-        viewLabel="Calendar"
-      >
-        {todayEvents.length === 0 ? (
-          <div style={{ padding: '16px 20px', color: t.textTer, fontSize: 14 }}>{"Your calendar is clear today."}</div>
-        ) : (
-          <div>
-            {todayEvents.map((ev, i) => {
-              const member = getMember(ev.memberId)
-              return (
-                <div key={ev.id} style={{
-                  padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 16,
-                  borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-                }}>
-                  <div style={{ textAlign: 'right', minWidth: 48, flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: t.textSec }}>{formatTime(ev.startTime)}</span>
-                  </div>
-                  <div style={{ width: 3, height: 36, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 15, fontWeight: 500, color: t.text, marginBottom: 2 }}>{ev.title}</p>
-                    {ev.location && <p style={{ fontSize: 12, color: t.textTer, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.location}</p>}
-                  </div>
-                  <MemberAvatar member={member} size={24} />
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </DashSection>
-
-      {/* ─── Tasks section ──────────────────────────────────────────────────── */}
-      <DashSection
-        icon={<CheckSquare size={16} color={t.primary} strokeWidth={1.75} />}
-        title="Tasks"
-        count={`${openTasks.length} open`}
-        onViewAll={() => navigate('tasks')}
-        viewLabel="View all"
-      >
-        {dashTasks.length === 0 ? (
-          <div style={{ padding: '16px 20px', color: t.textTer, fontSize: 14 }}>Nothing needs doing right now.</div>
-        ) : (
-          <div>
-            {dashTasks.map((task, i) => {
-              const member = getMember(task.assigneeId)
-              const isToday = task.dueDate === 'today' || task.dueDate === today
-              return (
-                <div key={task.id} style={{
-                  padding: '11px 20px', display: 'flex', alignItems: 'center', gap: 12,
-                  borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-                  opacity: task.completed ? 0.4 : 1, transition: 'opacity 0.2s',
-                }}>
-                  <TaskCheckbox checked={task.completed} onChange={() => completeTask(task.id)} />
-                  <button
-                    onClick={() => openSheet({ type: 'taskDetail', taskId: task.id })}
-                    style={{
-                      flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none',
-                      cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
-                    }}
-                  >
-                    <p style={{ fontSize: 15, color: t.text, textDecoration: task.completed ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {task.title}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <span style={{ fontSize: 12, color: isToday ? t.textSec : t.textTer }}>
-                        {isToday ? 'Today' : task.dueDate === 'tomorrow' ? 'Tomorrow' : task.dueDate}
-                      </span>
-                      <span style={{ fontSize: 12, color: t.textTer }}>·</span>
-                      <MemberAvatar member={member} size={14} />
-                      <span style={{ fontSize: 12, color: t.textTer }}>{member.name}</span>
-                    </div>
-                  </button>
-                  <PriorityIcon priority={task.priority} size={14} />
-                </div>
-              )
-            })}
-            {openTasks.length > 4 && (
-              <button onClick={() => navigate('tasks')} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '10px 20px', background: 'none', border: 'none', cursor: 'pointer', color: t.primary, fontSize: 13, fontWeight: 500, fontFamily: 'var(--ds-font)' }}>
-                +{openTasks.length - 4} more tasks <ArrowRight size={13} />
-              </button>
-            )}
-          </div>
-        )}
-      </DashSection>
-
-      {/* ─── Shopping section ───────────────────────────────────────────────── */}
-      <DashSection
-        icon={<ShoppingCart size={16} color={t.primary} strokeWidth={1.75} />}
-        title="Shopping"
-        count={
-          basketCount > 0
-            ? `${dashShopping.length} item${dashShopping.length !== 1 ? 's' : ''} · ${basketCount} in basket`
-            : `${dashShopping.length} item${dashShopping.length !== 1 ? 's' : ''}`
-        }
-        onViewAll={() => navigate('shopping')}
-        viewLabel="View list"
-        onAdd={() => openSheet({ type: 'addShoppingItem' })}
-      >
-        {dashShopping.length === 0 ? (
-          <div style={{ padding: '16px 20px', color: t.textTer, fontSize: 14 }}>
-            {basketCount > 0 ? `${basketCount} item${basketCount !== 1 ? 's' : ''} in basket.` : 'Nothing to buy.'}
-          </div>
-        ) : (
-          <div>
-            {dashShopping.map((item, i) => (
-              <div key={item.id} style={{
-                padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
-                borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-              }}>
-                <ShoppingCheckbox checked={false} onChange={() => addToBasket(item.id)} />
-                <span style={{ fontSize: 15, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                {item.quantity > 1 && (
-                  <span style={{ fontSize: 13, color: t.textTer }}>×{item.quantity}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </DashSection>
-
-      {/* ─── Upcoming section ───────────────────────────────────────────────── */}
-      {upcomingEvents.length > 0 && (
-        <DashSection
-          icon={<Calendar size={16} color={t.primary} strokeWidth={1.75} />}
-          title="Upcoming"
-          count=""
-          onViewAll={() => navigate('calendar')}
-          viewLabel="Calendar"
-        >
-          <div style={{ padding: '4px 0 8px' }}>
-            {Object.entries(upcomingGrouped).map(([day, dayEvents]) => (
-              <div key={day} style={{ padding: '8px 20px' }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{day}</p>
-                {dayEvents.map(ev => {
+          <section style={{ marginTop: 28 }} aria-label="Today">
+            <h2 style={{
+              fontFamily: fonts.display,
+              fontSize: 20,
+              fontWeight: 500,
+              color: t.text,
+              margin: '0 0 12px',
+            }}>
+              Today
+            </h2>
+            {todayEvents.length === 0 ? (
+              <p style={{ fontSize: 14, color: t.textSec, margin: 0 }}>
+                Nothing on the calendar today.
+              </p>
+            ) : (
+              <div>
+                {todayEvents.map(ev => {
                   const member = getMember(ev.memberId)
                   return (
-                    <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, minWidth: 0 }}>
-                      <span style={{ fontSize: 13, color: t.textSec, minWidth: 60, flexShrink: 0 }}>{formatTime(ev.startTime)}</span>
-                      <div style={{ width: 3, height: 20, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</span>
-                      <MemberAvatar member={member} size={18} />
-                    </div>
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => openSheet({ type: 'eventDetail', eventId: ev.id })}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 0',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: fonts.ui,
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 500, color: t.textSec, minWidth: 48, flexShrink: 0 }}>
+                        {formatTime(ev.startTime)}
+                      </span>
+                      <span style={{ width: 3, height: 28, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 15, fontWeight: 500, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ev.title}
+                        </span>
+                        {ev.location && (
+                          <span style={{ display: 'block', fontSize: 12, color: t.textTer, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ev.location}
+                          </span>
+                        )}
+                      </span>
+                    </button>
                   )
                 })}
               </div>
-            ))}
-          </div>
-        </DashSection>
-      )}
+            )}
+            {nextEvent && (
+              <p style={{ fontSize: 13, color: t.textTer, margin: '8px 0 0' }}>
+                Next: {nextEvent.title}
+                {' · '}
+                {new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                {' '}
+                {formatTime(nextEvent.startTime)}
+              </p>
+            )}
+          </section>
+        </div>
+
+        <div>
+          <section aria-label="Pulse" style={{ marginTop: 16 }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 10,
+            }}>
+              <PulseTile
+                label="Family"
+                onClick={onOpenSpend}
+                ariaLabel="Open family budget"
+              >
+                <FamilyPulse period={currentPeriod} />
+              </PulseTile>
+              <PulseTile
+                label="Personal"
+                onClick={onOpenPersonal}
+                ariaLabel="Open personal spend"
+              >
+                <PersonalPulse summary={personalSummary} />
+              </PulseTile>
+              <PulseTile
+                label="Tasks"
+                onClick={() => navigate('tasks')}
+                ariaLabel="Open tasks"
+              >
+                <p style={{ fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text }}>
+                  {openTasks.length}
+                </p>
+                <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
+                  {assignedToMe.length > 0
+                    ? `${assignedToMe.length} need you`
+                    : openTasks.length === 0
+                      ? 'All caught up'
+                      : 'open'}
+                </p>
+              </PulseTile>
+              <PulseTile
+                label="Shopping"
+                onClick={() => navigate('shopping')}
+                ariaLabel="Open shopping"
+              >
+                <p style={{ fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text }}>
+                  {shopping.filter(i => !i.completed).length}
+                </p>
+                <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
+                  {basketCount > 0
+                    ? `list · ${basketCount} in basket`
+                    : 'on the list'}
+                </p>
+              </PulseTile>
+            </div>
+          </section>
+
+          {showNeeds && (
+            <section aria-label="Needs you" style={{ marginTop: 28 }}>
+              <h2 style={{
+                fontFamily: fonts.display,
+                fontSize: 20,
+                fontWeight: 500,
+                color: t.text,
+                margin: '0 0 8px',
+              }}>
+                Needs you
+              </h2>
+              {dashTasks.map(task => {
+                const member = getMember(task.assigneeId)
+                const isToday = task.dueDate === 'today' || task.dueDate === today
+                return (
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+                    <TaskCheckbox checked={task.completed} onChange={() => completeTask(task.id)} />
+                    <button
+                      type="button"
+                      onClick={() => openSheet({ type: 'taskDetail', taskId: task.id })}
+                      style={{
+                        flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none',
+                        cursor: 'pointer', textAlign: 'left', fontFamily: fonts.ui,
+                      }}
+                    >
+                      <p style={{ fontSize: 15, color: t.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.title}
+                      </p>
+                      <p style={{ fontSize: 12, color: t.textTer, margin: '2px 0 0' }}>
+                        {isToday ? 'Today' : task.dueDate === 'tomorrow' ? 'Tomorrow' : task.dueDate}
+                        {' · '}
+                        {member.name}
+                      </p>
+                    </button>
+                  </div>
+                )
+              })}
+              {dashShopping.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+                  <ShoppingCheckbox checked={false} onChange={() => addToBasket(item.id)} />
+                  <span style={{ fontSize: 15, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.name}
+                  </span>
+                  {item.quantity > 1 && (
+                    <span style={{ fontSize: 13, color: t.textTer }}>×{item.quantity}</span>
+                  )}
+                </div>
+              ))}
+              {dashShopping.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => openSheet({ type: 'addShoppingItem' })}
+                  aria-label="Add shopping item"
+                  style={{
+                    marginTop: 4,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: t.textSec,
+                    fontSize: 13,
+                    fontFamily: fonts.ui,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '8px 0',
+                    minHeight: 44,
+                  }}
+                >
+                  <Plus size={14} /> Add item
+                </button>
+              )}
+            </section>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
-function SpendSnapshot({
-  period,
-  periods,
-  onOpen,
+function PulseTile({
+  label,
+  onClick,
+  ariaLabel,
+  children,
 }: {
-  period: BudgetPeriod | null
-  periods: BudgetPeriod[]
-  onOpen: () => void
+  label: string
+  onClick: () => void
+  ariaLabel: string
+  children: React.ReactNode
 }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      style={{
+        textAlign: 'left',
+        border: 'none',
+        background: 'transparent',
+        padding: '10px 4px 12px',
+        cursor: 'pointer',
+        fontFamily: fonts.ui,
+        minHeight: 72,
+      }}
+    >
+      <p style={{ fontSize: 11, color: t.textTer, margin: '0 0 6px' }}>{label}</p>
+      {children}
+    </button>
+  )
+}
+
+function FamilyPulse({ period }: { period: BudgetPeriod | null }) {
   if (!period) {
     return (
-      <button
-        type="button"
-        onClick={onOpen}
-        style={{
-          width: '100%', padding: '16px 20px', border: 'none', background: 'none',
-          cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
-          color: t.textTer, fontSize: 14,
-        }}
-      >
-        Plan a cycle to track spend
-      </button>
+      <>
+        <p style={{ fontSize: 15, color: t.textSec, margin: 0 }}>No cycle</p>
+        <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>Start one</p>
+      </>
     )
   }
-
   const used = period.summary.totalExpensesActual
   const expected = period.summary.totalExpensesExpected
   const remaining = expected - used
   const { percentUsed, state } = deriveBudgetState(used, expected)
-  const sparkBuckets = periods.slice(-6).map(row => ({
-    id: row.id,
-    total: row.summary.totalExpensesActual,
-  }))
-  const hasSpend = periods.some(row => row.summary.totalExpensesActual > 0) || used > 0
-  const budgetCaption = expected > 0
-    ? remaining >= 0
-      ? `${formatMoney(remaining, period.currency)} left of ${formatMoney(expected, period.currency)}`
-      : `${formatMoney(Math.abs(remaining), period.currency)} over ${formatMoney(expected, period.currency)}`
-    : null
-
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={
-        budgetCaption
-          ? `This cycle spend ${formatMoney(used, period.currency)}. ${budgetCaption}. Open Expenses`
-          : `This cycle spend ${formatMoney(used, period.currency)}. Open Expenses`
-      }
-      style={{
-        width: '100%', padding: '14px 20px', border: 'none', background: 'none',
-        cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
-        display: 'flex', alignItems: 'center', gap: 16,
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontSize: 24, fontWeight: 600, color: t.text, letterSpacing: '-0.03em',
-          fontVariantNumeric: 'tabular-nums', margin: 0, lineHeight: 1.15,
-        }}>
-          {formatMoney(used, period.currency)}
-        </p>
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${t.border}` }}>
-          <p style={{ fontSize: 12, color: t.textSec, margin: 0 }}>
-            {formatYearMonthTitle(period.labelMonth)}
-            {' · '}
-            {formatCycleDateRange(period.startDate, period.endDate)}
+    <>
+      <p style={{
+        fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {formatMoney(used, period.currency)}
+      </p>
+      {expected > 0 ? (
+        <>
+          <BudgetBar
+            percentUsed={percentUsed}
+            state={state}
+            ariaLabel={`Household budget ${Math.round(percentUsed)} percent used`}
+            height={3}
+          />
+          <p style={{ fontSize: 12, color: remaining < 0 ? budgetStateColor(state) : t.textSec, margin: '4px 0 0' }}>
+            {remaining >= 0
+              ? `${formatMoney(remaining, period.currency)} left`
+              : `${formatMoney(Math.abs(remaining), period.currency)} over`}
           </p>
-          {expected > 0 ? (
-            <>
-              <BudgetBar
-                percentUsed={percentUsed}
-                state={state}
-                ariaLabel={`Household budget ${Math.round(percentUsed)} percent used`}
-                height={4}
-              />
-              {budgetCaption ? (
-                <p style={{ fontSize: 12, color: budgetStateColor(state), marginTop: 6 }}>
-                  {budgetCaption}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      </div>
-      {hasSpend && sparkBuckets.length > 0 && <SpendSparkline buckets={sparkBuckets} />}
-    </button>
+        </>
+      ) : (
+        <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
+          {formatYearMonthTitle(period.labelMonth)}
+        </p>
+      )}
+    </>
   )
 }
 
-function PersonalSpendSnapshot({
-  summary,
-  onOpen,
-}: {
-  summary: PersonalAccountSummary | null
-  onOpen: () => void
-}) {
+function PersonalPulse({ summary }: { summary: PersonalAccountSummary | null }) {
   const accounts = summary?.accounts ?? []
-  if (accounts.length === 0) {
-    return (
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label="Create a personal expense account"
-        style={{
-          width: '100%', padding: '16px 20px', border: 'none', background: 'none',
-          cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
-          color: t.textTer, fontSize: 14,
-        }}
-      >
-        Create an account to track personal spend
-      </button>
-    )
-  }
-
   const total = summary?.currentMonthTotal ?? 0
   const currency = summary?.currency ?? 'EUR'
-  const caption = total === 0
-    ? 'No personal spend this month'
-    : accounts.length === 1
-      ? accounts[0].name
-      : `across ${accounts.length} accounts`
-
+  if (accounts.length === 0) {
+    return (
+      <>
+        <p style={{ fontSize: 15, color: t.textSec, margin: 0 }}>No accounts</p>
+        <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>Set one up</p>
+      </>
+    )
+  }
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={`Personal spend ${formatMoney(total, currency)} this month. Open Personal`}
-      style={{
-        width: '100%', padding: '16px 20px', border: 'none', background: 'none',
-        cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
-      }}
-    >
+    <>
       <p style={{
-        fontSize: 24, fontWeight: 600, color: t.text, letterSpacing: '-0.03em',
-        fontVariantNumeric: 'tabular-nums', margin: 0, lineHeight: 1.15,
+        fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text,
+        fontVariantNumeric: 'tabular-nums',
       }}>
         {formatMoney(total, currency)}
       </p>
-      <p style={{ fontSize: 12, color: t.textSec, margin: '8px 0 0' }}>
-        {caption}
+      <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
+        {accounts.length === 1 ? accounts[0].name : `${accounts.length} accounts`}
       </p>
-    </button>
-  )
-}
-
-// ─── DashSection ─────────────────────────────────────────────────────────────
-
-function DashSection({ icon, title, count, onViewAll, viewLabel, onAdd, children }: {
-  icon: React.ReactNode
-  title: string
-  count: string
-  onViewAll: () => void
-  viewLabel: string
-  onAdd?: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div style={{ margin: '0 0 8px' }}>
-      {/* Section header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 20px 10px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          {icon}
-          <span style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{title}</span>
-          {count && <span style={{ fontSize: 12, color: t.textTer, marginLeft: 2 }}>{count}</span>}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {onAdd && (
-            <button onClick={onAdd} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}>
-              <Plus size={16} color={t.primary} />
-            </button>
-          )}
-          <button onClick={onViewAll} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, color: t.primary, fontSize: 13, fontWeight: 500, padding: '4px 0', fontFamily: 'var(--ds-font)' }}>
-            {viewLabel} <ArrowRight size={13} />
-          </button>
-        </div>
-      </div>
-      {/* Content card */}
-      <div style={{
-        margin: '0 16px',
-        background: t.surface,
-        borderRadius: r.lg,
-        border: `1px solid ${t.border}`,
-        overflow: 'hidden',
-      }}>
-        {children}
-      </div>
-    </div>
+    </>
   )
 }

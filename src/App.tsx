@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import {
-  Home,
-  Calendar,
-  CheckSquare,
-  ShoppingCart,
-  Wallet,
-  Bell,
-  ArrowLeft,
-  Settings,
-  Repeat,
-} from "lucide-react";
+import { Repeat } from "lucide-react";
 import type {
   Screen,
   CalendarEvent,
@@ -36,7 +26,6 @@ import { TASK_CATEGORIES } from "./types";
 import { getMember, formatDate, formatTime } from "./data";
 import {
   t,
-  MemberAvatar,
   BottomSheet,
   Toast,
   OfflineBanner,
@@ -126,36 +115,9 @@ import PersonalExpensesScreen from "./screens/PersonalExpenses";
 import PersonalActivityScreen from "./screens/PersonalActivity";
 import PersonalExpenseSheet from "./components/PersonalExpenseSheet";
 import PersonalAccountSheet from "./components/PersonalAccountSheet";
-
-const BOTTOM_NAV = [
-  { screen: "dashboard" as Screen, icon: Home, label: "Home" },
-  { screen: "calendar" as Screen, icon: Calendar, label: "Calendar" },
-  { screen: "tasks" as Screen, icon: CheckSquare, label: "Tasks" },
-  { screen: "shopping" as Screen, icon: ShoppingCart, label: "Shopping" },
-  { screen: "budgetSpend" as Screen, icon: Wallet, label: "Budget" },
-];
-
-/** The sidebar has room for Notifications; Budget is one item like the bottom nav. */
-const DESKTOP_NAV = [
-  ...BOTTOM_NAV,
-  { screen: "notifications" as Screen, icon: Bell, label: "Notifications" },
-];
-
-const SCREEN_TITLES: Record<Screen, string> = {
-  dashboard: "FamilyOS",
-  calendar: "Calendar",
-  tasks: "Tasks",
-  shopping: "Shopping",
-  budget: "Budget",
-  budgetSpend: "Budget",
-  budgetInsights: "Budget",
-  budgetActivity: "Activity",
-  personal: "Personal",
-  personalActivity: "Activity",
-  notifications: "Notifications",
-  family: "Your Family",
-  settings: "Settings",
-};
+import { AppHeader } from "./components/shell/AppHeader";
+import { DesktopSidebar } from "./components/shell/DesktopSidebar";
+import { MobileBottomNav } from "./components/shell/MobileBottomNav";
 
 const BUDGET_TAB_SCREENS: Record<BudgetTab, Screen> = {
   plan: "budget",
@@ -1423,355 +1385,12 @@ function MainApp() {
     }
   }
 
-  const isDashboard = screen === "dashboard";
-  const isSubScreen =
-    screen === "notifications" ||
-    screen === "family" ||
-    screen === "settings" ||
-    screen === "budgetActivity" ||
-    screen === "personalActivity";
   const headerBackScreen: Screen =
     screen === "budgetActivity"
       ? "budgetSpend"
       : screen === "personalActivity"
         ? "personal"
         : "dashboard";
-  const showHeaderTitle =
-    !isDashboard && (!isSubScreen || screen === "budgetActivity" || screen === "personalActivity");
-
-  function AppHeader() {
-    return (
-      <header
-        style={{
-          minHeight: "calc(52px + env(safe-area-inset-top, 0px))",
-          paddingTop: "env(safe-area-inset-top, 0px)",
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: 16,
-          paddingRight: 16,
-          gap: 12,
-          flexShrink: 0,
-          background: t.bgGlass,
-          backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${t.border}`,
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-        }}
-      >
-        {isSubScreen ? (
-          <button
-            onClick={() => navigateToScreen(headerBackScreen)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              color: t.primary,
-              padding: "4px 0",
-              fontFamily: "var(--ds-font)",
-              flexShrink: 0,
-            }}
-          >
-            <ArrowLeft size={18} />
-            <span style={{ fontSize: 15 }}>Back</span>
-          </button>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              minWidth: 0,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: t.primary,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Home size={14} color={t.onPrimary} />
-            </div>
-            {isDashboard && (
-              <span
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: t.text,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {familyName}
-              </span>
-            )}
-          </div>
-        )}
-        {showHeaderTitle && (
-          <span
-            style={{
-              fontSize: 17,
-              fontWeight: 600,
-              color: t.text,
-              flex: 1,
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {SCREEN_TITLES[screen]}
-          </span>
-        )}
-        <div style={{ flex: 1, minWidth: 0 }} />
-        <button
-          onClick={() => navigateToScreen("notifications")}
-          aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-          style={{
-            position: "relative",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 6,
-            display: "flex",
-            flexShrink: 0,
-          }}
-        >
-          <Bell size={20} color={t.textSec} strokeWidth={1.75} />
-          {unreadCount > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: 2,
-                right: 2,
-                minWidth: 16,
-                height: 16,
-                borderRadius: 9999,
-                background: t.error,
-                color: t.onPrimary,
-                fontSize: 10,
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `1.5px solid ${t.bg}`,
-                padding: "0 3px",
-              }}
-            >
-              {unreadCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => navigateToScreen("family")}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            flexShrink: 0,
-          }}
-        >
-          {currentUser && <MemberAvatar member={currentUser} size={32} />}
-        </button>
-      </header>
-    );
-  }
-
-  function DesktopSidebar() {
-    return (
-      <aside
-        style={{
-          width: 220,
-          background: t.surface,
-          borderRight: `1px solid ${t.border}`,
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-          padding: "16px 0",
-          height: "100%",
-        }}
-      >
-        <div
-          style={{
-            padding: "4px 16px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              background: t.primary,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Home size={14} color={t.onPrimary} />
-          </div>
-          <span style={{ fontSize: 15, fontWeight: 600, color: t.text }}>
-            FamilyOS
-          </span>
-        </div>
-        {DESKTOP_NAV.map((item) => {
-          const Icon = item.icon;
-          const active =
-            screen === item.screen ||
-            (item.screen === "budgetSpend" && isBudgetSection(screen));
-          return (
-            <button
-              key={item.screen}
-              onClick={() => navigateToScreen(item.screen)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 16px",
-                border: "none",
-                background: active ? t.primarySubtle : "transparent",
-                color: active ? t.primary : t.textSec,
-                fontSize: 14,
-                fontWeight: active ? 500 : 400,
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "var(--ds-font)",
-                transition: "all 0.12s",
-                borderRadius: 0,
-              }}
-            >
-              <Icon size={18} strokeWidth={active ? 2 : 1.75} />
-              {item.label}
-              {item.screen === "notifications" && unreadCount > 0 && (
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    minWidth: 18,
-                    height: 18,
-                    borderRadius: 9999,
-                    background: t.error,
-                    color: t.onPrimary,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0 4px",
-                  }}
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
-        <div style={{ flex: 1 }} />
-        <div
-          style={{
-            padding: "12px 16px",
-            borderTop: `1px solid ${t.border}`,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <button
-            onClick={() => navigateToScreen("family")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            {currentUser && <MemberAvatar member={currentUser} size={32} />}
-          </button>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: t.text }}>
-              {currentUser?.name ?? session.user?.name}
-            </p>
-            <p style={{ fontSize: 11, color: t.textTer }}>{familyName}</p>
-          </div>
-          <button
-            onClick={() => navigateToScreen("settings")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              padding: 4,
-            }}
-          >
-            <Settings size={16} color={t.textTer} />
-          </button>
-        </div>
-      </aside>
-    );
-  }
-
-  function MobileBottomNav() {
-    return (
-      <nav
-        style={{
-          display: "flex",
-          borderTop: `1px solid ${t.border}`,
-          background: t.bgGlass,
-          backdropFilter: "blur(12px)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-          flexShrink: 0,
-        }}
-      >
-        {BOTTOM_NAV.map((item) => {
-          const Icon = item.icon;
-          const active =
-            screen === item.screen ||
-            (item.screen === "budgetSpend" && isBudgetSection(screen));
-          return (
-            <button
-              key={item.screen}
-              onClick={() => navigateToScreen(item.screen)}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                padding: "8px 0",
-                border: "none",
-                background: "none",
-                color: active ? t.primary : t.textTer,
-                cursor: "pointer",
-                gap: 3,
-                fontFamily: "var(--ds-font)",
-              }}
-            >
-              <Icon
-                size={22}
-                strokeWidth={active ? 2 : 1.75}
-                color={active ? t.primary : t.textTer}
-              />
-              <span style={{ fontSize: 10, fontWeight: active ? 500 : 400 }}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
-    );
-  }
 
   const handlers = {
     navigate: navigateToScreen,
@@ -1863,7 +1482,14 @@ function MainApp() {
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <div className="hide-mobile" style={{ alignSelf: "stretch" }}>
-          <DesktopSidebar />
+          <DesktopSidebar
+            screen={screen}
+            familyName={familyName}
+            unreadCount={unreadCount}
+            currentUser={currentUser}
+            userName={session.user?.name}
+            onNavigate={navigateToScreen}
+          />
         </div>
 
         <div
@@ -1875,7 +1501,14 @@ function MainApp() {
             minWidth: 0,
           }}
         >
-          <AppHeader />
+          <AppHeader
+            screen={screen}
+            familyName={familyName}
+            unreadCount={unreadCount}
+            currentUser={currentUser}
+            onNavigate={navigateToScreen}
+            onBack={() => navigateToScreen(headerBackScreen)}
+          />
 
           <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
             {screen === "dashboard" && (
@@ -1889,6 +1522,7 @@ function MainApp() {
                 }
                 periods={budgetPeriods}
                 memberName={dashGreeting}
+                currentMemberId={currentUser?.id}
                 dateLabel={dashDateLabel}
                 today={today}
                 onOpenSpend={handleOpenSpend}
@@ -1933,6 +1567,8 @@ function MainApp() {
                 selectedPeriodId={selectedPeriodId}
                 loadPeriodExpenses={loadPeriodExpenses}
                 onSelectPeriod={setSelectedPeriodId}
+                onSelectPersonal={() => navigateToScreen("personal")}
+                onOpenCycleList={() => setSheet({ type: 'cycleList' })}
                 {...handlers}
               />
             )}
@@ -1946,6 +1582,7 @@ function MainApp() {
                   loadMonthExpenses={loadPersonalMonthExpenses}
                   onSelectAccount={handleSelectPersonalAccount}
                   onSelectMonth={setSelectedPersonalMonth}
+                  onSelectFamily={() => navigateToScreen("budgetSpend")}
                   {...handlers}
                 />
               ) : (
@@ -2021,8 +1658,8 @@ function MainApp() {
             )}
           </main>
 
-          <div className="hide-desktop">
-            <MobileBottomNav />
+          <div className="hide-desktop" style={{ width: '100%' }}>
+            <MobileBottomNav screen={screen} onNavigate={navigateToScreen} />
           </div>
         </div>
       </div>

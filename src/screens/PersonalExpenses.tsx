@@ -17,7 +17,7 @@ import {
   EXPENSE_CATEGORY_COLORS,
 } from "../ui";
 import { MonthSwitcher } from "../components/MonthSwitcher";
-import { MoneyScopeSwitch } from "../components/MoneyScopeSwitch";
+import { MoneyChrome } from "../components/MoneyChrome";
 import { usePersonalMonthExpenses } from "../hooks/usePersonalMonthExpenses";
 import {
   formatMoney,
@@ -116,70 +116,77 @@ export default function PersonalExpensesScreen({
   };
 
   return (
-    <div style={{ padding: "0 0 24px" }}>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: t.bgGlass,
-          backdropFilter: "blur(12px)",
-          padding: `8px ${SIDE_PAD}px 12px`,
-        }}
-      >
-        <MoneyScopeSwitch
-          scope="personal"
-          onSelectFamily={onSelectFamily}
-          onSelectPersonal={() => undefined}
-        />
-        <p style={{ fontSize: 12, color: t.textSec, margin: "0 0 10px" }}>
-          Only you can see this.
-        </p>
-        <div
-          role="tablist"
-          aria-label="Personal expense accounts"
-          style={{
-            display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            paddingBottom: 2,
-            margin: "0 -4px",
-          }}
-        >
-          {accounts.map((account) => {
-            const active = account.id === selectedAccountId;
-            return (
-              <button
-                key={account.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-label={
-                  active
-                    ? `${account.name}, selected. Edit account`
-                    : account.name
-                }
-                tabIndex={0}
-                onClick={() => handleSelectAccount(account)}
-                style={{
-                  flexShrink: 0,
-                  border: `1px solid ${active ? t.primary : t.border}`,
-                  background: active ? t.primarySubtle : t.surface,
-                  color: active ? t.primary : t.text,
-                  fontWeight: active ? 600 : 500,
-                  fontSize: 13,
-                  padding: "8px 12px",
-                  borderRadius: r.pill,
-                  cursor: "pointer",
-                  fontFamily: "var(--ds-font)",
-                }}
-              >
-                {account.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    <MoneyChrome
+      scope="personal"
+      onSelectFamily={onSelectFamily}
+      onSelectPersonal={() => undefined}
+      switcher={
+        selected ? (
+          <MonthSwitcher
+            title={formatYearMonthTitle(selectedMonth)}
+            subtitle={selected.name}
+            canGoPrev={canGoPrev}
+            canGoNext={canGoNext}
+            onPrev={handlePrevMonth}
+            onNext={handleNextMonth}
+            prevAriaLabel="Previous month"
+            nextAriaLabel="Next month"
+          />
+        ) : undefined
+      }
+      extra={
+        <>
+          <p style={{ fontSize: 12, color: t.textSec, margin: "0 0 10px" }}>
+            Only you can see this.
+          </p>
+          <div
+            role="tablist"
+            aria-label="Personal expense accounts"
+            style={{
+              display: "flex",
+              gap: 10,
+              overflowX: "auto",
+              paddingBottom: 8,
+            }}
+          >
+            {accounts.map((account) => {
+              const active = account.id === selectedAccountId;
+              return (
+                <button
+                  key={account.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-label={
+                    active
+                      ? `${account.name}, selected. Edit account`
+                      : account.name
+                  }
+                  onClick={() => handleSelectAccount(account)}
+                  style={{
+                    flexShrink: 0,
+                    border: `1px solid ${active ? t.primary : t.border}`,
+                    background: active ? t.primarySubtle : t.surfaceElev,
+                    color: t.text,
+                    fontWeight: 500,
+                    fontSize: 13,
+                    padding: "12px 14px",
+                    borderRadius: r.md,
+                    cursor: "pointer",
+                    fontFamily: "var(--ds-font)",
+                    minHeight: 44,
+                    minWidth: 92,
+                    textAlign: "left",
+                  }}
+                >
+                  {account.name}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      }
+    >
 
       {loading ? (
         <div
@@ -203,34 +210,16 @@ export default function PersonalExpensesScreen({
         />
       ) : (
         <>
-          <MonthSwitcher
-            title={formatYearMonthTitle(selectedMonth)}
-            subtitle={selected.name}
-            canGoPrev={canGoPrev}
-            canGoNext={canGoNext}
-            onPrev={handlePrevMonth}
-            onNext={handleNextMonth}
-            prevAriaLabel="Previous month"
-            nextAriaLabel="Next month"
-          />
-
-          <div
-            style={{
-              margin: "12px 16px 16px",
-              background: t.surface,
-              borderRadius: r.lg,
-              border: `1px solid ${t.border}`,
-              padding: "18px 16px",
-            }}
-          >
+          <div style={{ padding: "12px 20px 16px" }}>
             <p
               style={{
-                fontSize: 28,
-                fontWeight: 600,
+                fontSize: 36,
+                fontWeight: 500,
                 color: t.text,
                 letterSpacing: "-0.03em",
                 fontVariantNumeric: "tabular-nums",
                 margin: 0,
+                fontFamily: "var(--ds-font-display)",
               }}
             >
               {formatMoney(monthTotal, currency)}
@@ -332,7 +321,7 @@ export default function PersonalExpensesScreen({
       >
         <Plus size={24} color={t.onPrimary} />
       </FAB>
-    </div>
+    </MoneyChrome>
   );
 }
 

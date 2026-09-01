@@ -18,11 +18,11 @@ const ICONS = {
 }
 
 const ICON_COLORS = {
-  calendar: { color: 'var(--ds-primary)',   bg: 'var(--ds-primary-subtle)' },
-  task:     { color: 'var(--ds-success)',   bg: 'var(--ds-success-subtle)' },
-  shopping: { color: 'var(--ds-warning)',   bg: 'var(--ds-warning-subtle)' },
-  family:   { color: 'var(--ds-info)',      bg: 'var(--ds-info-subtle)' },
-  budget:   { color: 'var(--ds-warning)',   bg: 'var(--ds-warning-subtle)' },
+  calendar: { color: 'var(--ds-text-secondary)', bg: 'transparent' },
+  task:     { color: 'var(--ds-text-secondary)', bg: 'transparent' },
+  shopping: { color: 'var(--ds-text-secondary)', bg: 'transparent' },
+  family:   { color: 'var(--ds-text-secondary)', bg: 'transparent' },
+  budget:   { color: 'var(--ds-text-secondary)', bg: 'transparent' },
 }
 
 export default function NotificationsScreen({ notifications, markNotificationRead, markAllNotificationsRead, navigate }: Props) {
@@ -70,23 +70,26 @@ export default function NotificationsScreen({ notifications, markNotificationRea
 function NotifGroup({ title, notifs, onTap }: { title: string; notifs: Notification[]; onTap: (n: Notification) => void }) {
   return (
     <div style={{ margin: '12px 0 4px' }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 16px 8px' }}>{title}</p>
-      <div style={{ margin: '0 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+      <p style={{ fontSize: 12, fontWeight: 500, color: t.textSec, padding: '0 16px 8px' }}>{title}</p>
+      <div>
         {notifs.map((n, i) => {
           const Icon = ICONS[n.type] ?? Bell
-          const { color, bg } = ICON_COLORS[n.type]
+          const { color } = ICON_COLORS[n.type]
           return (
             <button key={n.id} onClick={() => onTap(n)} style={{
               display: 'flex', alignItems: 'flex-start', gap: 12,
               padding: '13px 16px', width: '100%', border: 'none', cursor: 'pointer',
-              background: n.read ? t.surface : t.surfaceMuted,
+              background: 'transparent',
               borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-              borderLeft: n.read ? '3px solid transparent' : `3px solid ${color}`,
+              borderLeft: 'none',
               textAlign: 'left', fontFamily: 'var(--ds-font)',
               transition: 'background 0.15s',
             }}>
-              <div style={{ width: 36, height: 36, borderRadius: r.md, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
                 <Icon size={18} color={color} strokeWidth={1.75} />
+                {!n.read && (
+                  <span aria-hidden style={{ position: 'absolute', top: 2, right: 0, width: 6, height: 6, borderRadius: 9999, background: t.attention }} />
+                )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: n.read ? 400 : 600, color: t.text, marginBottom: 3 }}>{n.title}</p>

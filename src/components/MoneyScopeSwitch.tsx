@@ -1,4 +1,4 @@
-import { t, r } from '../ui'
+import { t, fonts } from '../ui'
 
 export type MoneyScope = 'family' | 'personal'
 
@@ -31,40 +31,40 @@ export const MoneyScopeSwitch = ({
       role="tablist"
       aria-label="Money scope"
       style={{
-        display: 'flex',
-        gap: 4,
-        padding: 4,
-        background: t.surfaceMuted,
-        borderRadius: r.md,
-        marginBottom: 8,
+        display: 'inline-flex',
+        gap: 2,
+        alignItems: 'center',
       }}
     >
-      {OPTIONS.map(item => {
+      {OPTIONS.map((item, i) => {
         const active = scope === item.id
         return (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            tabIndex={0}
-            onClick={() => handleSelect(item.id)}
-            style={{
-              flex: 1,
-              border: 'none',
-              background: active ? t.surface : 'transparent',
-              color: active ? t.text : t.textSec,
-              fontWeight: active ? 600 : 500,
-              fontSize: 13,
-              padding: '8px 12px',
-              borderRadius: r.sm,
-              cursor: 'pointer',
-              boxShadow: active ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-              fontFamily: 'var(--ds-font)',
-            }}
-          >
-            {item.label}
-          </button>
+          <span key={item.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            {i > 0 && (
+              <span aria-hidden style={{ color: t.textTer, fontSize: 13, padding: '0 4px' }}>
+                /
+              </span>
+            )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => handleSelect(item.id)}
+              style={{
+                border: 'none',
+                background: 'none',
+                color: active ? t.text : t.textTer,
+                fontWeight: active ? 500 : 400,
+                fontSize: 14,
+                padding: '8px 4px',
+                minHeight: 44,
+                cursor: 'pointer',
+                fontFamily: fonts.ui,
+              }}
+            >
+              {item.label}
+            </button>
+          </span>
         )
       })}
     </div>

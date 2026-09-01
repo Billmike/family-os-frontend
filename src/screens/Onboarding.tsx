@@ -70,9 +70,9 @@ const shell: CSSProperties = {
 
 const card: CSSProperties = {
   width: '100%', maxWidth: 440,
-  background: t.surface, borderRadius: r.xl,
-  boxShadow: sh.md, border: `1px solid ${t.border}`,
-  padding: '24px 20px 24px',
+  background: 'transparent', borderRadius: 0,
+  boxShadow: 'none', border: 'none',
+  padding: '24px 8px 24px',
   display: 'flex', flexDirection: 'column', gap: 0,
   marginTop: 'auto', marginBottom: 'auto',
 }
@@ -243,7 +243,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h1 style={{ fontSize: 26, fontWeight: 700, color: t.text, letterSpacing: '-0.02em', lineHeight: 1.25, marginBottom: 8 }}>{children}</h1>
+  return <h1 style={{ fontSize: 28, fontWeight: 500, color: t.text, letterSpacing: '-0.02em', lineHeight: 1.25, marginBottom: 8, fontFamily: 'var(--ds-font-display)' }}>{children}</h1>
 }
 
 function Sub({ children }: { children: React.ReactNode }) {
@@ -509,7 +509,7 @@ export default function Onboarding({ handlers }: Props) {
             style={{ width: 64, height: 64, borderRadius: 20, boxShadow: sh.md }}
           />
         </div>
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: t.text, letterSpacing: '-0.025em', lineHeight: 1.2, marginBottom: 10 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 500, color: t.text, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: 10, fontFamily: 'var(--ds-font-display)' }}>
           {hasPendingInvite ? <>You&apos;re invited</> : <>Welcome to<br />FamilyOS</>}
         </h1>
         <p style={{ fontSize: 15, color: t.textSec, lineHeight: 1.65, marginBottom: 32, maxWidth: 320, margin: '0 auto 32px' }}>

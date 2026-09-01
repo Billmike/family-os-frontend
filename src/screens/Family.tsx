@@ -208,12 +208,13 @@ export default function FamilyScreen({
           >
             <h1
               style={{
-                fontSize: 22,
-                fontWeight: 700,
+                fontSize: 28,
+                fontWeight: 500,
                 color: t.text,
                 textAlign: "center",
-                letterSpacing: "-0.01em",
+                letterSpacing: "-0.02em",
                 overflow: "hidden",
+                fontFamily: "var(--ds-font-display)",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 maxWidth: "100%",

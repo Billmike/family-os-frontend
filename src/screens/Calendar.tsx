@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { CalendarEvent, Member, AppHandlers } from '../types'
-import { t, r, MemberAvatar, FAB, SegmentedControl, SectionLabel } from '../ui'
+import { t, r, FAB, SegmentedControl, SectionLabel } from '../ui'
 import { getMember, formatTime } from '../data'
 
 const EVENT_DOT = t.warning
@@ -123,7 +123,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
           ) : agendaDates.map(date => (
             <div key={date}>
               <SectionLabel>{formatDayLabel(date, today)}</SectionLabel>
-              <div style={{ margin: '0 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden', marginBottom: 8 }}>
+              <div>
                 {(grouped[date] ?? []).map((ev, i) => (
                   <EventRow
                     key={ev.id}
@@ -140,7 +140,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
 
       {view === 'Month' && (
         <div>
-          <div style={{ margin: '4px 16px 12px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, padding: '12px 8px 16px' }}>
+          <div style={{ margin: '4px 16px 12px', padding: '12px 8px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '0 4px' }}>
               <button
                 type="button"
@@ -238,7 +238,7 @@ export default function CalendarScreen({ events, openSheet, today }: Props) {
                 <p style={{ fontSize: 15, color: t.textSec }}>No events on this day.</p>
               </div>
             ) : (
-              <div style={{ margin: '0 16px', background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+              <div>
                 {dayEvents.map((ev, i) => (
                   <EventRow
                     key={ev.id}
@@ -272,7 +272,7 @@ function EventRow({ event, divider, onClick }: { event: CalendarEvent; divider: 
       <div style={{ minWidth: 52, flexShrink: 0, textAlign: 'right' }}>
         <span style={{ fontSize: 13, fontWeight: 500, color: t.textSec }}>{formatTime(event.startTime)}</span>
       </div>
-      <div style={{ width: 3, height: 40, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
+      <div style={{ width: 3, height: 32, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 15, fontWeight: 500, color: t.text, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -284,7 +284,6 @@ function EventRow({ event, divider, onClick }: { event: CalendarEvent; divider: 
           )}
         </div>
       </div>
-      <MemberAvatar member={member} size={26} />
     </button>
   )
 }

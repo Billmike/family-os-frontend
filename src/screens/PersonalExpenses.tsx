@@ -18,7 +18,13 @@ import {
 } from "../ui";
 import { MonthSwitcher } from "../components/MonthSwitcher";
 import { MoneyChrome } from "../components/MoneyChrome";
+import { RollingNumber } from "../components/RollingNumber";
+import {
+  ActivityRowShell,
+  useActivityListMotion,
+} from "../components/ActivityListMotion";
 import { usePersonalMonthExpenses } from "../hooks/usePersonalMonthExpenses";
+import { useDeltaDuration } from "../lib/motion";
 import {
   formatMoney,
   formatSessionDate,
@@ -73,12 +79,24 @@ export default function PersonalExpensesScreen({
     );
 
   const monthTotal = entries.reduce((sum, row) => sum + row.amount, 0);
+  const tallyDuration = useDeltaDuration(monthTotal);
+  const heroDuration = useDeltaDuration(monthTotal, "hero");
   const currency = selected?.currency ?? summary?.currency ?? "EUR";
   const minMonth = shiftYearMonth(todayMonth, -MONTH_WINDOW);
   const canGoPrev = selectedMonth > minMonth;
   const canGoNext = selectedMonth < todayMonth;
   const preview = entries.slice(0, ACTIVITY_PREVIEW_LIMIT);
   const showViewMore = entries.length > ACTIVITY_PREVIEW_LIMIT;
+  const {
+    items: activityItems,
+    handleEnterEnd,
+    handleExitEnd,
+  } = useActivityListMotion(
+    preview,
+    selected ? `${selected.id}:${selectedMonth}` : null,
+    Boolean(selected) && !loading && !loadingEntries,
+    (expense) => String(expense.amount),
+  );
 
   const handlePrevMonth = () => {
     if (!canGoPrev) return;
@@ -217,18 +235,24 @@ export default function PersonalExpensesScreen({
                 fontWeight: 500,
                 color: t.text,
                 letterSpacing: "-0.03em",
-                fontVariantNumeric: "tabular-nums",
                 margin: 0,
                 fontFamily: "var(--ds-font-display)",
               }}
             >
-              {formatMoney(monthTotal, currency)}
+              <RollingNumber
+                value={monthTotal}
+                currency={currency}
+                variant="odometer"
+                durationMs={heroDuration}
+              />
             </p>
             <p style={{ fontSize: 13, color: t.textSec, margin: "6px 0 0" }}>
-              {entries.length === 1
-                ? "1 expense"
-                : `${entries.length} expenses`}{" "}
-              this month
+              <RollingNumber
+                value={entries.length}
+                format="integer"
+                durationMs={tallyDuration}
+              />
+              {entries.length === 1 ? " expense" : " expenses"} this month
             </p>
           </div>
 
@@ -300,13 +324,19 @@ export default function PersonalExpensesScreen({
               </>
             ) : (
               <>
-                {preview.map((expense, i) => (
-                  <PersonalExpenseRow
+                {activityItems.map(({ item: expense, phase }, i) => (
+                  <ActivityRowShell
                     key={expense.id}
-                    expense={expense}
-                    showBorder={i > 0}
-                    onOpen={handleOpenExpense}
-                  />
+                    phase={phase}
+                    onEnterEnd={() => handleEnterEnd(expense.id)}
+                    onExitEnd={() => handleExitEnd(expense.id)}
+                  >
+                    <PersonalExpenseRow
+                      expense={expense}
+                      showBorder={i > 0}
+                      onOpen={handleOpenExpense}
+                    />
+                  </ActivityRowShell>
                 ))}
                 {loadError && <CycleExpensesLoadError onRetry={retry} />}
               </>

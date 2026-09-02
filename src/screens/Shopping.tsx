@@ -11,6 +11,7 @@ import type {
 import { t, r, ShoppingCheckbox, FAB, SectionLabel, EmptyState, SegmentedControl, PrimaryButton, QuantityStepper } from '../ui'
 import { CATEGORY_ORDER } from '../data'
 import { formatSessionCost, formatSessionDate } from '../api/adapters'
+import { prefersReducedMotion } from '../lib/motion'
 
 const UNASSIGNED = 'Unassigned'
 const FLY_MS = 520
@@ -45,9 +46,6 @@ interface Props {
   updateShoppingItem: AppHandlers['updateShoppingItem']
   updateBasketItem: AppHandlers['updateBasketItem']
 }
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export default function ShoppingScreen({
   shopping,

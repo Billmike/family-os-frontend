@@ -1,5 +1,6 @@
 import { t } from '../ui'
 import { formatMoney } from '../api/adapters'
+import { MOTION_MS, prefersReducedMotion } from '../lib/motion'
 
 export interface SpendBucket {
   id: string
@@ -14,6 +15,7 @@ interface ChartProps {
   currency: string
   onSelect: (id: string) => void
   ariaLabel?: string
+  durationMs?: number
 }
 
 const BAR_MAX = 112
@@ -24,8 +26,11 @@ export function SpendBarChart({
   currency,
   onSelect,
   ariaLabel = 'Household spend by cycle',
+  durationMs = MOTION_MS.state,
 }: ChartProps) {
   const max = Math.max(...buckets.map(row => row.total), 0)
+  const reduced = prefersReducedMotion()
+  const ms = reduced ? 0 : durationMs
 
   return (
     <div
@@ -68,15 +73,21 @@ export function SpendBarChart({
               viewBox={`0 0 24 ${BAR_MAX}`}
               preserveAspectRatio="none"
               aria-hidden="true"
-              style={{ display: 'block', maxWidth: 28 }}
+              style={{ display: 'block', maxWidth: 28, overflow: 'hidden' }}
             >
               <rect
+                className="spend-chart-bar"
                 x="5"
                 y={BAR_MAX - height}
                 width="14"
                 height={height}
                 rx="6"
                 fill={selected ? 'var(--ds-primary)' : 'var(--ds-primary-subtle)'}
+                style={{
+                  ['--bar-y' as string]: `${BAR_MAX - height}px`,
+                  ['--bar-h' as string]: `${height}px`,
+                  transitionDuration: ms > 0 ? `${ms}ms` : '0ms',
+                }}
               />
             </svg>
             <span style={{

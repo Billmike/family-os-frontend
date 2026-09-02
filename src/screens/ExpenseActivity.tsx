@@ -6,6 +6,7 @@ import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLO
 import { CycleExpensesLoadError } from '../components/ErrorBoundary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { MoneyChrome } from '../components/MoneyChrome'
+import { ActivityRowShell, ActivityTableRow, useActivityListMotion } from '../components/ActivityListMotion'
 import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
   expenseTitle,
@@ -68,6 +69,7 @@ export default function ExpenseActivityScreen({
   const { entries, loadingEntries, loadError, retry } = usePeriodExpenses(
     period?.id ?? null,
     loadPeriodExpenses,
+    period?.summary.totalExpensesActual,
   )
   const [page, setPage] = useState(0)
 
@@ -101,6 +103,19 @@ export default function ExpenseActivityScreen({
     if (expense.sourceType === 'shopping_session') return
     openSheet({ type: 'editExpense', expense })
   }
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE))
+  const pagedEntries = entries.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const {
+    items: activityItems,
+    handleEnterEnd,
+    handleExitEnd,
+  } = useActivityListMotion(
+    pagedEntries,
+    period?.id ? `${period.id}:${page}` : null,
+    Boolean(period) && !loadingEntries,
+    expense => String(expense.amount),
+  )
 
   if (periods.length === 0 || !period) {
     return (
@@ -141,8 +156,6 @@ export default function ExpenseActivityScreen({
     handleSelectCycle(periods[selectedIndex + 1].id)
   }
 
-  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE))
-  const pagedEntries = entries.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
   const canPagePrev = page > 0
   const canPageNext = page < totalPages - 1
 
@@ -183,7 +196,7 @@ export default function ExpenseActivityScreen({
         ) : (
           <>
             <div className="hide-desktop">
-              {pagedEntries.map((expense, i) => {
+              {activityItems.map(({ item: expense, phase }, i) => {
                 const isManual = expense.sourceType === 'manual'
                 const title = expenseTitle(expense)
                 const itemCount = expense.sourceItemCount
@@ -191,52 +204,58 @@ export default function ExpenseActivityScreen({
                   ? `${expense.group} · ${expense.subcategoryName} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
                   : `${expense.group} · ${expense.subcategoryName}`
                 return (
-                  <button
+                  <ActivityRowShell
                     key={expense.id}
-                    type="button"
-                    onClick={() => handleOpenExpense(expense)}
-                    disabled={!isManual}
-                    aria-label={isManual ? `Edit ${title}` : title}
-                    style={{
-                      width: '100%',
-                      padding: '14px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      border: 'none',
-                      borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-                      background: 'none',
-                      cursor: isManual ? 'pointer' : 'default',
-                      textAlign: 'left',
-                      fontFamily: 'var(--ds-font)',
-                    }}
+                    phase={phase}
+                    onEnterEnd={() => handleEnterEnd(expense.id)}
+                    onExitEnd={() => handleExitEnd(expense.id)}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                      <span style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 10,
-                        background: t.surfaceMuted,
-                        color: BUDGET_GROUP_COLORS[expense.group] ?? t.textSec,
+                    <button
+                      type="button"
+                      onClick={() => handleOpenExpense(expense)}
+                      disabled={!isManual}
+                      aria-label={isManual ? `Edit ${title}` : title}
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <ExpenseCategoryIcon category={expense.group} size={16} />
-                      </span>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
-                        <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
-                          {formatSessionDate(expense.occurredAt)} · {subtitle}
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        border: 'none',
+                        borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
+                        background: 'none',
+                        cursor: isManual ? 'pointer' : 'default',
+                        textAlign: 'left',
+                        fontFamily: 'var(--ds-font)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                        <span style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 10,
+                          background: t.surfaceMuted,
+                          color: BUDGET_GROUP_COLORS[expense.group] ?? t.textSec,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <ExpenseCategoryIcon category={expense.group} size={16} />
+                        </span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
+                          <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
+                            {formatSessionDate(expense.occurredAt)} · {subtitle}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {formatMoney(expense.amount, expense.currency)}
-                    </span>
-                  </button>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                        {formatMoney(expense.amount, expense.currency)}
+                      </span>
+                    </button>
+                  </ActivityRowShell>
                 )
               })}
             </div>
@@ -253,12 +272,17 @@ export default function ExpenseActivityScreen({
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedEntries.map((expense, i) => {
+                  {activityItems.map(({ item: expense, phase }, i) => {
                     const isManual = expense.sourceType === 'manual'
                     const title = expenseTitle(expense)
                     const cellStyle = i === 0 ? { ...tdStyle, borderTop: 'none' } : tdStyle
                     return (
-                      <tr key={expense.id}>
+                      <ActivityTableRow
+                        key={expense.id}
+                        phase={phase}
+                        onEnterEnd={() => handleEnterEnd(expense.id)}
+                        onExitEnd={() => handleExitEnd(expense.id)}
+                      >
                         <td style={{ ...cellStyle, fontWeight: 500 }}>{title}</td>
                         <td style={cellStyle}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -301,7 +325,7 @@ export default function ExpenseActivityScreen({
                             </button>
                           ) : null}
                         </td>
-                      </tr>
+                      </ActivityTableRow>
                     )
                   })}
                 </tbody>

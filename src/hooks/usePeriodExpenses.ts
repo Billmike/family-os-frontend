@@ -13,6 +13,7 @@ const isAbortError = (err: unknown) =>
 export const usePeriodExpenses = (
   periodId: string | null,
   loadPeriodExpenses: LoadPeriodExpenses,
+  revision?: number | string,
 ) => {
   const [entries, setEntries] = useState<Expense[]>([])
   const [loadedPeriodId, setLoadedPeriodId] = useState<string | null>(null)
@@ -49,7 +50,7 @@ export const usePeriodExpenses = (
     return () => {
       controller.abort()
     }
-  }, [periodId, loadPeriodExpenses, reloadToken])
+  }, [periodId, loadPeriodExpenses, reloadToken, revision])
 
   const belongsToPeriod = loadedPeriodId === periodId
   const showSkeleton = Boolean(periodId) && !belongsToPeriod && !loadError

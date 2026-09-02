@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, ChevronDown, ChevronRight, Plus, Receipt, Wallet } from 'lucide-react'
+import { ArrowRight, ChevronDown, Plus, Receipt, Wallet } from 'lucide-react'
 import type { Budget, Expense, BudgetPeriod, AppHandlers } from '../types'
 import {
   t,
-  r,
   EmptyState,
   SectionLabel,
   Skeleton,
@@ -14,7 +13,9 @@ import {
   BUDGET_GROUP_COLORS,
 } from '../ui'
 import { SpendBarChart } from '../components/SpendBarChart'
-import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
+import { BudgetBar, ScaleFill, budgetStateColor } from '../components/BudgetBar'
+import { RollingNumber } from '../components/RollingNumber'
+import { ActivityRowShell, useActivityListMotion } from '../components/ActivityListMotion'
 import { usePeriodExpenses } from '../hooks/usePeriodExpenses'
 import {
   deriveBudgetState,
@@ -25,6 +26,7 @@ import {
 } from '../api/adapters'
 import { budgetActivityPath } from '../routing'
 import { CycleExpensesLoadError } from '../components/ErrorBoundary'
+import { MOTION_EASE, MOTION_MS, useDeltaDuration } from '../lib/motion'
 
 const ACTIVITY_PREVIEW_LIMIT = 5
 const CHART_CYCLE_LIMIT = 12
@@ -119,11 +121,27 @@ export default function ExpensesScreen({
   const { entries, loadingEntries, loadError, retry } = usePeriodExpenses(
     period?.id ?? null,
     loadPeriodExpenses,
+    period?.summary.totalExpensesActual,
   )
 
   const handleAdd = () => {
     openSheet({ type: 'chooseExpenseEntry' })
   }
+
+  const used = period?.summary.totalExpensesActual ?? 0
+  const tallyDuration = useDeltaDuration(used)
+  const heroDuration = useDeltaDuration(used, 'hero')
+  const previewEntries = entries.slice(0, ACTIVITY_PREVIEW_LIMIT)
+  const {
+    items: activityItems,
+    handleEnterEnd,
+    handleExitEnd,
+  } = useActivityListMotion(
+    previewEntries,
+    period?.id ?? null,
+    Boolean(period) && !loadingEntries,
+    expense => String(expense.amount),
+  )
 
   if (periods.length === 0 || !period) {
     return (
@@ -142,7 +160,6 @@ export default function ExpensesScreen({
     )
   }
 
-  const used = period.summary.totalExpensesActual
   const expected = period.summary.totalExpensesExpected
   const remaining = expected - used
   const { percentUsed, state } = deriveBudgetState(used, expected)
@@ -162,7 +179,6 @@ export default function ExpensesScreen({
     openSheet({ type: 'editExpense', expense })
   }
 
-  const previewEntries = entries.slice(0, ACTIVITY_PREVIEW_LIMIT)
   const showViewMore = entries.length > ACTIVITY_PREVIEW_LIMIT
 
   const handleViewMore = () => {
@@ -179,11 +195,15 @@ export default function ExpensesScreen({
             color: t.text,
             letterSpacing: '-0.03em',
             lineHeight: 1.1,
-            fontVariantNumeric: 'tabular-nums',
             margin: 0,
             fontFamily: 'var(--ds-font-display)',
           }}>
-            {formatMoney(used, period.currency)}
+            <RollingNumber
+              value={used}
+              currency={period.currency}
+              variant="odometer"
+              durationMs={heroDuration}
+            />
           </p>
         {expected > 0 ? (
           <>
@@ -202,6 +222,7 @@ export default function ExpensesScreen({
               percentUsed={percentUsed}
               state={state}
               ariaLabel={`Cycle budget ${Math.round(percentUsed)} percent used`}
+              durationMs={tallyDuration}
             />
           </>
         ) : null}
@@ -212,8 +233,15 @@ export default function ExpensesScreen({
         gap: 24,
         marginTop: 20,
       }}>
-        <StatCell label="Entries" value={String(entryCount)} />
-        <StatCell label="Avg" value={formatMoney(average, period.currency)} last />
+        <StatCell label="Entries" value={entryCount} format="integer" durationMs={tallyDuration} />
+        <StatCell
+          label="Avg"
+          value={average}
+          currency={period.currency}
+          format="money"
+          durationMs={tallyDuration}
+          last
+        />
       </div>
 
       {chartBuckets.length > 0 && (
@@ -223,6 +251,7 @@ export default function ExpensesScreen({
             selectedId={period.id}
             currency={period.currency}
             onSelect={onSelectPeriod}
+            durationMs={tallyDuration}
           />
         </div>
       )}
@@ -233,9 +262,9 @@ export default function ExpensesScreen({
         <>
           <SectionLabel>Spending by group</SectionLabel>
           <SpendGroupList
-            key={period.id}
             groups={spendGroups}
             currency={period.currency}
+            durationMs={tallyDuration}
           />
         </>
       )}
@@ -290,7 +319,7 @@ export default function ExpensesScreen({
           </>
         ) : (
           <>
-          {previewEntries.map((expense, i) => {
+          {activityItems.map(({ item: expense, phase }, i) => {
             const isManual = expense.sourceType === 'manual'
             const title = expenseTitle(expense)
             const itemCount = expense.sourceItemCount
@@ -298,52 +327,58 @@ export default function ExpensesScreen({
               ? `${expense.group} · ${expense.subcategoryName} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
               : `${expense.group} · ${expense.subcategoryName}`
             return (
-              <button
+              <ActivityRowShell
                 key={expense.id}
-                type="button"
-                onClick={() => handleOpenExpense(expense)}
-                disabled={!isManual}
-                aria-label={isManual ? `Edit ${title}` : title}
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  border: 'none',
-                  borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-                  background: 'none',
-                  cursor: isManual ? 'pointer' : 'default',
-                  textAlign: 'left',
-                  fontFamily: 'var(--ds-font)',
-                }}
+                phase={phase}
+                onEnterEnd={() => handleEnterEnd(expense.id)}
+                onExitEnd={() => handleExitEnd(expense.id)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <span style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    background: t.surfaceMuted,
-                    color: BUDGET_GROUP_COLORS[expense.group] ?? t.textSec,
+                <button
+                  type="button"
+                  onClick={() => handleOpenExpense(expense)}
+                  disabled={!isManual}
+                  aria-label={isManual ? `Edit ${title}` : title}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <ExpenseCategoryIcon category={expense.group} size={16} />
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
-                    <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
-                      {formatSessionDate(expense.occurredAt)} · {subtitle}
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    border: 'none',
+                    borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
+                    background: 'none',
+                    cursor: isManual ? 'pointer' : 'default',
+                    textAlign: 'left',
+                    fontFamily: 'var(--ds-font)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <span style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 10,
+                      background: t.surfaceMuted,
+                      color: BUDGET_GROUP_COLORS[expense.group] ?? t.textSec,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <ExpenseCategoryIcon category={expense.group} size={16} />
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
+                      <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
+                        {formatSessionDate(expense.occurredAt)} · {subtitle}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <span style={{ fontSize: 15, fontWeight: 600, color: t.text, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                  {formatMoney(expense.amount, expense.currency)}
-                </span>
-              </button>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: t.text, flexShrink: 0 }}>
+                    <RollingNumber value={expense.amount} currency={expense.currency} />
+                  </span>
+                </button>
+              </ActivityRowShell>
             )
           })}
             {loadError && <CycleExpensesLoadError onRetry={retry} />}
@@ -363,9 +398,11 @@ export default function ExpensesScreen({
 function SpendGroupList({
   groups,
   currency,
+  durationMs,
 }: {
   groups: SpendGroup[]
   currency: string
+  durationMs: number
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => defaultExpandedGroups(groups))
 
@@ -401,26 +438,31 @@ function SpendGroupList({
               expanded={isOpen}
               panelId={panelId}
               color={color}
+              durationMs={durationMs}
               onToggle={() => handleToggle(group.group)}
             />
             <div
               id={panelId}
               role="region"
               aria-label={`${group.group} lines`}
-              hidden={!isOpen}
+              aria-hidden={!isOpen}
+              className={isOpen ? 'spend-group-panel is-open' : 'spend-group-panel'}
             >
-              {isOpen && group.lines.map(line => (
-                <CategoryRow
-                  key={line.subcategoryId}
-                  category={line.name}
-                  amount={line.total}
-                  currency={currency}
-                  share={group.actual > 0 ? line.total / group.actual : 0}
-                  budget={line.budget}
-                  color={color}
-                  divider
-                />
-              ))}
+              <div className="spend-group-panel-inner">
+                {group.lines.map(line => (
+                  <CategoryRow
+                    key={line.subcategoryId}
+                    category={line.name}
+                    amount={line.total}
+                    currency={currency}
+                    share={group.actual > 0 ? line.total / group.actual : 0}
+                    budget={line.budget}
+                    color={color}
+                    durationMs={durationMs}
+                    divider
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )
@@ -435,6 +477,7 @@ function SpendGroupHeader({
   expanded,
   panelId,
   color,
+  durationMs,
   onToggle,
 }: {
   group: SpendGroup
@@ -442,13 +485,11 @@ function SpendGroupHeader({
   expanded: boolean
   panelId: string
   color: string
+  durationMs: number
   onToggle: () => void
 }) {
   const hasLimit = group.expected > 0
   const { percentUsed, state } = deriveBudgetState(group.actual, group.expected)
-  const moneyLabel = hasLimit
-    ? `${formatMoney(group.actual, currency)} / ${formatMoney(group.expected, currency)}`
-    : formatMoney(group.actual, currency)
   const linesLabel = lineCountLabel(group.lines.length)
   const ariaLabel = hasLimit
     ? `${group.group}, ${formatMoney(group.actual, currency)} of ${formatMoney(group.expected, currency)}, ${linesLabel}`
@@ -496,45 +537,47 @@ function SpendGroupHeader({
             fontSize: 13,
             fontWeight: 600,
             color: t.text,
-            fontVariantNumeric: 'tabular-nums',
           }}>
-            {moneyLabel}
+            <RollingNumber value={group.actual} currency={currency} durationMs={durationMs} />
+            {hasLimit ? (
+              <>
+                {' / '}
+                <RollingNumber value={group.expected} currency={currency} durationMs={durationMs} />
+              </>
+            ) : null}
           </span>
-          {expanded
-            ? <ChevronDown size={16} color={t.textTer} aria-hidden />
-            : <ChevronRight size={16} color={t.textTer} aria-hidden />}
+          <ChevronDown
+            size={16}
+            color={t.textTer}
+            aria-hidden
+            style={{
+              transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+              transition: `transform ${MOTION_MS.feedback}ms ${MOTION_EASE}`,
+            }}
+          />
         </div>
       </div>
       {hasLimit ? (
-        <div
-          aria-hidden
-          style={{
-            marginTop: 8,
-            height: 6,
-            borderRadius: 9999,
-            background: t.surfaceMuted,
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{
-            width: `${Math.min(Math.max(percentUsed, 0), 100)}%`,
-            height: '100%',
-            borderRadius: 9999,
-            background: state === 'over' ? t.error : budgetStateColor(state),
-          }} />
+        <div style={{ marginTop: 8 }}>
+          <ScaleFill
+            percent={percentUsed}
+            color={state === 'over' ? t.error : budgetStateColor(state)}
+            durationMs={durationMs}
+          />
         </div>
       ) : null}
     </button>
   )
 }
 
-function CategoryRow({ category, amount, currency, share, budget, color, divider }: {
+function CategoryRow({ category, amount, currency, share, budget, color, durationMs, divider }: {
   category: string
   amount: number
   currency: string
   share: number
   budget?: Budget | null
   color: string
+  durationMs: number
   divider: boolean
 }) {
   const hasBudget = Boolean(budget && budget.amount > 0)
@@ -553,12 +596,14 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <span style={{ fontSize: 14, color: t.textSec, fontWeight: 500, minWidth: 0 }}>{category}</span>
         {hasBudget && budget ? (
-          <span style={{ fontSize: 13, fontWeight: 600, color: t.textSec, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-            {formatMoney(amount, currency)} / {formatMoney(budget.amount, currency)}
+          <span style={{ fontSize: 13, fontWeight: 600, color: t.textSec, flexShrink: 0 }}>
+            <RollingNumber value={amount} currency={currency} durationMs={durationMs} />
+            {' / '}
+            <RollingNumber value={budget.amount} currency={currency} durationMs={durationMs} />
           </span>
         ) : (
-          <span style={{ fontSize: 14, fontWeight: 600, color: t.textSec, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-            {formatMoney(amount, currency)}
+          <span style={{ fontSize: 14, fontWeight: 600, color: t.textSec, flexShrink: 0 }}>
+            <RollingNumber value={amount} currency={currency} durationMs={durationMs} />
           </span>
         )}
       </div>
@@ -568,26 +613,29 @@ function CategoryRow({ category, amount, currency, share, budget, color, divider
         aria-valuemin={hasBudget ? 0 : undefined}
         aria-valuemax={hasBudget ? 100 : undefined}
         aria-valuenow={hasBudget && budget ? Math.min(budget.percentUsed, 100) : undefined}
-        style={{
-          marginTop: 8,
-          height: 6,
-          borderRadius: 9999,
-          background: t.surfaceMuted,
-          overflow: 'hidden',
-        }}
+        style={{ marginTop: 8 }}
       >
-        <div style={{
-          width: `${fillPercent}%`,
-          height: '100%',
-          borderRadius: 9999,
-          background: barColor,
-        }} />
+        <ScaleFill percent={fillPercent} color={barColor} durationMs={durationMs} />
       </div>
     </div>
   )
 }
 
-function StatCell({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function StatCell({
+  label,
+  value,
+  currency,
+  format,
+  durationMs,
+  last,
+}: {
+  label: string
+  value: number
+  currency?: string
+  format: 'integer' | 'money'
+  durationMs: number
+  last?: boolean
+}) {
   return (
     <div style={{
       padding: '14px 12px',
@@ -598,11 +646,15 @@ function StatCell({ label, value, last }: { label: string; value: string; last?:
         fontSize: 15,
         fontWeight: 600,
         color: t.text,
-        fontVariantNumeric: 'tabular-nums',
         letterSpacing: '-0.02em',
         margin: 0,
       }}>
-        {value}
+        <RollingNumber
+          value={value}
+          currency={currency}
+          format={format}
+          durationMs={durationMs}
+        />
       </p>
       <p style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>{label}</p>
     </div>

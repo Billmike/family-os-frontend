@@ -19,6 +19,7 @@ import * as budgetsApi from '../api/budgets'
 import { useSession } from '../auth/session'
 import type { BudgetPeriod } from '../types'
 import { BUDGET_GROUPS } from '../types'
+import { formatMoney } from '../api/adapters'
 import { BUDGET_GROUP_COLORS, EmptyState, Skeleton, SectionLabel, t, r } from '../ui'
 
 interface Props {
@@ -42,9 +43,6 @@ type InsightMonth = {
   }[]
 }
 
-const euro = (n: number) =>
-  `€${n.toLocaleString('en-IE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-
 const cardStyle: React.CSSProperties = {
   background: 'transparent',
   border: 'none',
@@ -59,6 +57,8 @@ export default function BudgetInsights({ period }: Props) {
   const [loading, setLoading] = useState(true)
   const [months, setMonths] = useState<InsightMonth[]>([])
   const [drillGroup, setDrillGroup] = useState<string | null>(null)
+  const currency = period?.currency ?? 'EUR'
+  const compactMoney = (value: number) => formatMoney(value, currency, 0)
 
   useEffect(() => {
     if (!family) return
@@ -190,8 +190,8 @@ export default function BudgetInsights({ period }: Props) {
             <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={t.border} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: t.textSec }} />
-              <YAxis tick={{ fontSize: 11, fill: t.textSec }} tickFormatter={v => `€${v}`} width={48} />
-              <Tooltip formatter={(v) => euro(Number(v ?? 0))} />
+              <YAxis tick={{ fontSize: 11, fill: t.textSec }} tickFormatter={v => compactMoney(Number(v))} width={64} />
+              <Tooltip formatter={(v) => compactMoney(Number(v ?? 0))} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Line type="monotone" dataKey="Income" stroke={BUDGET_GROUP_COLORS.Income} strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Expenses" stroke={BUDGET_GROUP_COLORS['Fixed Expense']} strokeWidth={2} dot={false} />
@@ -209,8 +209,8 @@ export default function BudgetInsights({ period }: Props) {
             <BarChart data={stacked} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={t.border} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: t.textSec }} />
-              <YAxis tick={{ fontSize: 11, fill: t.textSec }} tickFormatter={v => `€${v}`} width={48} />
-              <Tooltip formatter={(v) => euro(Number(v ?? 0))} />
+              <YAxis tick={{ fontSize: 11, fill: t.textSec }} tickFormatter={v => compactMoney(Number(v))} width={64} />
+              <Tooltip formatter={(v) => compactMoney(Number(v ?? 0))} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {BUDGET_GROUPS.filter(g => g !== 'Income').map(g => (
                 <Bar key={g} dataKey={g} stackId="a" fill={BUDGET_GROUP_COLORS[g]} />
@@ -270,7 +270,7 @@ export default function BudgetInsights({ period }: Props) {
                   />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => euro(Number(v ?? 0))} />
+              <Tooltip formatter={(v) => compactMoney(Number(v ?? 0))} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
@@ -296,7 +296,7 @@ export default function BudgetInsights({ period }: Props) {
               >
                 <span style={{ color: t.text }}>{m.name}</span>
                 <span style={{ color: m.delta >= 0 ? t.error : t.success, fontWeight: 600 }}>
-                  {m.delta >= 0 ? '+' : ''}{euro(m.delta)}
+                  {m.delta >= 0 ? '+' : ''}{compactMoney(m.delta)}
                 </span>
               </div>
             ))}

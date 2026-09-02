@@ -13,6 +13,7 @@ import {
   cycleStatus,
   formatCycleDateRange,
   formatCycleDay,
+  formatMoney,
   formatYearMonthTitle,
 } from '../api/adapters'
 import {
@@ -57,9 +58,6 @@ interface Props {
   onSelectPersonal: () => void
   openSheet: AppHandlers['openSheet']
 }
-
-const euro = (n: number) =>
-  `€${n.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const SIDE_PAD = 16
 
@@ -265,6 +263,7 @@ export default function BudgetScreen({
                   <GroupCard
                     key={groupName}
                     block={block}
+                    currency={period.currency}
                     availableSubcategories={available}
                     onUpdateExpected={onUpdateExpected}
                     onAddLine={onAddLine}
@@ -412,7 +411,7 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
                 {row.label}
               </span>
               <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                {euro(row.amount)}
+                {formatMoney(row.amount, period.currency)}
               </span>
             </div>
           ))}
@@ -428,7 +427,7 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
             }}
           >
             <span>Total Expenses</span>
-            <span style={{ textAlign: 'right' }}>{euro(s.totalExpensesExpected)}</span>
+            <span style={{ textAlign: 'right' }}>{formatMoney(s.totalExpensesExpected, period.currency)}</span>
           </div>
           <div
             style={{
@@ -451,7 +450,7 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
                 justifySelf: 'end',
               }}
             >
-              {euro(s.leftOverExpected)}
+              {formatMoney(s.leftOverExpected, period.currency)}
             </span>
           </div>
         </>
@@ -462,6 +461,7 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
 
 function GroupCard({
   block,
+  currency,
   availableSubcategories,
   onUpdateExpected,
   onAddLine,
@@ -472,6 +472,7 @@ function GroupCard({
   onUnsettle,
 }: {
   block: BudgetGroupBlock
+  currency: string
   availableSubcategories: { id: string; name: string }[]
   onUpdateExpected: (budgetId: string, amount: number) => void
   onAddLine: (subcategoryId: string, amount: number) => void
@@ -527,7 +528,7 @@ function GroupCard({
         {block.group}
         {!expanded && (
           <span style={{ fontWeight: 600, opacity: 0.9, marginLeft: 4 }}>
-            · {euro(block.expected)}
+            · {formatMoney(block.expected, currency)}
           </span>
         )}
       </CollapsibleHeader>
@@ -618,7 +619,7 @@ function GroupCard({
           >
             <span />
             <span>Total</span>
-            <span style={{ textAlign: 'right' }}>{euro(block.expected)}</span>
+            <span style={{ textAlign: 'right' }}>{formatMoney(block.expected, currency)}</span>
             <span />
           </div>
         </>

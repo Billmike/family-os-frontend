@@ -573,9 +573,34 @@ export function dateInputToIso(date: string): string {
   return new Date(`${date}T12:00:00`).toISOString();
 }
 
-export function formatMoney(amount: number, currency = "EUR"): string {
-  const symbol = currency === "EUR" ? "€" : `${currency} `;
-  return `${symbol}${amount.toFixed(2)}`;
+const MONEY_LOCALE = "en-IE"
+const moneyFormatters = new Map<string, Intl.NumberFormat>()
+
+const getMoneyFormatter = (currency: string, fractionDigits: number): Intl.NumberFormat => {
+  const key = `${currency}:${fractionDigits}`
+  const existing = moneyFormatters.get(key)
+  if (existing) return existing
+  const formatter = new Intl.NumberFormat(MONEY_LOCALE, {
+    style: "currency",
+    currency,
+    currencyDisplay: "symbol",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+  moneyFormatters.set(key, formatter)
+  return formatter
+}
+
+export function formatMoney(
+  amount: number,
+  currency = "EUR",
+  fractionDigits = 2,
+): string {
+  try {
+    return getMoneyFormatter(currency, fractionDigits).format(amount)
+  } catch {
+    return getMoneyFormatter("EUR", fractionDigits).format(amount)
+  }
 }
 
 export function formatYearMonthTitle(yearMonth: string): string {
@@ -601,8 +626,7 @@ export function shiftYearMonth(yearMonth: string, delta: number): string {
 
 export function formatSessionCost(session: ShoppingSession): string {
   if (session.totalCost == null) return "";
-  const symbol = session.currency === "EUR" ? "€" : session.currency;
-  return `${symbol}${session.totalCost.toFixed(2)}`;
+  return formatMoney(session.totalCost, session.currency);
 }
 
 export function formatSessionDate(iso: string): string {

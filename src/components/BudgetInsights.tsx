@@ -230,7 +230,7 @@ export default function BudgetInsights({
     if (!period) return null;
     const spent = period.summary.totalExpensesActual;
     const budgeted = period.summary.totalExpensesExpected;
-    const net = period.summary.leftOverActual;
+    const net = budgeted - spent;
     const days = cycleDayStats(period.startDate, period.endDate, today);
     return { spent, budgeted, net, days };
   }, [period, today]);
@@ -402,7 +402,7 @@ export default function BudgetInsights({
           <SnapshotStat
             label="Net position"
             value={formatMoney(Math.abs(snapshot.net), currency)}
-            detail={snapshot.net >= 0 ? "surplus" : "over budget"}
+            detail={snapshot.net >= 0 ? "remaining" : "over budget"}
             valueColor={snapshot.net >= 0 ? t.success : t.attention}
             divided
           />

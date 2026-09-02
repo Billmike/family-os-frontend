@@ -53,12 +53,13 @@ export const MoneyChrome = ({
           padding: '8px 16px 0',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 44 }}>
           <MoneyScopeSwitch
             scope={scope}
             onSelectFamily={onSelectFamily}
             onSelectPersonal={onSelectPersonal}
           />
+          {switcher}
         </div>
         {showFamilyViews && onSelectFamilyView && (
           <div style={{ marginTop: 8 }}>
@@ -68,9 +69,6 @@ export const MoneyChrome = ({
               onChange={handleSelectFamilyView}
             />
           </div>
-        )}
-        {switcher && (
-          <div style={{ padding: '4px 0 4px' }}>{switcher}</div>
         )}
         {extra}
       </div>

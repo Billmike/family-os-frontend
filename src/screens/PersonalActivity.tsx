@@ -10,7 +10,7 @@ import { usePersonalMonthExpenses } from '../hooks/usePersonalMonthExpenses'
 import {
   formatMoney,
   formatSessionDate,
-  formatYearMonthTitle,
+  formatYearMonthCompact,
   personalExpenseTitle,
   shiftYearMonth,
 } from '../api/adapters'
@@ -143,7 +143,7 @@ export default function PersonalActivityScreen({
       onSelectPersonal={() => undefined}
       switcher={
         <MonthSwitcher
-          title={formatYearMonthTitle(selectedMonth)}
+          title={formatYearMonthCompact(selectedMonth)}
           subtitle={selected.name}
           canGoPrev={canGoPrev}
           canGoNext={canGoNext}

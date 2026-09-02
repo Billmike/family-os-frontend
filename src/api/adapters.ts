@@ -611,6 +611,14 @@ export function formatYearMonthTitle(yearMonth: string): string {
   });
 }
 
+export function formatYearMonthCompact(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function formatMonthShort(yearMonth: string): string {
   const [y, m] = yearMonth.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short" });

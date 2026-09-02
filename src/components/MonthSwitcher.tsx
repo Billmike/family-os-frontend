@@ -13,6 +13,22 @@ interface Props {
   onAllCycles?: () => void
 }
 
+const iconBtn = (enabled: boolean) => ({
+  width: 44,
+  height: 44,
+  display: 'flex' as const,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+  border: 'none',
+  background: 'transparent',
+  borderRadius: r.md,
+  cursor: enabled ? 'pointer' : 'default',
+  color: enabled ? t.text : t.textTer,
+  opacity: enabled ? 1 : 0.4,
+  padding: 0,
+  flexShrink: 0,
+})
+
 export const MonthSwitcher = ({
   title,
   subtitle,
@@ -24,46 +40,56 @@ export const MonthSwitcher = ({
   nextAriaLabel = 'Next cycle',
   onAllCycles,
 }: Props) => {
+  const handlePrev = () => {
+    if (!canGoPrev) return
+    onPrev()
+  }
+
+  const handleNext = () => {
+    if (!canGoNext) return
+    onNext()
+  }
+
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '8px 12px 4px',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        minWidth: 0,
+      }}
+    >
       <button
         type="button"
         aria-label={prevAriaLabel}
-        onClick={onPrev}
+        onClick={handlePrev}
         disabled={!canGoPrev}
+        style={iconBtn(canGoPrev)}
+      >
+        <ChevronLeft size={18} strokeWidth={1.75} />
+      </button>
+      <p
+        aria-label={subtitle ? `${title}, ${subtitle}` : title}
         style={{
-          width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: 'none', background: 'transparent', borderRadius: r.md, cursor: canGoPrev ? 'pointer' : 'default',
-          color: canGoPrev ? t.text : t.textTer, opacity: canGoPrev ? 1 : 0.4,
+          fontSize: 13,
+          fontWeight: 500,
+          color: t.text,
+          margin: 0,
+          whiteSpace: 'nowrap',
+          fontFamily: 'var(--ds-font)',
+          padding: '0 2px',
         }}
       >
-        <ChevronLeft size={20} strokeWidth={1.75} />
-      </button>
-      <div style={{ textAlign: 'center', minWidth: 0, padding: '0 8px' }}>
-        <h2 style={{ fontSize: 16, fontWeight: 500, color: t.text, letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--ds-font-display)' }}>
-          {title}
-        </h2>
-        {subtitle ? (
-          <p style={{ fontSize: 12, color: t.textSec, margin: '2px 0 0' }}>{subtitle}</p>
-        ) : null}
-      </div>
+        {title}
+      </p>
       <button
         type="button"
         aria-label={nextAriaLabel}
-        onClick={onNext}
+        onClick={handleNext}
         disabled={!canGoNext}
-        style={{
-          width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: 'none', background: 'transparent', borderRadius: r.md, cursor: canGoNext ? 'pointer' : 'default',
-          color: canGoNext ? t.text : t.textTer, opacity: canGoNext ? 1 : 0.4,
-        }}
+        style={iconBtn(canGoNext)}
       >
-        <ChevronRight size={20} strokeWidth={1.75} />
+        <ChevronRight size={18} strokeWidth={1.75} />
       </button>
       {onAllCycles && (
         <button
@@ -71,8 +97,7 @@ export const MonthSwitcher = ({
           onClick={onAllCycles}
           aria-label="All cycles"
           style={{
-            width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: 'none', background: 'transparent', borderRadius: r.md, cursor: 'pointer',
+            ...iconBtn(true),
             color: t.textSec,
           }}
         >

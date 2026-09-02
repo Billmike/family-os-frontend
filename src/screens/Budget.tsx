@@ -14,7 +14,7 @@ import {
   formatCycleDateRange,
   formatCycleDay,
   formatMoney,
-  formatYearMonthTitle,
+  formatYearMonthCompact,
 } from '../api/adapters'
 import {
   BudgetGroupIcon,
@@ -125,7 +125,7 @@ export default function BudgetScreen({
 
   const cycleSwitcher = period ? (
     <MonthSwitcher
-      title={formatYearMonthTitle(period.labelMonth)}
+      title={formatYearMonthCompact(period.labelMonth)}
       subtitle={formatCycleDateRange(period.startDate, period.endDate)}
       canGoPrev={canGoPrev}
       canGoNext={canGoNext}
@@ -159,11 +159,16 @@ export default function BudgetScreen({
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
-            padding: `16px ${SIDE_PAD}px 0`,
+            padding: tab === 'insights' ? `0 ${SIDE_PAD}px 0` : `16px ${SIDE_PAD}px 0`,
           }}
         >
           {tab === 'insights' ? (
-            <BudgetInsights period={period} />
+            <BudgetInsights
+              period={period}
+              periods={periods}
+              today={today}
+              onSelectPeriod={onSelectPeriod}
+            />
           ) : periods.length === 0 ? (
             <>
               <EmptyState

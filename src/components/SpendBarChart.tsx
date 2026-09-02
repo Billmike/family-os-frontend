@@ -7,6 +7,7 @@ export interface SpendBucket {
   total: number
   label: string
   shortLabel: string
+  selectable?: boolean
 }
 
 interface ChartProps {
@@ -40,16 +41,23 @@ export function SpendBarChart({
     >
       {buckets.map(row => {
         const selected = row.id === selectedId
+        const canSelect = row.selectable !== false
         const height = max <= 0
           ? 2
           : Math.max(row.total > 0 ? 6 : 2, Math.round((row.total / max) * BAR_MAX))
+        const handleClick = () => {
+          if (!canSelect) return
+          onSelect(row.id)
+        }
         return (
           <button
             key={row.id}
             type="button"
             aria-pressed={selected}
+            aria-disabled={!canSelect}
             aria-label={`${row.label}, ${formatMoney(row.total, currency)}`}
-            onClick={() => onSelect(row.id)}
+            tabIndex={canSelect ? 0 : -1}
+            onClick={handleClick}
             style={{
               flex: 1,
               minWidth: 0,
@@ -62,7 +70,7 @@ export function SpendBarChart({
               padding: 0,
               border: 'none',
               background: 'none',
-              cursor: 'pointer',
+              cursor: canSelect ? 'pointer' : 'default',
               fontFamily: 'var(--ds-font)',
               borderRadius: 8,
             }}

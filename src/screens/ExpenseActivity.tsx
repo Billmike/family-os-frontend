@@ -12,7 +12,7 @@ import {
   expenseTitle,
   formatMoney,
   formatSessionDate,
-  formatYearMonthTitle,
+  formatYearMonthCompact,
   formatCycleDateRange,
   periodForMonth,
 } from '../api/adapters'
@@ -167,7 +167,7 @@ export default function ExpenseActivityScreen({
       onSelectPersonal={onSelectPersonal}
       switcher={
         <MonthSwitcher
-          title={formatYearMonthTitle(period.labelMonth)}
+          title={formatYearMonthCompact(period.labelMonth)}
           subtitle={formatCycleDateRange(period.startDate, period.endDate)}
           canGoPrev={canGoPrev}
           canGoNext={canGoNext}

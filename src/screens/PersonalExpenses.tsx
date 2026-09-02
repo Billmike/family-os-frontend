@@ -28,7 +28,7 @@ import { useDeltaDuration } from "../lib/motion";
 import {
   formatMoney,
   formatSessionDate,
-  formatYearMonthTitle,
+  formatYearMonthCompact,
   personalExpenseTitle,
   shiftYearMonth,
 } from "../api/adapters";
@@ -141,7 +141,7 @@ export default function PersonalExpensesScreen({
       switcher={
         selected ? (
           <MonthSwitcher
-            title={formatYearMonthTitle(selectedMonth)}
+            title={formatYearMonthCompact(selectedMonth)}
             subtitle={selected.name}
             canGoPrev={canGoPrev}
             canGoNext={canGoNext}

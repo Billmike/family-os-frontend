@@ -73,6 +73,35 @@ const cycleDayStats = (startDate: string, endDate: string, today: string) => {
   return { remaining: daysInclusive(today, endDate), total };
 };
 
+const allocatePercents = (amounts: number[]): number[] => {
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  if (total <= 0 || amounts.length === 0) return amounts.map(() => 0);
+
+  const hundredthsTarget = 10000;
+  const exact = amounts.map((amount) => (amount / total) * hundredthsTarget);
+  const floors = exact.map((value) => Math.floor(value + 1e-9));
+  let leftover = hundredthsTarget - floors.reduce((sum, value) => sum + value, 0);
+
+  const order = amounts
+    .map((_, index) => index)
+    .sort((a, b) => {
+      const remainderA = exact[a] - floors[a];
+      const remainderB = exact[b] - floors[b];
+      if (remainderB !== remainderA) return remainderB - remainderA;
+      return amounts[b] - amounts[a];
+    });
+
+  const hundredths = [...floors];
+  for (const index of order) {
+    if (leftover <= 0) break;
+    hundredths[index] += 1;
+    leftover -= 1;
+  }
+
+  return hundredths.map((value) => value / 100);
+};
+
+
 const outflowLinesFromMonth = (month: InsightMonth): SpendRow[] => {
   const rows: SpendRow[] = [];
   for (const group of month.groups) {
@@ -249,15 +278,14 @@ export default function BudgetInsights({
         rows = outflowGroupsFromPeriod(period);
       }
     }
-    const total = rows.reduce((sum, row) => sum + row.actual, 0);
-    return rows
-      .sort((a, b) => b.actual - a.actual)
-      .map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        percent: total > 0 ? Math.round((row.actual / total) * 10000) / 100 : 0,
-        variance: row.actual - row.expected,
-      }));
+    const rankedRows = [...rows].sort((a, b) => b.actual - a.actual);
+    const percents = allocatePercents(rankedRows.map((row) => row.actual));
+    return rankedRows.map((row, index) => ({
+      ...row,
+      rank: index + 1,
+      percent: percents[index] ?? 0,
+      variance: row.actual - row.expected,
+    }));
   }, [selected, period]);
 
   const chartMonths = useMemo(() => {

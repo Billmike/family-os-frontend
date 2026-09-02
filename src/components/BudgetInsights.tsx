@@ -255,7 +255,7 @@ export default function BudgetInsights({
       .map((row, index) => ({
         ...row,
         rank: index + 1,
-        percent: total > 0 ? Math.round((row.actual / total) * 100) : 0,
+        percent: total > 0 ? Math.round((row.actual / total) * 10000) / 100 : 0,
         variance: row.actual - row.expected,
       }));
   }, [selected, period]);
@@ -486,7 +486,7 @@ export default function BudgetInsights({
                           flexShrink: 0,
                         }}
                       >
-                        {row.percent}%
+                        {row.percent.toFixed(2)}%
                       </span>
                     </div>
                     <div

@@ -14,6 +14,7 @@ import {
   formatSessionDate,
   formatYearMonthCompact,
   formatCycleDateRange,
+  isMemberWritableExpense,
   periodForMonth,
 } from '../api/adapters'
 import { budgetActivityPath, parsePeriodId, parseYearMonth } from '../routing'
@@ -197,7 +198,7 @@ export default function ExpenseActivityScreen({
           <>
             <div className="hide-desktop">
               {activityItems.map(({ item: expense, phase }, i) => {
-                const isManual = expense.sourceType === 'manual'
+                const isManual = isMemberWritableExpense(expense.sourceType)
                 const title = expenseTitle(expense)
                 const itemCount = expense.sourceItemCount
                 const subtitle = expense.sourceType === 'shopping_session' && itemCount != null
@@ -273,7 +274,7 @@ export default function ExpenseActivityScreen({
                 </thead>
                 <tbody>
                   {activityItems.map(({ item: expense, phase }, i) => {
-                    const isManual = expense.sourceType === 'manual'
+                    const isManual = isMemberWritableExpense(expense.sourceType)
                     const title = expenseTitle(expense)
                     const cellStyle = i === 0 ? { ...tdStyle, borderTop: 'none' } : tdStyle
                     return (

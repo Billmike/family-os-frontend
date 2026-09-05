@@ -1,16 +1,26 @@
 import { fonts, t } from '../../ui'
-import type { AssistantMessageIn } from '../../api/assistant'
+import type { AssistantThreadItem } from '../../api/assistant'
+import type { BudgetSubcategoryGroup, ExpenseDraft } from '../../types'
 import { AssistantComposer } from './AssistantComposer'
 import { AssistantMark } from './AssistantMark'
+import {
+  FamilyExpenseProposalCard,
+  FamilyExpenseSuccessCard,
+} from './FamilyExpenseProposalCard'
 
 interface Props {
-  messages: AssistantMessageIn[]
+  messages: AssistantThreadItem[]
   draft: string
   isTurnInFlight: boolean
   composerId?: string
   showComposer?: boolean
+  today?: string
+  subcategoryGroups?: BudgetSubcategoryGroup[]
+  savingProposalIndex?: number | null
   onDraftChange: (value: string) => void
   onSend: () => void
+  onAddProposal?: (index: number, input: ExpenseDraft) => void
+  onCancelProposal?: (index: number) => void
 }
 
 const EXAMPLE_PROMPT = 'I spent €12 at Tesco'
@@ -28,8 +38,13 @@ export const AssistantConversation = ({
   isTurnInFlight,
   composerId = 'assistant-composer',
   showComposer = true,
+  today = '',
+  subcategoryGroups = [],
+  savingProposalIndex = null,
   onDraftChange,
   onSend,
+  onAddProposal,
+  onCancelProposal,
 }: Props) => {
   const canSend = canSendAssistantTurn(draft, isTurnInFlight, messages.length)
 
@@ -132,20 +147,38 @@ export const AssistantConversation = ({
               }}
             >
               <AssistantMark size={28} />
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: 16,
-                  background: t.surfaceChrome,
-                  border: `1px solid ${t.border}`,
-                  color: t.text,
-                  fontSize: 14,
-                  lineHeight: 1.5,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {message.content}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: t.surfaceChrome,
+                    border: `1px solid ${t.border}`,
+                    color: t.text,
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {message.content}
+                </div>
+                {message.proposalState === 'saved' && message.savedSummary && (
+                  <FamilyExpenseSuccessCard
+                    amount={message.savedSummary.amount}
+                    subcategoryName={message.savedSummary.subcategoryName}
+                  />
+                )}
+                {message.proposal && message.proposal.destination !== 'personal' && message.proposalState !== 'cancelled' && message.proposalState !== 'saved' && (
+                  <FamilyExpenseProposalCard
+                    proposal={message.proposal}
+                    today={today}
+                    subcategoryGroups={subcategoryGroups}
+                    isSaving={savingProposalIndex === index}
+                    onAdd={input => onAddProposal?.(index, input)}
+                    onCancel={() => onCancelProposal?.(index)}
+                  />
+                )}
               </div>
             </div>
           )

@@ -8,6 +8,7 @@ export interface ExpenseCreate {
   note?: string | null
   occurred_at?: string | null
   currency?: string
+  source_type?: 'manual' | 'assistant'
 }
 
 export function createExpense(familyId: string, data: ExpenseCreate) {

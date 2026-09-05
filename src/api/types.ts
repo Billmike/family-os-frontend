@@ -303,7 +303,7 @@ export interface ExpenseOut {
   note: string | null
   occurred_at: string
   created_by: string
-  source_type: 'manual' | 'shopping_session' | 'receipt' | 'budget_line'
+  source_type: 'manual' | 'assistant' | 'shopping_session' | 'receipt' | 'budget_line'
   source_id: string | null
   source_item_count: number | null
   created_at: string

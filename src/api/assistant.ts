@@ -29,6 +29,24 @@ export interface AssistantTurnOut {
   proposal: ExpenseProposal | null
 }
 
+export type AssistantProposalState = 'open' | 'saved' | 'cancelled'
+
+export interface AssistantSavedSummary {
+  amount: string
+  subcategoryName: string
+}
+
+export interface AssistantThreadItem {
+  role: 'user' | 'assistant'
+  content: string
+  proposal?: ExpenseProposal | null
+  proposalState?: AssistantProposalState
+  savedSummary?: AssistantSavedSummary
+}
+
+export const toAssistantMessages = (thread: AssistantThreadItem[]): AssistantMessageIn[] =>
+  thread.map(item => ({ role: item.role, content: item.content }))
+
 export function proposeTurn(familyId: string, messages: AssistantMessageIn[]) {
   return apiRequest<AssistantTurnOut>(`/api/families/${familyId}/assistant/turns`, {
     method: 'POST',

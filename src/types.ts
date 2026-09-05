@@ -155,7 +155,7 @@ export type BudgetGroup = (typeof BUDGET_GROUPS)[number]
 
 export type BudgetDirection = 'inflow' | 'outflow'
 
-export type ExpenseSourceType = 'manual' | 'shopping_session' | 'receipt' | 'budget_line'
+export type ExpenseSourceType = 'manual' | 'assistant' | 'shopping_session' | 'receipt' | 'budget_line'
 
 export interface BudgetSubcategory {
   id: string

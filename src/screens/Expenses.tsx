@@ -23,6 +23,7 @@ import {
   formatMoney,
   formatSessionDate,
   formatCycleDay,
+  isMemberWritableExpense,
 } from '../api/adapters'
 import { budgetActivityPath } from '../routing'
 import { CycleExpensesLoadError } from '../components/ErrorBoundary'
@@ -320,7 +321,7 @@ export default function ExpensesScreen({
         ) : (
           <>
           {activityItems.map(({ item: expense, phase }, i) => {
-            const isManual = expense.sourceType === 'manual'
+            const isManual = isMemberWritableExpense(expense.sourceType)
             const title = expenseTitle(expense)
             const itemCount = expense.sourceItemCount
             const subtitle = expense.sourceType === 'shopping_session' && itemCount != null

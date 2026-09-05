@@ -651,6 +651,9 @@ export function expenseTitle(expense: Expense): string {
   return `${expense.group} · ${expense.subcategoryName}`
 }
 
+export const isMemberWritableExpense = (sourceType: Expense['sourceType']) =>
+  sourceType === 'manual' || sourceType === 'assistant'
+
 function entityToScreen(entityType: string | null): Screen | undefined {
   if (!entityType) return undefined;
   if (entityType === "event" || entityType === "calendar") return "calendar";

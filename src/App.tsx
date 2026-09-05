@@ -125,7 +125,7 @@ import {
 } from "./components/assistant/AssistantConversation";
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
 import * as assistantApi from "./api/assistant";
-import type { AssistantMessageIn } from "./api/assistant";
+import type { AssistantThreadItem } from "./api/assistant";
 
 const EXPENSE_WRITE_SHEETS = new Set<BottomSheetType["type"]>([
   "addExpense",
@@ -377,11 +377,14 @@ function MainApp() {
   const [sheet, setSheet] = useState<BottomSheetType | null>(null);
   const assistantEnabled = session.user?.assistant_enabled === true;
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [assistantThread, setAssistantThread] = useState<AssistantMessageIn[]>(
+  const [assistantThread, setAssistantThread] = useState<AssistantThreadItem[]>(
     [],
   );
   const [assistantDraft, setAssistantDraft] = useState("");
   const [assistantTurnInFlight, setAssistantTurnInFlight] = useState(false);
+  const [assistantSavingIndex, setAssistantSavingIndex] = useState<
+    number | null
+  >(null);
   const assistantTurnGeneration = useRef(0);
   const [toast, setToast] = useState<{
     msg: string;
@@ -422,6 +425,7 @@ function MainApp() {
     setAssistantThread([]);
     setAssistantDraft("");
     setAssistantTurnInFlight(false);
+    setAssistantSavingIndex(null);
   };
 
   const handleOpenAssistant = () => {
@@ -439,7 +443,7 @@ function MainApp() {
   const handleSendAssistant = async () => {
     const text = assistantDraft.trim();
     if (!text || assistantTurnInFlight) return;
-    const nextThread: AssistantMessageIn[] = [
+    const nextThread: AssistantThreadItem[] = [
       ...assistantThread,
       { role: "user", content: text },
     ];
@@ -448,11 +452,19 @@ function MainApp() {
     setAssistantTurnInFlight(true);
     const generation = assistantTurnGeneration.current;
     try {
-      const out = await assistantApi.proposeTurn(family.id, nextThread);
+      const out = await assistantApi.proposeTurn(
+        family.id,
+        assistantApi.toAssistantMessages(nextThread),
+      );
       if (generation !== assistantTurnGeneration.current) return;
       setAssistantThread([
         ...nextThread,
-        { role: "assistant", content: out.assistant_text },
+        {
+          role: "assistant",
+          content: out.assistant_text,
+          proposal: out.proposal,
+          proposalState: out.proposal ? "open" : undefined,
+        },
       ]);
     } catch (e) {
       if (generation !== assistantTurnGeneration.current) return;
@@ -461,6 +473,60 @@ function MainApp() {
       if (generation !== assistantTurnGeneration.current) return;
       setAssistantTurnInFlight(false);
     }
+  };
+
+  const handleAddAssistantExpense = async (
+    index: number,
+    input: ExpenseDraft,
+  ) => {
+    if (assistantSavingIndex !== null) return;
+    setAssistantSavingIndex(index);
+    try {
+      await expensesApi.createExpense(family.id, {
+        amount: input.amount,
+        subcategory_id: input.subcategoryId,
+        merchant: input.merchant,
+        note: input.note,
+        occurred_at: input.occurredAt,
+        source_type: "assistant",
+      });
+      const subcategoryName =
+        subcategoryGroups
+          .flatMap((group) => group.subcategories)
+          .find((sub) => sub.id === input.subcategoryId)?.name ??
+        "Expense";
+      setAssistantThread((current) => [
+        ...current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                proposalState: "saved" as const,
+                savedSummary: {
+                  amount: String(input.amount),
+                  subcategoryName,
+                },
+              }
+            : item,
+        ),
+        { role: "assistant", content: "Add another expense?" },
+      ]);
+      void refreshSpend();
+      void refreshBudgets();
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setAssistantSavingIndex(null);
+    }
+  };
+
+  const handleCancelAssistantProposal = (index: number) => {
+    setAssistantThread((current) =>
+      current.map((item, itemIndex) =>
+        itemIndex === index
+          ? { ...item, proposal: null, proposalState: "cancelled" }
+          : item,
+      ),
+    );
   };
 
   const loadAll = useCallback(async () => {
@@ -1853,8 +1919,15 @@ function MainApp() {
                 draft={assistantDraft}
                 isTurnInFlight={assistantTurnInFlight}
                 composerId="assistant-composer-desktop"
+                today={today}
+                subcategoryGroups={subcategoryGroups}
+                savingProposalIndex={assistantSavingIndex}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}
+                onAddProposal={(index, input) =>
+                  void handleAddAssistantExpense(index, input)
+                }
+                onCancelProposal={handleCancelAssistantProposal}
               />
             </div>
           </aside>
@@ -2100,8 +2173,15 @@ function MainApp() {
                 draft={assistantDraft}
                 isTurnInFlight={assistantTurnInFlight}
                 showComposer={false}
+                today={today}
+                subcategoryGroups={subcategoryGroups}
+                savingProposalIndex={assistantSavingIndex}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}
+                onAddProposal={(index, input) =>
+                  void handleAddAssistantExpense(index, input)
+                }
+                onCancelProposal={handleCancelAssistantProposal}
               />
             </div>
           </BottomSheet>

@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react'
+import { MessageSquare, Settings } from 'lucide-react'
 import type { Member, Screen } from '../../types'
 import { isBudgetSection } from '../../routing'
 import { t, fonts, MemberAvatar } from '../../ui'
@@ -11,7 +11,10 @@ interface Props {
   unreadCount: number
   currentUser: Member | null
   userName?: string
+  assistantEnabled?: boolean
+  assistantOpen?: boolean
   onNavigate: (screen: Screen) => void
+  onOpenAssistant?: () => void
 }
 
 export const DesktopSidebar = ({
@@ -20,7 +23,10 @@ export const DesktopSidebar = ({
   unreadCount,
   currentUser,
   userName,
+  assistantEnabled = false,
+  assistantOpen = false,
   onNavigate,
+  onOpenAssistant,
 }: Props) => {
   return (
     <aside
@@ -33,6 +39,8 @@ export const DesktopSidebar = ({
         flexShrink: 0,
         padding: '20px 0 12px',
         height: '100%',
+        position: 'relative',
+        zIndex: 220,
       }}
     >
       <div
@@ -108,6 +116,33 @@ export const DesktopSidebar = ({
         )
       })}
       <div style={{ flex: 1 }} />
+      {assistantEnabled && onOpenAssistant && (
+        <button
+          type="button"
+          onClick={onOpenAssistant}
+          aria-label="Ask assistant"
+          tabIndex={0}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 20px',
+            minHeight: 44,
+            border: 'none',
+            background: 'transparent',
+            color: assistantOpen ? t.primary : t.textSec,
+            fontSize: 14,
+            fontWeight: assistantOpen ? 500 : 400,
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontFamily: fonts.ui,
+            borderLeft: assistantOpen ? `2px solid ${t.primary}` : '2px solid transparent',
+          }}
+        >
+          <MessageSquare size={18} strokeWidth={assistantOpen ? 2 : 1.75} aria-hidden="true" />
+          Ask assistant
+        </button>
+      )}
       <div
         style={{
           padding: '12px 16px',

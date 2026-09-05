@@ -1,6 +1,7 @@
 import { ArrowLeft, Bell } from 'lucide-react'
 import type { Member, Screen } from '../../types'
 import { t, fonts, MemberAvatar } from '../../ui'
+import { AskAssistantPill } from '../assistant/AskAssistantPill'
 import { FamilyMark } from './FamilyMark'
 import { SCREEN_TITLES } from './nav'
 
@@ -9,8 +10,10 @@ interface Props {
   familyName: string
   unreadCount: number
   currentUser: Member | null
+  assistantEnabled?: boolean
   onNavigate: (screen: Screen) => void
   onBack: () => void
+  onOpenAssistant?: () => void
 }
 
 const NESTED_SCREENS = new Set<Screen>([
@@ -35,8 +38,10 @@ export const AppHeader = ({
   familyName,
   unreadCount,
   currentUser,
+  assistantEnabled = false,
   onNavigate,
   onBack,
+  onOpenAssistant,
 }: Props) => {
   const isDashboard = screen === 'dashboard'
   const isNested = NESTED_SCREENS.has(screen)
@@ -127,7 +132,15 @@ export const AppHeader = ({
         </span>
       )}
       <div style={{ flex: 1, minWidth: 0 }} />
+      {assistantEnabled && onOpenAssistant && (
+        <div className="hide-mobile">
+          <AskAssistantPill onOpen={onOpenAssistant} />
+        </div>
+      )}
       <div className="hide-desktop" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {assistantEnabled && onOpenAssistant && (
+          <AskAssistantPill onOpen={onOpenAssistant} compact />
+        )}
         <button
           type="button"
           onClick={() => onNavigate('notifications')}

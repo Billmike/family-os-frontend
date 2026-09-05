@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Repeat } from "lucide-react";
+import { Repeat, X } from "lucide-react";
 import type {
   Screen,
   CalendarEvent,
@@ -26,6 +26,7 @@ import { TASK_CATEGORIES } from "./types";
 import { getMember, formatDate, formatTime } from "./data";
 import {
   t,
+  fonts,
   BottomSheet,
   Toast,
   OfflineBanner,
@@ -118,6 +119,18 @@ import PersonalAccountSheet from "./components/PersonalAccountSheet";
 import { AppHeader } from "./components/shell/AppHeader";
 import { DesktopSidebar } from "./components/shell/DesktopSidebar";
 import { MobileBottomNav } from "./components/shell/MobileBottomNav";
+import { AssistantConversation } from "./components/assistant/AssistantConversation";
+import * as assistantApi from "./api/assistant";
+import type { AssistantMessageIn } from "./api/assistant";
+
+const EXPENSE_WRITE_SHEETS = new Set<BottomSheetType["type"]>([
+  "addExpense",
+  "chooseExpenseEntry",
+  "scanReceipt",
+  "addPersonalExpense",
+  "editExpense",
+  "editPersonalExpense",
+]);
 
 const BUDGET_TAB_SCREENS: Record<BudgetTab, Screen> = {
   plan: "budget",
@@ -351,6 +364,12 @@ function MainApp() {
   const [familyName, setFamilyName] = useState(family.name);
   const [loading, setLoading] = useState(true);
   const [sheet, setSheet] = useState<BottomSheetType | null>(null);
+  const assistantEnabled = session.user?.assistant_enabled === true;
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantThread, setAssistantThread] = useState<AssistantMessageIn[]>([]);
+  const [assistantDraft, setAssistantDraft] = useState("");
+  const [assistantTurnInFlight, setAssistantTurnInFlight] = useState(false);
+  const assistantTurnGeneration = useRef(0);
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
@@ -385,6 +404,53 @@ function MainApp() {
     const msg = e instanceof ApiError ? e.message : fallback;
     showToast(msg, "error");
   }
+
+  const handleCloseAssistant = () => {
+    assistantTurnGeneration.current += 1;
+    setAssistantOpen(false);
+    setAssistantThread([]);
+    setAssistantDraft("");
+    setAssistantTurnInFlight(false);
+  };
+
+  const handleOpenAssistant = () => {
+    setSheet(null);
+    setAssistantOpen(true);
+  };
+
+  const handleOpenSheet = (next: BottomSheetType) => {
+    if (EXPENSE_WRITE_SHEETS.has(next.type)) {
+      handleCloseAssistant();
+    }
+    setSheet(next);
+  };
+
+  const handleSendAssistant = async () => {
+    const text = assistantDraft.trim();
+    if (!text || assistantTurnInFlight) return;
+    const nextThread: AssistantMessageIn[] = [
+      ...assistantThread,
+      { role: "user", content: text },
+    ];
+    setAssistantThread(nextThread);
+    setAssistantDraft("");
+    setAssistantTurnInFlight(true);
+    const generation = assistantTurnGeneration.current;
+    try {
+      const out = await assistantApi.proposeTurn(family.id, nextThread);
+      if (generation !== assistantTurnGeneration.current) return;
+      setAssistantThread([
+        ...nextThread,
+        { role: "assistant", content: out.assistant_text },
+      ]);
+    } catch (e) {
+      if (generation !== assistantTurnGeneration.current) return;
+      handleError(e);
+    } finally {
+      if (generation !== assistantTurnGeneration.current) return;
+      setAssistantTurnInFlight(false);
+    }
+  };
 
   const loadAll = useCallback(async () => {
     const familyId = family.id;
@@ -1394,7 +1460,7 @@ function MainApp() {
 
   const handlers = {
     navigate: navigateToScreen,
-    openSheet: setSheet,
+    openSheet: handleOpenSheet,
     completeTask: (id: string) => {
       void completeTask(id);
     },
@@ -1488,7 +1554,10 @@ function MainApp() {
             unreadCount={unreadCount}
             currentUser={currentUser}
             userName={session.user?.name}
+            assistantEnabled={assistantEnabled}
+            assistantOpen={assistantOpen}
             onNavigate={navigateToScreen}
+            onOpenAssistant={handleOpenAssistant}
           />
         </div>
 
@@ -1506,8 +1575,10 @@ function MainApp() {
             familyName={familyName}
             unreadCount={unreadCount}
             currentUser={currentUser}
+            assistantEnabled={assistantEnabled}
             onNavigate={navigateToScreen}
             onBack={() => navigateToScreen(headerBackScreen)}
+            onOpenAssistant={handleOpenAssistant}
           />
 
           <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
@@ -1662,6 +1733,74 @@ function MainApp() {
             <MobileBottomNav screen={screen} onNavigate={navigateToScreen} />
           </div>
         </div>
+
+        {assistantOpen && assistantEnabled && (
+          <aside
+            className="hide-mobile"
+            role="dialog"
+            aria-label="Ask assistant"
+            aria-modal="false"
+            style={{
+              width: 400,
+              flexShrink: 0,
+              alignSelf: "stretch",
+              display: "flex",
+              flexDirection: "column",
+              background: t.surfaceElev,
+              borderLeft: `1px solid ${t.border}`,
+              minHeight: 0,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 16px 12px",
+                borderBottom: `1px solid ${t.border}`,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 18,
+                  fontWeight: 500,
+                  color: t.text,
+                  fontFamily: fonts.display,
+                }}
+              >
+                Ask assistant
+              </span>
+              <button
+                type="button"
+                onClick={handleCloseAssistant}
+                aria-label="Close assistant"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 10,
+                  display: "flex",
+                  minWidth: 44,
+                  minHeight: 44,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <X size={20} color={t.textSec} aria-hidden="true" />
+              </button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, padding: 16, display: "flex" }}>
+              <AssistantConversation
+                messages={assistantThread}
+                draft={assistantDraft}
+                isTurnInFlight={assistantTurnInFlight}
+                composerId="assistant-composer-desktop"
+                onDraftChange={setAssistantDraft}
+                onSend={() => void handleSendAssistant()}
+              />
+            </div>
+          </aside>
+        )}
       </div>
 
       {sheet?.type === "addEvent" && (
@@ -1866,6 +2005,27 @@ function MainApp() {
             return result;
           }}
         />
+      )}
+
+      {assistantOpen && assistantEnabled && (
+        <div className="hide-desktop">
+          <BottomSheet
+            title="Ask assistant"
+            ariaLabel="Ask assistant"
+            onClose={handleCloseAssistant}
+          >
+            <div style={{ height: "60dvh" }}>
+              <AssistantConversation
+                messages={assistantThread}
+                draft={assistantDraft}
+                isTurnInFlight={assistantTurnInFlight}
+                composerId="assistant-composer-mobile"
+                onDraftChange={setAssistantDraft}
+                onSend={() => void handleSendAssistant()}
+              />
+            </div>
+          </BottomSheet>
+        </div>
       )}
 
       {toast && (

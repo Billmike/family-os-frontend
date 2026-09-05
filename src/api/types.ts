@@ -14,6 +14,7 @@ export interface UserOut {
   timezone: string | null
   created_at: string
   updated_at: string
+  assistant_enabled: boolean
 }
 
 export type ApiRole = 'Owner' | 'Parent' | 'Child'

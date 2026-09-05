@@ -1,45 +1,41 @@
-import type { FormEvent, KeyboardEvent } from 'react'
-import { Send } from 'lucide-react'
 import { fonts, t } from '../../ui'
 import type { AssistantMessageIn } from '../../api/assistant'
+import { AssistantComposer } from './AssistantComposer'
+import { AssistantMark } from './AssistantMark'
 
 interface Props {
   messages: AssistantMessageIn[]
   draft: string
   isTurnInFlight: boolean
   composerId?: string
+  showComposer?: boolean
   onDraftChange: (value: string) => void
   onSend: () => void
 }
 
-const EXAMPLE_LINE = 'Try: I spent €12 at Tesco'
-const MAX_MESSAGE_CHARS = 500
+const EXAMPLE_PROMPT = 'I spent €12 at Tesco'
 const MAX_THREAD_MESSAGES = 20
+
+export const canSendAssistantTurn = (
+  draft: string,
+  isTurnInFlight: boolean,
+  messageCount: number,
+) => draft.trim().length > 0 && !isTurnInFlight && messageCount < MAX_THREAD_MESSAGES
 
 export const AssistantConversation = ({
   messages,
   draft,
   isTurnInFlight,
   composerId = 'assistant-composer',
+  showComposer = true,
   onDraftChange,
   onSend,
 }: Props) => {
-  const canSend =
-    draft.trim().length > 0 &&
-    !isTurnInFlight &&
-    messages.length < MAX_THREAD_MESSAGES
+  const canSend = canSendAssistantTurn(draft, isTurnInFlight, messages.length)
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!canSend) return
-    onSend()
-  }
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      if (canSend) onSend()
-    }
+  const handleExampleClick = () => {
+    if (isTurnInFlight) return
+    onDraftChange(EXAMPLE_PROMPT)
   }
 
   return (
@@ -58,35 +54,99 @@ export const AssistantConversation = ({
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 12,
-          paddingBottom: 16,
+          gap: 16,
+          padding: showComposer ? '4px 16px 16px' : '4px 0 8px',
         }}
         aria-live="polite"
       >
         {messages.length === 0 && !isTurnInFlight && (
-          <p style={{ fontSize: 14, color: t.textSec, margin: 0, lineHeight: 1.5 }}>
-            {EXAMPLE_LINE}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <AssistantMark size={28} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 16,
+                  background: t.surfaceChrome,
+                  border: `1px solid ${t.border}`,
+                  color: t.text,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                }}
+              >
+                Tell me a spend and I will draft it. Try an example below.
+              </div>
+              <button
+                type="button"
+                onClick={handleExampleClick}
+                aria-label={`Use example: ${EXAMPLE_PROMPT}`}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '8px 12px',
+                  borderRadius: 9999,
+                  border: `1px solid ${t.borderStrong}`,
+                  background: t.surfaceChrome,
+                  color: t.text,
+                  fontSize: 13,
+                  fontFamily: fonts.ui,
+                  cursor: 'pointer',
+                  minHeight: 36,
+                }}
+              >
+                {EXAMPLE_PROMPT}
+              </button>
+            </div>
+          </div>
         )}
         {messages.map((message, index) => {
           const isUser = message.role === 'user'
+          if (isUser) {
+            return (
+              <div
+                key={`${message.role}-${index}`}
+                style={{
+                  alignSelf: 'flex-end',
+                  maxWidth: '85%',
+                  padding: '12px 14px',
+                  borderRadius: 16,
+                  background: t.primarySubtle,
+                  color: t.text,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {message.content}
+              </div>
+            )
+          }
           return (
             <div
               key={`${message.role}-${index}`}
               style={{
-                alignSelf: isUser ? 'flex-end' : 'flex-start',
-                maxWidth: '85%',
-                padding: '10px 12px',
-                borderRadius: 12,
-                background: isUser ? t.primarySubtle : t.surfaceMuted,
-                color: t.text,
-                fontSize: 14,
-                lineHeight: 1.45,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                maxWidth: '92%',
               }}
             >
-              {message.content}
+              <AssistantMark size={28} />
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 16,
+                  background: t.surfaceChrome,
+                  border: `1px solid ${t.border}`,
+                  color: t.text,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {message.content}
+              </div>
             </div>
           )
         })}
@@ -94,71 +154,36 @@ export const AssistantConversation = ({
           <div
             role="status"
             aria-label="Assistant is typing"
-            style={{
-              alignSelf: 'flex-start',
-              display: 'flex',
-              gap: 4,
-              padding: '12px 14px',
-              borderRadius: 12,
-              background: t.surfaceMuted,
-            }}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: 9999, background: t.textTer }} />
-            <span style={{ width: 6, height: 6, borderRadius: 9999, background: t.textTer }} />
-            <span style={{ width: 6, height: 6, borderRadius: 9999, background: t.textTer }} />
+            <AssistantMark size={28} />
+            <div
+              style={{
+                display: 'flex',
+                gap: 5,
+                padding: '14px 16px',
+                borderRadius: 16,
+                background: t.surfaceChrome,
+                border: `1px solid ${t.border}`,
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: 9999, background: t.textTer }} />
+              <span style={{ width: 6, height: 6, borderRadius: 9999, background: t.textTer }} />
+              <span style={{ width: 6, height: 6, borderRadius: 9999, background: t.textTer }} />
+            </div>
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <label htmlFor={composerId} style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-          Message the Assistant
-        </label>
-        <textarea
-          id={composerId}
-          aria-label="Message the Assistant"
-          value={draft}
-          maxLength={MAX_MESSAGE_CHARS}
-          rows={2}
-          disabled={isTurnInFlight}
-          onChange={event => onDraftChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Describe a spend"
-          style={{
-            flex: 1,
-            resize: 'none',
-            border: `1px solid ${t.border}`,
-            borderRadius: 12,
-            padding: '10px 12px',
-            fontFamily: fonts.ui,
-            fontSize: 14,
-            color: t.text,
-            background: t.surfaceElev,
-            outline: 'none',
-            minHeight: 44,
-          }}
+      {showComposer && (
+        <AssistantComposer
+          draft={draft}
+          isTurnInFlight={isTurnInFlight}
+          canSend={canSend}
+          composerId={composerId}
+          onDraftChange={onDraftChange}
+          onSend={onSend}
         />
-        <button
-          type="submit"
-          aria-label="Send message"
-          disabled={!canSend}
-          style={{
-            width: 44,
-            height: 44,
-            minWidth: 44,
-            minHeight: 44,
-            border: 'none',
-            borderRadius: 9999,
-            background: canSend ? t.primary : t.surfaceMuted,
-            color: canSend ? t.onPrimary : t.textTer,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: canSend ? 'pointer' : 'default',
-          }}
-        >
-          <Send size={16} aria-hidden="true" />
-        </button>
-      </form>
+      )}
     </div>
   )
 }

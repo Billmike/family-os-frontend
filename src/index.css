@@ -24,6 +24,7 @@
   --ds-bg:               #F3EDE4;
   --ds-surface:          #F3EDE4;
   --ds-surface-elevated: #FAF7F1;
+  --ds-surface-chrome:   #FFFFFF;
   --ds-surface-muted:    #E8E2D6;
   --ds-bg-glass:         #F3EDE4;
 
@@ -112,6 +113,7 @@ html.dark {
   --ds-bg:               #16140F;
   --ds-surface:          #1C1A15;
   --ds-surface-elevated: #242218;
+  --ds-surface-chrome:   #2A2720;
   --ds-surface-muted:    #1A1814;
   --ds-bg-glass:         #16140F;
 

@@ -13,6 +13,7 @@ export const t = {
   bg:           'var(--ds-bg)',
   surface:      'var(--ds-surface)',
   surfaceElev:  'var(--ds-surface-elevated)',
+  surfaceChrome:'var(--ds-surface-chrome)',
   surfaceMuted: 'var(--ds-surface-muted)',
   bgGlass:      'var(--ds-bg-glass)',
   text:         'var(--ds-text-primary)',
@@ -331,14 +332,16 @@ export function Skeleton({ w = '100%', h = 14 }: { w?: string | number; h?: numb
 
 // ─── BottomSheet ─────────────────────────────────────────────────────────────
 
-export function BottomSheet({ title, onClose, children, zIndex = 200, header, ariaLabel, listenEscape = true }: {
+export function BottomSheet({ title, onClose, children, zIndex = 200, header, footer, ariaLabel, listenEscape = true, compactHandle = false }: {
   title?: string
   onClose: () => void
   children: ReactNode
   zIndex?: number
   header?: ReactNode
+  footer?: ReactNode
   ariaLabel?: string
   listenEscape?: boolean
+  compactHandle?: boolean
 }) {
   const sheetRef = useRef<HTMLDivElement>(null)
 
@@ -365,11 +368,13 @@ export function BottomSheet({ title, onClose, children, zIndex = 200, header, ar
         boxShadow: sh.high,
         maxHeight: '90dvh', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingBottom: footer ? 0 : 'env(safe-area-inset-bottom)',
       }}>
-        <div className="bottom-sheet-handle" style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 9999, background: t.border }} />
-        </div>
+        {!compactHandle && (
+          <div className="bottom-sheet-handle" aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 9999, background: t.border }} />
+          </div>
+        )}
         {header ?? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
             <span style={{ fontSize: 20, fontWeight: 500, color: t.text, fontFamily: fonts.display }}>{title}</span>
@@ -378,9 +383,10 @@ export function BottomSheet({ title, onClose, children, zIndex = 200, header, ar
             </button>
           </div>
         )}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: footer ? '0 20px 16px' : '0 20px 24px' }}>
           {children}
         </div>
+        {footer}
       </div>
     </div>
   )

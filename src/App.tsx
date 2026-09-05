@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Repeat, X } from "lucide-react";
+import { Repeat } from "lucide-react";
 import type {
   Screen,
   CalendarEvent,
@@ -26,7 +26,6 @@ import { TASK_CATEGORIES } from "./types";
 import { getMember, formatDate, formatTime } from "./data";
 import {
   t,
-  fonts,
   BottomSheet,
   Toast,
   OfflineBanner,
@@ -119,7 +118,12 @@ import PersonalAccountSheet from "./components/PersonalAccountSheet";
 import { AppHeader } from "./components/shell/AppHeader";
 import { DesktopSidebar } from "./components/shell/DesktopSidebar";
 import { MobileBottomNav } from "./components/shell/MobileBottomNav";
-import { AssistantConversation } from "./components/assistant/AssistantConversation";
+import { AssistantComposer } from "./components/assistant/AssistantComposer";
+import {
+  AssistantConversation,
+  canSendAssistantTurn,
+} from "./components/assistant/AssistantConversation";
+import { AssistantHeader } from "./components/assistant/AssistantHeader";
 import * as assistantApi from "./api/assistant";
 import type { AssistantMessageIn } from "./api/assistant";
 
@@ -353,10 +357,17 @@ function MainApp() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const budgetPeriod =
     budgetPeriods.find((p) => p.id === selectedPeriodId) ?? null;
-  const [subcategoryGroups, setSubcategoryGroups] = useState<BudgetSubcategoryGroup[]>([]);
-  const [personalSummary, setPersonalSummary] = useState<PersonalAccountSummary | null>(null);
-  const [selectedPersonalAccountId, setSelectedPersonalAccountId] = useState<string | null>(null);
-  const [selectedPersonalMonth, setSelectedPersonalMonth] = useState(() => today.slice(0, 7));
+  const [subcategoryGroups, setSubcategoryGroups] = useState<
+    BudgetSubcategoryGroup[]
+  >([]);
+  const [personalSummary, setPersonalSummary] =
+    useState<PersonalAccountSummary | null>(null);
+  const [selectedPersonalAccountId, setSelectedPersonalAccountId] = useState<
+    string | null
+  >(null);
+  const [selectedPersonalMonth, setSelectedPersonalMonth] = useState(() =>
+    today.slice(0, 7),
+  );
   const [personalListEpoch, setPersonalListEpoch] = useState(0);
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [dashGreeting, setDashGreeting] = useState(session.user?.name ?? "");
@@ -366,7 +377,9 @@ function MainApp() {
   const [sheet, setSheet] = useState<BottomSheetType | null>(null);
   const assistantEnabled = session.user?.assistant_enabled === true;
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [assistantThread, setAssistantThread] = useState<AssistantMessageIn[]>([]);
+  const [assistantThread, setAssistantThread] = useState<AssistantMessageIn[]>(
+    [],
+  );
   const [assistantDraft, setAssistantDraft] = useState("");
   const [assistantTurnInFlight, setAssistantTurnInFlight] = useState(false);
   const assistantTurnGeneration = useRef(0);
@@ -376,9 +389,7 @@ function MainApp() {
   } | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingListEdits = useRef(
-    new Map<string, PendingEdit<ShoppingItem>>(),
-  );
+  const pendingListEdits = useRef(new Map<string, PendingEdit<ShoppingItem>>());
   const pendingBasketEdits = useRef(
     new Map<string, PendingEdit<ShoppingSessionItem>>(),
   );
@@ -458,21 +469,35 @@ function MainApp() {
       const from = `${addDays(today, -EVENT_FETCH_BACK_DAYS)}T00:00:00Z`;
       const to = `${addDays(today, EVENT_FETCH_AHEAD_DAYS)}T23:59:59Z`;
 
-      const [dash, evs, tsks, lists, locs, ns, activeSess, history, spend, listedPeriods, subcats, personal] =
-        await Promise.all([
-          dashboardApi.getDashboard(familyId),
-          eventsApi.listEvents(familyId, from, to),
-          tasksApi.listTasks(familyId, "all"),
-          shoppingApi.listShoppingLists(familyId),
-          shoppingLocationsApi.listShoppingLocations(familyId),
-          notificationsApi.listNotifications(),
-          shoppingSessionsApi.getActiveSession(familyId),
-          shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
-          expensesApi.getSpend(familyId).catch(() => null),
-          budgetsApi.listBudgetPeriods(familyId).catch(() => null),
-          budgetSubcategoriesApi.listBudgetSubcategories(familyId).catch(() => null),
-          personalAccountsApi.listAccounts().catch(() => null),
-        ]);
+      const [
+        dash,
+        evs,
+        tsks,
+        lists,
+        locs,
+        ns,
+        activeSess,
+        history,
+        spend,
+        listedPeriods,
+        subcats,
+        personal,
+      ] = await Promise.all([
+        dashboardApi.getDashboard(familyId),
+        eventsApi.listEvents(familyId, from, to),
+        tasksApi.listTasks(familyId, "all"),
+        shoppingApi.listShoppingLists(familyId),
+        shoppingLocationsApi.listShoppingLocations(familyId),
+        notificationsApi.listNotifications(),
+        shoppingSessionsApi.getActiveSession(familyId),
+        shoppingSessionsApi.listSessions(familyId, { limit: 20 }),
+        expensesApi.getSpend(familyId).catch(() => null),
+        budgetsApi.listBudgetPeriods(familyId).catch(() => null),
+        budgetSubcategoriesApi
+          .listBudgetSubcategories(familyId)
+          .catch(() => null),
+        personalAccountsApi.listAccounts().catch(() => null),
+      ]);
 
       setFamilyName(dash.family_name);
       setDashGreeting(dash.member_name);
@@ -498,14 +523,19 @@ function MainApp() {
         const nextSummary = toPersonalAccountSummary(personal);
         setPersonalSummary(nextSummary);
         setSelectedPersonalMonth((prev) =>
-          prev > nextSummary.currentMonth ? nextSummary.currentMonth : prev || nextSummary.currentMonth,
+          prev > nextSummary.currentMonth
+            ? nextSummary.currentMonth
+            : prev || nextSummary.currentMonth,
         );
         const stored = session.user
           ? localStorage.getItem(personalAccountStorageKey(session.user.id))
           : null;
         setSelectedPersonalAccountId((prev) => {
           const candidate = prev ?? stored;
-          if (candidate && nextSummary.accounts.some((row) => row.id === candidate)) {
+          if (
+            candidate &&
+            nextSummary.accounts.some((row) => row.id === candidate)
+          ) {
             return candidate;
           }
           return nextSummary.accounts[0]?.id ?? null;
@@ -545,24 +575,29 @@ function MainApp() {
     }
   }, [family.id]);
 
-  const refreshBudgets = useCallback(async (selectId?: string) => {
-    try {
-      const data = await budgetsApi.listBudgetPeriods(family.id);
-      const next = sortBudgetPeriods(data.periods.map(toBudgetPeriod));
-      setBudgetPeriods(next);
-      setSelectedPeriodId((prev) => {
-        if (selectId && next.some((p) => p.id === selectId)) return selectId;
-        if (prev && next.some((p) => p.id === prev)) return prev;
-        return pickDefaultPeriodId(next, today);
-      });
-    } catch {
-      /* keep the last known budgets */
-    }
-  }, [family.id, today]);
+  const refreshBudgets = useCallback(
+    async (selectId?: string) => {
+      try {
+        const data = await budgetsApi.listBudgetPeriods(family.id);
+        const next = sortBudgetPeriods(data.periods.map(toBudgetPeriod));
+        setBudgetPeriods(next);
+        setSelectedPeriodId((prev) => {
+          if (selectId && next.some((p) => p.id === selectId)) return selectId;
+          if (prev && next.some((p) => p.id === prev)) return prev;
+          return pickDefaultPeriodId(next, today);
+        });
+      } catch {
+        /* keep the last known budgets */
+      }
+    },
+    [family.id, today],
+  );
 
   const refreshSubcategories = useCallback(async () => {
     try {
-      const data = await budgetSubcategoriesApi.listBudgetSubcategories(family.id);
+      const data = await budgetSubcategoriesApi.listBudgetSubcategories(
+        family.id,
+      );
       setSubcategoryGroups(toBudgetSubcategoryGroups(data));
     } catch {
       /* keep last known */
@@ -571,7 +606,11 @@ function MainApp() {
 
   const loadPeriodExpenses = useCallback(
     async (periodId: string, signal?: AbortSignal) => {
-      const rows = await expensesApi.listExpenses(family.id, { periodId }, signal);
+      const rows = await expensesApi.listExpenses(
+        family.id,
+        { periodId },
+        signal,
+      );
       return rows.map(toExpense);
     },
     [family.id],
@@ -583,11 +622,16 @@ function MainApp() {
       const nextSummary = toPersonalAccountSummary(data);
       setPersonalSummary(nextSummary);
       setSelectedPersonalMonth((prev) =>
-        prev > nextSummary.currentMonth ? nextSummary.currentMonth : prev || nextSummary.currentMonth,
+        prev > nextSummary.currentMonth
+          ? nextSummary.currentMonth
+          : prev || nextSummary.currentMonth,
       );
       setSelectedPersonalAccountId((prev) => {
         const candidate = selectId ?? prev;
-        if (candidate && nextSummary.accounts.some((row) => row.id === candidate)) {
+        if (
+          candidate &&
+          nextSummary.accounts.some((row) => row.id === candidate)
+        ) {
           return candidate;
         }
         return nextSummary.accounts[0]?.id ?? null;
@@ -602,7 +646,10 @@ function MainApp() {
     (accountId: string) => {
       setSelectedPersonalAccountId(accountId);
       if (session.user) {
-        localStorage.setItem(personalAccountStorageKey(session.user.id), accountId);
+        localStorage.setItem(
+          personalAccountStorageKey(session.user.id),
+          accountId,
+        );
       }
     },
     [session.user],
@@ -610,7 +657,11 @@ function MainApp() {
 
   const loadPersonalMonthExpenses = useCallback(
     async (accountId: string, month: string, signal?: AbortSignal) => {
-      const rows = await personalExpensesApi.listPersonalExpenses(accountId, month, signal);
+      const rows = await personalExpensesApi.listPersonalExpenses(
+        accountId,
+        month,
+        signal,
+      );
       return rows.map(toPersonalExpense);
     },
     [personalListEpoch],
@@ -625,7 +676,9 @@ function MainApp() {
   }, [session.user, selectedPersonalAccountId]);
 
   const handleOpenSpend = useCallback(() => {
-    const current = budgetPeriods.find((p) => cycleStatus(p, today) === "current");
+    const current = budgetPeriods.find(
+      (p) => cycleStatus(p, today) === "current",
+    );
     if (current) {
       setSelectedPeriodId(current.id);
     } else {
@@ -843,155 +896,172 @@ function MainApp() {
   }
 
   async function saveCycleDates(draft: {
-    startDate: string
-    endDate: string
-    periodId: string | null
-    copy: boolean
+    startDate: string;
+    endDate: string;
+    periodId: string | null;
+    copy: boolean;
   }) {
     try {
-      const labelMonth = draft.endDate.slice(0, 7)
-      let saved
+      const labelMonth = draft.endDate.slice(0, 7);
+      let saved;
       if (draft.periodId) {
         saved = await budgetsApi.updateBudgetPeriod(draft.periodId, {
           start_date: draft.startDate,
           end_date: draft.endDate,
           label_month: labelMonth,
-        })
+        });
       } else if (draft.copy) {
         saved = await budgetsApi.copyBudgetPeriod(family.id, {
           start_date: draft.startDate,
           end_date: draft.endDate,
           label_month: labelMonth,
           source_period_id: budgetPeriod?.id ?? null,
-        })
+        });
       } else {
         const existingLines =
-          budgetPeriod?.groups.flatMap(g =>
-            g.lines.map(l => ({ subcategory_id: l.subcategoryId, amount: l.amount })),
-          ) ?? []
+          budgetPeriod?.groups.flatMap((g) =>
+            g.lines.map((l) => ({
+              subcategory_id: l.subcategoryId,
+              amount: l.amount,
+            })),
+          ) ?? [];
         saved = await budgetsApi.createBudgetPeriod(family.id, {
           start_date: draft.startDate,
           end_date: draft.endDate,
           label_month: labelMonth,
           budgets: existingLines,
-        })
+        });
       }
-      setSheet(null)
-      showToast('Budget cycle saved')
-      void refreshBudgets(saved.id)
-      void refreshSpend()
-      void refreshSubcategories()
+      setSheet(null);
+      showToast("Budget cycle saved");
+      void refreshBudgets(saved.id);
+      void refreshSpend();
+      void refreshSubcategories();
     } catch (e) {
-      handleError(e)
-      const range = e instanceof ApiError ? parseOverlapRange(e.message) : null
-      if (range) setSheet({ type: 'cycleList', highlightRange: range })
+      handleError(e);
+      const range = e instanceof ApiError ? parseOverlapRange(e.message) : null;
+      if (range) setSheet({ type: "cycleList", highlightRange: range });
     }
   }
 
   async function updateBudgetExpected(budgetId: string, amount: number) {
     try {
-      await budgetsApi.updateBudget(budgetId, amount)
-      void refreshBudgets()
-      void refreshSpend()
+      await budgetsApi.updateBudget(budgetId, amount);
+      void refreshBudgets();
+      void refreshSpend();
     } catch (e) {
-      handleError(e)
+      handleError(e);
     }
   }
 
   async function addBudgetLine(subcategoryId: string, amount: number) {
     if (!budgetPeriod) {
-      showToast('Start a budget cycle first', 'error')
-      return
+      showToast("Start a budget cycle first", "error");
+      return;
     }
     try {
-      const lines = budgetPeriod.groups.flatMap(g =>
-        g.lines.map(l => ({ subcategory_id: l.subcategoryId, amount: l.amount })),
-      )
-      const existing = lines.find(l => l.subcategory_id === subcategoryId)
-      if (existing) existing.amount = amount
-      else lines.push({ subcategory_id: subcategoryId, amount })
-      await budgetsApi.updateBudgetPeriod(budgetPeriod.id, { budgets: lines })
-      void refreshBudgets()
-      void refreshSpend()
+      const lines = budgetPeriod.groups.flatMap((g) =>
+        g.lines.map((l) => ({
+          subcategory_id: l.subcategoryId,
+          amount: l.amount,
+        })),
+      );
+      const existing = lines.find((l) => l.subcategory_id === subcategoryId);
+      if (existing) existing.amount = amount;
+      else lines.push({ subcategory_id: subcategoryId, amount });
+      await budgetsApi.updateBudgetPeriod(budgetPeriod.id, { budgets: lines });
+      void refreshBudgets();
+      void refreshSpend();
     } catch (e) {
-      handleError(e)
+      handleError(e);
     }
   }
 
-  async function addBudgetSubcategory(group: string, name: string): Promise<string | null> {
+  async function addBudgetSubcategory(
+    group: string,
+    name: string,
+  ): Promise<string | null> {
     try {
-      const row = await budgetSubcategoriesApi.createBudgetSubcategory(family.id, {
-        group,
+      const row = await budgetSubcategoriesApi.createBudgetSubcategory(
+        family.id,
+        {
+          group,
+          name,
+        },
+      );
+      await refreshSubcategories();
+      return row.id;
+    } catch (e) {
+      handleError(e);
+      return null;
+    }
+  }
+
+  async function renameBudgetSubcategory(
+    subcategoryId: string,
+    name: string,
+  ): Promise<boolean> {
+    try {
+      await budgetSubcategoriesApi.updateBudgetSubcategory(subcategoryId, {
         name,
-      })
-      await refreshSubcategories()
-      return row.id
+      });
+      await refreshSubcategories();
+      void refreshBudgets();
+      void refreshSpend();
+      return true;
     } catch (e) {
-      handleError(e)
-      return null
-    }
-  }
-
-  async function renameBudgetSubcategory(subcategoryId: string, name: string): Promise<boolean> {
-    try {
-      await budgetSubcategoriesApi.updateBudgetSubcategory(subcategoryId, { name })
-      await refreshSubcategories()
-      void refreshBudgets()
-      void refreshSpend()
-      return true
-    } catch (e) {
-      handleError(e)
-      return false
+      handleError(e);
+      return false;
     }
   }
 
   async function removeBudgetLine(budgetId: string, name: string) {
     try {
-      await budgetsApi.deleteBudget(budgetId)
-      showToast(`${name} removed from this cycle`)
-      void refreshBudgets()
-      void refreshSpend()
+      await budgetsApi.deleteBudget(budgetId);
+      showToast(`${name} removed from this cycle`);
+      void refreshBudgets();
+      void refreshSpend();
     } catch (e) {
-      handleError(e)
+      handleError(e);
     }
   }
 
   async function settleBudgetLine(budgetId: string) {
     try {
-      const period = await budgetsApi.settleBudget(budgetId)
-      const updated = toBudgetPeriod(period)
+      const period = await budgetsApi.settleBudget(budgetId);
+      const updated = toBudgetPeriod(period);
       setBudgetPeriods((prev) =>
         sortBudgetPeriods(prev.map((p) => (p.id === updated.id ? updated : p))),
-      )
-      setSelectedPeriodId(updated.id)
-      void refreshSpend()
+      );
+      setSelectedPeriodId(updated.id);
+      void refreshSpend();
     } catch (e) {
-      handleError(e)
+      handleError(e);
     }
   }
 
   async function unsettleBudgetLine(budgetId: string) {
     try {
-      const period = await budgetsApi.unsettleBudget(budgetId)
-      const updated = toBudgetPeriod(period)
+      const period = await budgetsApi.unsettleBudget(budgetId);
+      const updated = toBudgetPeriod(period);
       setBudgetPeriods((prev) =>
         sortBudgetPeriods(prev.map((p) => (p.id === updated.id ? updated : p))),
-      )
-      setSelectedPeriodId(updated.id)
-      void refreshSpend()
+      );
+      setSelectedPeriodId(updated.id);
+      void refreshSpend();
     } catch (e) {
-      handleError(e)
+      handleError(e);
     }
   }
 
   async function deleteBudgetCycle(periodId: string) {
     try {
-      await budgetsApi.deleteBudgetPeriod(periodId)
-      showToast("Budget cycle deleted")
-      await refreshBudgets()
-      setSheet(null)
+      await budgetsApi.deleteBudgetPeriod(periodId);
+      showToast("Budget cycle deleted");
+      await refreshBudgets();
+      setSheet(null);
     } catch (e) {
-      handleError(e)
+      handleError(e);
     }
   }
 
@@ -1089,13 +1159,16 @@ function MainApp() {
       return;
     }
     try {
-      await personalExpensesApi.createPersonalExpense(selectedPersonalAccountId, {
-        amount: input.amount,
-        category: input.category,
-        merchant: input.merchant,
-        note: input.note,
-        occurred_at: input.occurredAt,
-      });
+      await personalExpensesApi.createPersonalExpense(
+        selectedPersonalAccountId,
+        {
+          amount: input.amount,
+          category: input.category,
+          merchant: input.merchant,
+          note: input.note,
+          occurred_at: input.occurredAt,
+        },
+      );
       setSheet(null);
       showToast("Expense added");
       await refreshPersonalSummary(selectedPersonalAccountId);
@@ -1104,7 +1177,10 @@ function MainApp() {
     }
   }
 
-  async function updatePersonalExpenseRow(id: string, input: PersonalExpenseDraft) {
+  async function updatePersonalExpenseRow(
+    id: string,
+    input: PersonalExpenseDraft,
+  ) {
     try {
       await personalExpensesApi.updatePersonalExpense(id, {
         amount: input.amount,
@@ -1232,7 +1308,9 @@ function MainApp() {
     if (!snapshot) return;
     if (pending) window.clearTimeout(pending.timer);
 
-    setShopping((its) => its.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    setShopping((its) =>
+      its.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+    );
 
     const merged = { ...pending?.patch, ...patch };
     const timer = window.setTimeout(() => {
@@ -1589,7 +1667,9 @@ function MainApp() {
                 shopping={shopping}
                 activeSession={activeSession}
                 currentPeriod={
-                  budgetPeriods.find((p) => cycleStatus(p, today) === "current") ?? null
+                  budgetPeriods.find(
+                    (p) => cycleStatus(p, today) === "current",
+                  ) ?? null
                 }
                 periods={budgetPeriods}
                 memberName={dashGreeting}
@@ -1639,17 +1719,19 @@ function MainApp() {
                 loadPeriodExpenses={loadPeriodExpenses}
                 onSelectPeriod={setSelectedPeriodId}
                 onSelectPersonal={() => navigateToScreen("personal")}
-                onOpenCycleList={() => setSheet({ type: 'cycleList' })}
+                onOpenCycleList={() => setSheet({ type: "cycleList" })}
                 {...handlers}
               />
             )}
-            {(screen === "personal" || screen === "personalActivity") && (
-              screen === "personalActivity" ? (
+            {(screen === "personal" || screen === "personalActivity") &&
+              (screen === "personalActivity" ? (
                 <PersonalActivityScreen
                   summary={personalSummary}
                   selectedAccountId={selectedPersonalAccountId}
                   selectedMonth={selectedPersonalMonth}
-                  todayMonth={personalSummary?.currentMonth ?? today.slice(0, 7)}
+                  todayMonth={
+                    personalSummary?.currentMonth ?? today.slice(0, 7)
+                  }
                   loadMonthExpenses={loadPersonalMonthExpenses}
                   onSelectAccount={handleSelectPersonalAccount}
                   onSelectMonth={setSelectedPersonalMonth}
@@ -1661,7 +1743,9 @@ function MainApp() {
                   summary={personalSummary}
                   selectedAccountId={selectedPersonalAccountId}
                   selectedMonth={selectedPersonalMonth}
-                  todayMonth={personalSummary?.currentMonth ?? today.slice(0, 7)}
+                  todayMonth={
+                    personalSummary?.currentMonth ?? today.slice(0, 7)
+                  }
                   loading={loading}
                   loadMonthExpenses={loadPersonalMonthExpenses}
                   onSelectAccount={handleSelectPersonalAccount}
@@ -1669,12 +1753,13 @@ function MainApp() {
                   onSelectFamily={() => navigateToScreen("budgetSpend")}
                   {...handlers}
                 />
-              )
-            )}
+              ))}
             {budgetTab && (
               <BudgetScreen
                 tab={budgetTab}
-                onSelectTab={(next) => navigateToScreen(BUDGET_TAB_SCREENS[next])}
+                onSelectTab={(next) =>
+                  navigateToScreen(BUDGET_TAB_SCREENS[next])
+                }
                 period={budgetPeriod}
                 periods={budgetPeriods}
                 selectedPeriodId={selectedPeriodId}
@@ -1683,10 +1768,16 @@ function MainApp() {
                 loadPeriodExpenses={loadPeriodExpenses}
                 loading={loading}
                 onSelectPeriod={setSelectedPeriodId}
-                onOpenCycleList={() => setSheet({ type: 'cycleList' })}
-                onCreateCycle={() => setSheet({ type: 'cycleDates', mode: 'create' })}
-                onCopyCycle={() => setSheet({ type: 'cycleDates', mode: 'copy' })}
-                onEditDates={() => setSheet({ type: 'cycleDates', mode: 'current' })}
+                onOpenCycleList={() => setSheet({ type: "cycleList" })}
+                onCreateCycle={() =>
+                  setSheet({ type: "cycleDates", mode: "create" })
+                }
+                onCopyCycle={() =>
+                  setSheet({ type: "cycleDates", mode: "copy" })
+                }
+                onEditDates={() =>
+                  setSheet({ type: "cycleDates", mode: "current" })
+                }
                 onUpdateExpected={updateBudgetExpected}
                 onAddLine={addBudgetLine}
                 onAddSubcategory={addBudgetSubcategory}
@@ -1729,7 +1820,7 @@ function MainApp() {
             )}
           </main>
 
-          <div className="hide-desktop" style={{ width: '100%' }}>
+          <div className="hide-desktop" style={{ width: "100%" }}>
             <MobileBottomNav screen={screen} onNavigate={navigateToScreen} />
           </div>
         </div>
@@ -1749,47 +1840,14 @@ function MainApp() {
               background: t.surfaceElev,
               borderLeft: `1px solid ${t.border}`,
               minHeight: 0,
+              zIndex: 1000,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 16px 12px",
-                borderBottom: `1px solid ${t.border}`,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 18,
-                  fontWeight: 500,
-                  color: t.text,
-                  fontFamily: fonts.display,
-                }}
-              >
-                Ask assistant
-              </span>
-              <button
-                type="button"
-                onClick={handleCloseAssistant}
-                aria-label="Close assistant"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 10,
-                  display: "flex",
-                  minWidth: 44,
-                  minHeight: 44,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={20} color={t.textSec} aria-hidden="true" />
-              </button>
-            </div>
-            <div style={{ flex: 1, minHeight: 0, padding: 16, display: "flex" }}>
+            <AssistantHeader
+              isTurnInFlight={assistantTurnInFlight}
+              onClose={handleCloseAssistant}
+            />
+            <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
               <AssistantConversation
                 messages={assistantThread}
                 draft={assistantDraft}
@@ -1853,9 +1911,7 @@ function MainApp() {
       {sheet?.type === "editBasketItem" && (
         <ShoppingItemSheet
           mode="basket"
-          item={activeSession?.items?.find(
-            (i) => i.id === sheet.sessionItemId,
-          )}
+          item={activeSession?.items?.find((i) => i.id === sheet.sessionItemId)}
           locations={shoppingLocations}
           onClose={() => setSheet(null)}
           onSubmit={(draft) => {
@@ -1928,7 +1984,9 @@ function MainApp() {
           expense={sheet.expense}
           today={today}
           onClose={() => setSheet(null)}
-          onSave={(input) => void updatePersonalExpenseRow(sheet.expense.id, input)}
+          onSave={(input) =>
+            void updatePersonalExpenseRow(sheet.expense.id, input)
+          }
           onDelete={(id) => void deletePersonalExpenseRow(id)}
         />
       )}
@@ -1950,7 +2008,7 @@ function MainApp() {
         <CycleDatesSheet
           period={budgetPeriod}
           periods={budgetPeriods}
-          mode={sheet.mode ?? 'create'}
+          mode={sheet.mode ?? "create"}
           onClose={() => setSheet(null)}
           onSave={saveCycleDates}
         />
@@ -1963,12 +2021,12 @@ function MainApp() {
           highlightRange={sheet.highlightRange}
           onClose={() => setSheet(null)}
           onSelect={(id) => {
-            setSelectedPeriodId(id)
-            setSheet(null)
+            setSelectedPeriodId(id);
+            setSheet(null);
           }}
           onEditDates={(id) => {
-            setSelectedPeriodId(id)
-            setSheet({ type: 'cycleDates', mode: 'current' })
+            setSelectedPeriodId(id);
+            setSheet({ type: "cycleDates", mode: "current" });
           }}
           onDelete={deleteBudgetCycle}
         />
@@ -2012,14 +2070,36 @@ function MainApp() {
           <BottomSheet
             title="Ask assistant"
             ariaLabel="Ask assistant"
+            compactHandle
             onClose={handleCloseAssistant}
+            header={
+              <AssistantHeader
+                compact
+                isTurnInFlight={assistantTurnInFlight}
+                onClose={handleCloseAssistant}
+              />
+            }
+            footer={
+              <AssistantComposer
+                draft={assistantDraft}
+                isTurnInFlight={assistantTurnInFlight}
+                canSend={canSendAssistantTurn(
+                  assistantDraft,
+                  assistantTurnInFlight,
+                  assistantThread.length,
+                )}
+                composerId="assistant-composer-mobile"
+                onDraftChange={setAssistantDraft}
+                onSend={() => void handleSendAssistant()}
+              />
+            }
           >
-            <div style={{ height: "60dvh" }}>
+            <div style={{ height: "52dvh" }}>
               <AssistantConversation
                 messages={assistantThread}
                 draft={assistantDraft}
                 isTurnInFlight={assistantTurnInFlight}
-                composerId="assistant-composer-mobile"
+                showComposer={false}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}
               />

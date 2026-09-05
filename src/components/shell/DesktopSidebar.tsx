@@ -1,7 +1,8 @@
-import { MessageSquare, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import type { Member, Screen } from '../../types'
 import { isBudgetSection } from '../../routing'
 import { t, fonts, MemberAvatar } from '../../ui'
+import { AssistantMark } from '../assistant/AssistantMark'
 import { FamilyMark } from './FamilyMark'
 import { DESKTOP_NAV } from './nav'
 
@@ -139,7 +140,7 @@ export const DesktopSidebar = ({
             borderLeft: assistantOpen ? `2px solid ${t.primary}` : '2px solid transparent',
           }}
         >
-          <MessageSquare size={18} strokeWidth={assistantOpen ? 2 : 1.75} aria-hidden="true" />
+          <AssistantMark size={22} />
           Ask assistant
         </button>
       )}

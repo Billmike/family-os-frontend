@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from 'react'
-import { MessageSquare } from 'lucide-react'
 import { fonts, t } from '../../ui'
+import { AssistantMark } from './AssistantMark'
 
 interface Props {
   onOpen: () => void
@@ -30,14 +30,14 @@ export const AskAssistantPill = ({ onOpen, compact = false }: Props) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: compact ? 0 : 6,
+        gap: compact ? 0 : 8,
         minWidth: 44,
         minHeight: 44,
-        padding: compact ? 6 : '6px 12px',
+        padding: compact ? 4 : '4px 12px 4px 4px',
         border: `1px solid ${t.border}`,
         borderRadius: 9999,
-        background: t.primarySubtle,
-        color: t.primary,
+        background: t.surfaceElev,
+        color: t.text,
         cursor: 'pointer',
         fontFamily: fonts.ui,
         fontSize: 13,
@@ -45,7 +45,7 @@ export const AskAssistantPill = ({ onOpen, compact = false }: Props) => {
         flexShrink: 0,
       }}
     >
-      <MessageSquare size={16} strokeWidth={1.75} aria-hidden="true" />
+      <AssistantMark size={compact ? 28 : 26} />
       {!compact && <span>Ask assistant</span>}
     </button>
   )

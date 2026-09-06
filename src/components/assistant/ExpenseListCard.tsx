@@ -17,8 +17,13 @@ const formatListDate = (occurredOn: string) => {
 
 const rowTitle = (row: ExpenseListRow) => row.merchant ?? ''
 
-const windowLabel = (list: ExpenseList) =>
-  list.period_label ? `Household · ${list.period_label}` : 'Household'
+const windowLabel = (list: ExpenseList) => {
+  if (list.destination === 'personal') {
+    const account = list.account_name ?? 'Personal'
+    return list.month ? `${account} · ${list.month}` : account
+  }
+  return list.period_label ? `Household · ${list.period_label}` : 'Household'
+}
 
 export const ExpenseListCard = ({ list }: Props) => {
   const totalLabel = formatMoney(Number.parseFloat(list.total) || 0, list.currency)

@@ -511,8 +511,9 @@ function MainApp() {
           content: out.assistant_text,
           proposal: out.proposal,
           taskProposal: out.task_proposal,
-          proposalState: out.proposal || out.task_proposal ? "open" : undefined,
+          proposalState: out.proposal || out.task_proposal || out.change_proposal ? "open" : undefined,
           expenseList: out.expense_list,
+          changeProposal: out.change_proposal,
         },
       ]);
       if (prefersReducedMotion() || out.assistant_text.length === 0) {

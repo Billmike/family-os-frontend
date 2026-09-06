@@ -8,7 +8,6 @@ interface Props {
   header: ReactNode
   footer: ReactNode
   children: ReactNode
-  onClose: () => void
 }
 
 const PHONE_OPEN_CLASS = 'assistant-phone-open'
@@ -21,7 +20,6 @@ export const AssistantMobilePanel = ({
   header,
   footer,
   children,
-  onClose,
 }: Props) => {
   const panelRef = useRef<HTMLDivElement>(null)
   const box = useVisualViewportBox()
@@ -30,14 +28,6 @@ export const AssistantMobilePanel = ({
   useEffect(() => {
     panelRef.current?.focus()
   }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
 
   useEffect(() => {
     const html = document.documentElement

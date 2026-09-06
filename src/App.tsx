@@ -126,12 +126,8 @@ import {
 } from "./components/assistant/AssistantConversation";
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
 import { AssistantMobilePanel } from "./components/assistant/AssistantMobilePanel";
-import {
-  claimAssistantHistory,
-  releaseAssistantHistory,
-  withAssistantHistoryState,
-} from "./components/assistant/phoneAssistant";
 import { useIsPhoneAssistant } from "./components/assistant/useIsPhoneAssistant";
+import { usePhoneAssistantHistory } from "./components/assistant/usePhoneAssistantHistory";
 import { useAssistantTypewriter } from "./components/assistant/useAssistantTypewriter";
 import * as assistantApi from "./api/assistant";
 import type {
@@ -411,9 +407,7 @@ function MainApp() {
     "household" | "personal" | null
   >(null);
   const assistantTurnGeneration = useRef(0);
-  const assistantOpenRef = useRef(false);
   const isPhoneAssistant = useIsPhoneAssistant();
-  assistantOpenRef.current = assistantOpen;
   const handleAssistantTypewriterFinish = (completed: string) => {
     setAssistantRevealingIndex(null);
     setAssistantLiveText(completed);
@@ -464,7 +458,6 @@ function MainApp() {
 
   const clearAssistantSession = () => {
     assistantTurnGeneration.current += 1;
-    assistantOpenRef.current = false;
     setAssistantOpen(false);
     setAssistantThread([]);
     setAssistantDraft("");
@@ -475,11 +468,11 @@ function MainApp() {
     setAssistantDestinationHint(null);
   };
 
-  const handleCloseAssistant = () => {
-    const shouldPop = releaseAssistantHistory();
-    clearAssistantSession();
-    if (shouldPop) routerNavigate(-1);
-  };
+  const { handleClose: handleCloseAssistant } = usePhoneAssistantHistory({
+    isOpen: assistantOpen && assistantEnabled,
+    isPhone: isPhoneAssistant,
+    onDismiss: clearAssistantSession,
+  });
 
   const handleOpenAssistant = () => {
     setSheet(null);
@@ -494,37 +487,6 @@ function MainApp() {
     }
     setAssistantDestinationHint(null);
   };
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (!assistantOpenRef.current) return;
-      if (!isPhoneAssistant) return;
-      if (!releaseAssistantHistory()) return;
-      clearAssistantSession();
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [isPhoneAssistant]);
-
-  useEffect(() => {
-    if (!assistantOpen) return;
-    if (!isPhoneAssistant) {
-      if (releaseAssistantHistory()) routerNavigate(-1);
-      return;
-    }
-    if (claimAssistantHistory()) {
-      routerNavigate(`${location.pathname}${location.search}`, {
-        state: withAssistantHistoryState(location.state),
-      });
-    }
-  }, [
-    assistantOpen,
-    isPhoneAssistant,
-    location.pathname,
-    location.search,
-    location.state,
-    routerNavigate,
-  ]);
 
   const handleOpenSheet = (next: BottomSheetType) => {
     if (ASSISTANT_CLOSING_SHEETS.has(next.type)) {
@@ -2459,7 +2421,6 @@ function MainApp() {
 
       {assistantOpen && assistantEnabled && isPhoneAssistant && (
         <AssistantMobilePanel
-          onClose={handleCloseAssistant}
           header={
             <AssistantHeader
               isTurnInFlight={assistantBusy}

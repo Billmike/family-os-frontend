@@ -21,6 +21,11 @@ export const releaseAssistantHistory = (): boolean => {
   return true
 }
 
+export const hasAssistantHistoryState = (state: unknown): boolean =>
+  typeof state === 'object'
+  && state !== null
+  && (state as { [ASSISTANT_HISTORY_FLAG]?: unknown })[ASSISTANT_HISTORY_FLAG] === true
+
 export const withAssistantHistoryState = (state: unknown): Record<string, unknown> => ({
   ...(typeof state === 'object' && state !== null ? state as Record<string, unknown> : {}),
   [ASSISTANT_HISTORY_FLAG]: true,

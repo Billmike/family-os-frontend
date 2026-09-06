@@ -492,6 +492,7 @@ function MainApp() {
       const out = await assistantApi.proposeTurn(
         family.id,
         assistantApi.toAssistantMessages(nextThread),
+        assistantDestinationHint,
       );
       if (generation !== assistantTurnGeneration.current) return;
       const assistantIndex = nextThread.length;
@@ -502,6 +503,7 @@ function MainApp() {
           content: out.assistant_text,
           proposal: out.proposal,
           proposalState: out.proposal ? "open" : undefined,
+          expenseList: out.expense_list,
         },
       ]);
       if (prefersReducedMotion() || out.assistant_text.length === 0) {

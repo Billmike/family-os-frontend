@@ -7,6 +7,7 @@ import {
   ExpenseProposalCard,
   FamilyExpenseSuccessCard,
 } from './FamilyExpenseProposalCard'
+import { ExpenseListCard } from './ExpenseListCard'
 
 interface Props {
   messages: AssistantThreadItem[]
@@ -197,6 +198,9 @@ export const AssistantConversation = ({
                     onAdd={input => onAddProposal?.(index, input)}
                     onCancel={() => onCancelProposal?.(index)}
                   />
+                )}
+                {message.expenseList && revealingIndex !== index && (
+                  <ExpenseListCard list={message.expenseList} />
                 )}
               </div>
             </div>

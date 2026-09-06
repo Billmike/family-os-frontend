@@ -123,14 +123,25 @@ export interface AssistantThreadItem {
   proposal?: ExpenseProposal | null
   proposalState?: AssistantProposalState
   savedSummary?: AssistantSavedSummary
+  expenseList?: ExpenseList | null
 }
 
 export const toAssistantMessages = (thread: AssistantThreadItem[]): AssistantMessageIn[] =>
   thread.map(item => ({ role: item.role, content: item.content }))
 
-export function proposeTurn(familyId: string, messages: AssistantMessageIn[]) {
+export function proposeTurn(
+  familyId: string,
+  messages: AssistantMessageIn[],
+  destinationHint?: 'household' | 'personal' | null,
+) {
+  const body: { messages: AssistantMessageIn[]; destination_hint?: 'household' | 'personal' } = {
+    messages,
+  }
+  if (destinationHint === 'household' || destinationHint === 'personal') {
+    body.destination_hint = destinationHint
+  }
   return apiRequest<AssistantTurnOut>(`/api/families/${familyId}/assistant/turns`, {
     method: 'POST',
-    body: { messages },
+    body,
   })
 }

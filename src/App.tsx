@@ -125,6 +125,13 @@ import {
   canSendAssistantTurn,
 } from "./components/assistant/AssistantConversation";
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
+import { AssistantMobilePanel } from "./components/assistant/AssistantMobilePanel";
+import {
+  claimAssistantHistory,
+  releaseAssistantHistory,
+  withAssistantHistoryState,
+} from "./components/assistant/phoneAssistant";
+import { useIsPhoneAssistant } from "./components/assistant/useIsPhoneAssistant";
 import { useAssistantTypewriter } from "./components/assistant/useAssistantTypewriter";
 import * as assistantApi from "./api/assistant";
 import type {
@@ -404,6 +411,9 @@ function MainApp() {
     "household" | "personal" | null
   >(null);
   const assistantTurnGeneration = useRef(0);
+  const assistantOpenRef = useRef(false);
+  const isPhoneAssistant = useIsPhoneAssistant();
+  assistantOpenRef.current = assistantOpen;
   const handleAssistantTypewriterFinish = (completed: string) => {
     setAssistantRevealingIndex(null);
     setAssistantLiveText(completed);
@@ -452,8 +462,9 @@ function MainApp() {
     showToast(msg, "error");
   }
 
-  const handleCloseAssistant = () => {
+  const clearAssistantSession = () => {
     assistantTurnGeneration.current += 1;
+    assistantOpenRef.current = false;
     setAssistantOpen(false);
     setAssistantThread([]);
     setAssistantDraft("");
@@ -462,6 +473,12 @@ function MainApp() {
     setAssistantLiveText("");
     setAssistantSavingIndex(null);
     setAssistantDestinationHint(null);
+  };
+
+  const handleCloseAssistant = () => {
+    const shouldPop = releaseAssistantHistory();
+    clearAssistantSession();
+    if (shouldPop) routerNavigate(-1);
   };
 
   const handleOpenAssistant = () => {
@@ -477,6 +494,37 @@ function MainApp() {
     }
     setAssistantDestinationHint(null);
   };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!assistantOpenRef.current) return;
+      if (!isPhoneAssistant) return;
+      if (!releaseAssistantHistory()) return;
+      clearAssistantSession();
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isPhoneAssistant]);
+
+  useEffect(() => {
+    if (!assistantOpen) return;
+    if (!isPhoneAssistant) {
+      if (releaseAssistantHistory()) routerNavigate(-1);
+      return;
+    }
+    if (claimAssistantHistory()) {
+      routerNavigate(`${location.pathname}${location.search}`, {
+        state: withAssistantHistoryState(location.state),
+      });
+    }
+  }, [
+    assistantOpen,
+    isPhoneAssistant,
+    location.pathname,
+    location.search,
+    location.state,
+    routerNavigate,
+  ]);
 
   const handleOpenSheet = (next: BottomSheetType) => {
     if (ASSISTANT_CLOSING_SHEETS.has(next.type)) {
@@ -1940,7 +1988,12 @@ function MainApp() {
     >
       {isOffline && <OfflineBanner />}
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div
+        style={{ flex: 1, display: "flex", overflow: "hidden" }}
+        {...(assistantOpen && assistantEnabled && isPhoneAssistant
+          ? { inert: true }
+          : {})}
+      >
         <div className="hide-mobile" style={{ alignSelf: "stretch" }}>
           <DesktopSidebar
             screen={screen}
@@ -2141,9 +2194,8 @@ function MainApp() {
           </div>
         </div>
 
-        {assistantOpen && assistantEnabled && (
+        {assistantOpen && assistantEnabled && !isPhoneAssistant && (
           <aside
-            className="hide-mobile"
             role="dialog"
             aria-label="Ask assistant"
             aria-modal="false"
@@ -2405,71 +2457,63 @@ function MainApp() {
         />
       )}
 
-      {assistantOpen && assistantEnabled && (
-        <div className="hide-desktop">
-          <BottomSheet
-            title="Ask assistant"
-            ariaLabel="Ask assistant"
-            compactHandle
-            onClose={handleCloseAssistant}
-            header={
-              <AssistantHeader
-                compact
-                isTurnInFlight={assistantBusy}
-                onClose={handleCloseAssistant}
-              />
+      {assistantOpen && assistantEnabled && isPhoneAssistant && (
+        <AssistantMobilePanel
+          onClose={handleCloseAssistant}
+          header={
+            <AssistantHeader
+              isTurnInFlight={assistantBusy}
+              onClose={handleCloseAssistant}
+            />
+          }
+          footer={
+            <AssistantComposer
+              draft={assistantDraft}
+              isTurnInFlight={assistantBusy}
+              canSend={canSendAssistantTurn(
+                assistantDraft,
+                assistantBusy,
+                assistantThread.length,
+              )}
+              composerId="assistant-composer-mobile"
+              onDraftChange={setAssistantDraft}
+              onSend={() => void handleSendAssistant()}
+            />
+          }
+        >
+          <AssistantConversation
+            messages={assistantThread}
+            draft={assistantDraft}
+            isTurnInFlight={assistantTurnInFlight}
+            revealingIndex={assistantRevealingIndex}
+            revealChars={assistantRevealChars}
+            showComposer={false}
+            today={today}
+            subcategoryGroups={subcategoryGroups}
+            personalAccounts={personalSummary?.accounts ?? []}
+            destinationHint={assistantDestinationHint}
+            lastUsedAccountId={selectedPersonalAccountId}
+            members={members}
+            defaultMemberId={currentUser?.id ?? ""}
+            savingProposalIndex={assistantSavingIndex}
+            onDraftChange={setAssistantDraft}
+            onSend={() => void handleSendAssistant()}
+            onAddProposal={(index, input) =>
+              void handleAddAssistantExpense(index, input)
             }
-            footer={
-              <AssistantComposer
-                draft={assistantDraft}
-                isTurnInFlight={assistantBusy}
-                canSend={canSendAssistantTurn(
-                  assistantDraft,
-                  assistantBusy,
-                  assistantThread.length,
-                )}
-                composerId="assistant-composer-mobile"
-                onDraftChange={setAssistantDraft}
-                onSend={() => void handleSendAssistant()}
-              />
+            onAddTaskProposal={(index, input) =>
+              void handleAddAssistantTask(index, input)
             }
-          >
-            <div style={{ height: "52dvh" }}>
-              <AssistantConversation
-                messages={assistantThread}
-                draft={assistantDraft}
-                isTurnInFlight={assistantTurnInFlight}
-                revealingIndex={assistantRevealingIndex}
-                revealChars={assistantRevealChars}
-                showComposer={false}
-                today={today}
-                subcategoryGroups={subcategoryGroups}
-                personalAccounts={personalSummary?.accounts ?? []}
-                destinationHint={assistantDestinationHint}
-                lastUsedAccountId={selectedPersonalAccountId}
-                members={members}
-                defaultMemberId={currentUser?.id ?? ""}
-                savingProposalIndex={assistantSavingIndex}
-                onDraftChange={setAssistantDraft}
-                onSend={() => void handleSendAssistant()}
-                onAddProposal={(index, input) =>
-                  void handleAddAssistantExpense(index, input)
-                }
-                onAddTaskProposal={(index, input) =>
-                  void handleAddAssistantTask(index, input)
-                }
-                onSelectListRow={handleSelectAssistantListRow}
-                onSaveChange={(index, input) =>
-                  void handleSaveAssistantChange(index, input)
-                }
-                onDeleteChange={(index) =>
-                  void handleDeleteAssistantChange(index)
-                }
-                onCancelProposal={handleCancelAssistantProposal}
-              />
-            </div>
-          </BottomSheet>
-        </div>
+            onSelectListRow={handleSelectAssistantListRow}
+            onSaveChange={(index, input) =>
+              void handleSaveAssistantChange(index, input)
+            }
+            onDeleteChange={(index) =>
+              void handleDeleteAssistantChange(index)
+            }
+            onCancelProposal={handleCancelAssistantProposal}
+          />
+        </AssistantMobilePanel>
       )}
 
       <div

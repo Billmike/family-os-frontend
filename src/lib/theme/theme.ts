@@ -55,6 +55,6 @@ export const applyResolvedTheme = (resolved: ResolvedTheme): void => {
 
   const statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
   if (statusBar) {
-    statusBar.setAttribute('content', isDark ? 'black-translucent' : 'default')
+    statusBar.setAttribute('content', 'black-translucent')
   }
 }

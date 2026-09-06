@@ -4,21 +4,13 @@ import { AssistantMark } from "./AssistantMark";
 
 interface Props {
   isTurnInFlight: boolean;
-  compact?: boolean;
   onClose: () => void;
 }
 
-export const AssistantHeader = ({
-  isTurnInFlight,
-  compact = false,
-  onClose,
-}: Props) => {
+export const AssistantHeader = ({ isTurnInFlight, onClose }: Props) => {
   const handleClose = () => {
     onClose();
   };
-  const markSize = compact ? 24 : 36;
-  const titleSize = compact ? 14 : 16;
-  const statusSize = compact ? 11 : 12;
 
   return (
     <div
@@ -27,43 +19,22 @@ export const AssistantHeader = ({
         flexDirection: "column",
         borderBottom: `1px solid ${t.border}`,
         background: t.surfaceChrome,
-        marginBottom: 12,
       }}
     >
-      {compact && (
-        <div
-          aria-hidden="true"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            paddingTop: 6,
-            paddingBottom: 2,
-          }}
-        >
-          <div
-            style={{
-              width: 36,
-              height: 4,
-              borderRadius: 9999,
-              background: t.border,
-            }}
-          />
-        </div>
-      )}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: compact ? 8 : 12,
-          padding: compact ? "0 6px 4px 12px" : "12px 16px",
+          gap: 12,
+          padding: "12px 16px",
         }}
       >
-        <AssistantMark size={markSize} />
+        <AssistantMark size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
               margin: 0,
-              fontSize: titleSize,
+              fontSize: 16,
               fontWeight: 600,
               color: t.text,
               fontFamily: fonts.ui,
@@ -75,11 +46,11 @@ export const AssistantHeader = ({
           </p>
           <p
             style={{
-              margin: compact ? "2px 0 0" : "4px 0 0",
+              margin: "4px 0 0",
               display: "flex",
               alignItems: "center",
               gap: 5,
-              fontSize: statusSize,
+              fontSize: 12,
               fontWeight: 500,
               color: isTurnInFlight ? t.textSec : t.success,
               fontFamily: fonts.ui,
@@ -89,8 +60,8 @@ export const AssistantHeader = ({
             <span
               aria-hidden="true"
               style={{
-                width: compact ? 6 : 7,
-                height: compact ? 6 : 7,
+                width: 7,
+                height: 7,
                 borderRadius: 9999,
                 background: isTurnInFlight ? t.textTer : t.success,
                 flexShrink: 0,
@@ -111,13 +82,12 @@ export const AssistantHeader = ({
             display: "flex",
             minWidth: 44,
             minHeight: 44,
-            margin: compact ? "-8px 0" : 0,
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 9999,
           }}
         >
-          <X size={compact ? 16 : 18} color={t.textSec} aria-hidden="true" />
+          <X size={18} color={t.textSec} aria-hidden="true" />
         </button>
       </div>
     </div>

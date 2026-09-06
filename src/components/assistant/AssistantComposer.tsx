@@ -45,7 +45,7 @@ export const AssistantComposer = ({
         boxSizing: 'border-box',
         background: t.surfaceChrome,
         borderTop: `1px solid ${t.border}`,
-        padding: '8px 12px calc(8px + env(safe-area-inset-bottom, 0px))',
+        padding: '8px 12px',
       }}
     >
       <label htmlFor={composerId} style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
@@ -74,7 +74,7 @@ export const AssistantComposer = ({
           borderRadius: r.pill,
           padding: '10px 16px',
           fontFamily: fonts.ui,
-          fontSize: 14,
+          fontSize: 16,
           color: t.text,
           background: t.surfaceMuted,
           outline: 'none',

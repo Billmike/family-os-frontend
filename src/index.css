@@ -196,6 +196,7 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--ds-bg);
   color: var(--ds-text-primary);
+  overflow-x: hidden;
 }
 
 .font-display {
@@ -326,6 +327,7 @@ html, body, #root {
 @media (prefers-reduced-motion: reduce) {
   .basket-target.is-pulsing { animation: none; }
   .bottom-sheet-panel { animation: none !important; }
+  .assistant-mobile-panel { animation: none !important; }
   .activity-row-enter .activity-row-motion,
   .activity-row-enter-table { animation: none; }
   .activity-row-shell,

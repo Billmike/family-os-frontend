@@ -3,10 +3,10 @@
   <head>
     <!-- figma:head-start -->
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#F3EDE4" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="FamilyOS" />
     <script>
       (function () {
@@ -21,7 +21,7 @@
           var themeColor = document.querySelector('meta[name="theme-color"]')
           if (themeColor) themeColor.setAttribute('content', dark ? '#16140F' : '#F3EDE4')
           var statusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-          if (statusBar) statusBar.setAttribute('content', dark ? 'black-translucent' : 'default')
+          if (statusBar) statusBar.setAttribute('content', 'black-translucent')
         } catch (e) {}
       })()
     </script>

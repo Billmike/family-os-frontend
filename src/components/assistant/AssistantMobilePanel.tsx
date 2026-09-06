@@ -11,6 +11,12 @@ interface Props {
   onClose: () => void
 }
 
+const PHONE_OPEN_CLASS = 'assistant-phone-open'
+
+const handlePinDocument = () => {
+  window.scrollTo(0, 0)
+}
+
 export const AssistantMobilePanel = ({
   header,
   footer,
@@ -35,22 +41,38 @@ export const AssistantMobilePanel = ({
 
   useEffect(() => {
     const html = document.documentElement
-    const { body } = document
-    const previousHtmlOverflow = html.style.overflow
-    const previousBodyOverflow = body.style.overflow
-    const previousHtmlOverscroll = html.style.overscrollBehavior
-    const previousBodyOverscroll = body.style.overscrollBehavior
-    html.style.overflow = 'hidden'
-    body.style.overflow = 'hidden'
-    html.style.overscrollBehavior = 'none'
-    body.style.overscrollBehavior = 'none'
+    const viewport = window.visualViewport
+    const scrollX = window.scrollX
+    const scrollY = window.scrollY
+    html.classList.add(PHONE_OPEN_CLASS)
+    handlePinDocument()
+
+    const handleFocusIn = () => {
+      handlePinDocument()
+      window.requestAnimationFrame(handlePinDocument)
+    }
+
+    document.addEventListener('focusin', handleFocusIn)
+    viewport?.addEventListener('resize', handlePinDocument)
+    viewport?.addEventListener('scroll', handlePinDocument)
+    window.addEventListener('scroll', handlePinDocument, { passive: true })
     return () => {
-      html.style.overflow = previousHtmlOverflow
-      body.style.overflow = previousBodyOverflow
-      html.style.overscrollBehavior = previousHtmlOverscroll
-      body.style.overscrollBehavior = previousBodyOverscroll
+      html.classList.remove(PHONE_OPEN_CLASS)
+      html.style.removeProperty('--assistant-vv-top')
+      html.style.removeProperty('--assistant-vv-height')
+      document.removeEventListener('focusin', handleFocusIn)
+      viewport?.removeEventListener('resize', handlePinDocument)
+      viewport?.removeEventListener('scroll', handlePinDocument)
+      window.removeEventListener('scroll', handlePinDocument)
+      window.scrollTo(scrollX, scrollY)
     }
   }, [])
+
+  useEffect(() => {
+    const html = document.documentElement
+    html.style.setProperty('--assistant-vv-top', `${box.offsetTop}px`)
+    html.style.setProperty('--assistant-vv-height', `${box.height}px`)
+  }, [box.offsetTop, box.height])
 
   return (
     <div
@@ -62,17 +84,19 @@ export const AssistantMobilePanel = ({
       className="assistant-mobile-panel"
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
+        top: box.offsetTop,
+        left: box.offsetLeft,
         width: box.width,
         height: box.height,
-        transform: `translate(${box.offsetLeft}px, ${box.offsetTop}px)`,
+        maxWidth: '100%',
         zIndex: 250,
         display: 'flex',
         flexDirection: 'column',
         background: t.surfaceElev,
         overflow: 'hidden',
+        overflowX: 'hidden',
         overscrollBehavior: 'none',
+        touchAction: 'none',
         boxSizing: 'border-box',
         outline: 'none',
         animation: reduceMotion ? 'none' : 'fadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
@@ -95,9 +119,13 @@ export const AssistantMobilePanel = ({
           minHeight: 0,
           minWidth: 0,
           width: '100%',
+          maxWidth: '100%',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          overflowX: 'hidden',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
           paddingLeft: 'env(safe-area-inset-left, 0px)',
           paddingRight: 'env(safe-area-inset-right, 0px)',
           boxSizing: 'border-box',
@@ -108,6 +136,9 @@ export const AssistantMobilePanel = ({
       <div
         style={{
           flexShrink: 0,
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           paddingBottom: box.keyboardOpen ? 0 : 'env(safe-area-inset-bottom, 0px)',
           paddingLeft: 'env(safe-area-inset-left, 0px)',
           paddingRight: 'env(safe-area-inset-right, 0px)',

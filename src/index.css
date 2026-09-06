@@ -199,6 +199,25 @@ html, body, #root {
   overflow-x: hidden;
 }
 
+html.assistant-phone-open,
+html.assistant-phone-open body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+html.assistant-phone-open body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+}
+html.assistant-phone-open .app-toast {
+  bottom: auto;
+  top: calc(var(--assistant-vv-top, 0px) + var(--assistant-vv-height, 100dvh) - 80px);
+  transform: translateX(-50%);
+  animation: toastIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .font-display {
   font-family: var(--ds-font-display);
 }

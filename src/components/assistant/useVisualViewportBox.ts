@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export type VisualViewportBox = {
   offsetTop: number
@@ -9,8 +9,16 @@ export type VisualViewportBox = {
 }
 
 const KEYBOARD_HEIGHT_PX = 80
+const ORIENTATION_SETTLE_MS = 120
 
-const readBox = (): VisualViewportBox => {
+type ViewportMetrics = {
+  offsetTop: number
+  offsetLeft: number
+  width: number
+  height: number
+}
+
+const readMetrics = (): ViewportMetrics => {
   const viewport = window.visualViewport
   if (!viewport) {
     return {
@@ -18,7 +26,6 @@ const readBox = (): VisualViewportBox => {
       offsetLeft: 0,
       width: window.innerWidth,
       height: window.innerHeight,
-      keyboardOpen: false,
     }
   }
   return {
@@ -26,24 +33,51 @@ const readBox = (): VisualViewportBox => {
     offsetLeft: viewport.offsetLeft,
     width: viewport.width,
     height: viewport.height,
-    keyboardOpen: window.innerHeight - viewport.height > KEYBOARD_HEIGHT_PX,
   }
 }
 
+const layoutHeightOf = (metrics: ViewportMetrics): number =>
+  Math.max(window.innerHeight, metrics.height)
+
+const toVisualViewportBox = (metrics: ViewportMetrics, layoutHeight: number): VisualViewportBox => ({
+  ...metrics,
+  keyboardOpen: layoutHeight - metrics.height > KEYBOARD_HEIGHT_PX,
+})
+
 export const useVisualViewportBox = (): VisualViewportBox => {
-  const [box, setBox] = useState(readBox)
+  const layoutHeightRef = useRef(layoutHeightOf(readMetrics()))
+  const [box, setBox] = useState(() => toVisualViewportBox(readMetrics(), layoutHeightRef.current))
 
   useEffect(() => {
     const viewport = window.visualViewport
-    const handleChange = () => setBox(readBox())
+    const syncLayoutHeight = () => {
+      layoutHeightRef.current = Math.max(layoutHeightRef.current, layoutHeightOf(readMetrics()))
+    }
+
+    const handleChange = () => {
+      const metrics = readMetrics()
+      syncLayoutHeight()
+      setBox(toVisualViewportBox(metrics, layoutHeightRef.current))
+    }
+
+    const handleOrientationChange = () => {
+      layoutHeightRef.current = 0
+      window.setTimeout(() => {
+        layoutHeightRef.current = layoutHeightOf(readMetrics())
+        handleChange()
+      }, ORIENTATION_SETTLE_MS)
+    }
+
     handleChange()
     viewport?.addEventListener('resize', handleChange)
     viewport?.addEventListener('scroll', handleChange)
     window.addEventListener('resize', handleChange)
+    window.addEventListener('orientationchange', handleOrientationChange)
     return () => {
       viewport?.removeEventListener('resize', handleChange)
       viewport?.removeEventListener('scroll', handleChange)
       window.removeEventListener('resize', handleChange)
+      window.removeEventListener('orientationchange', handleOrientationChange)
     }
   }, [])
 

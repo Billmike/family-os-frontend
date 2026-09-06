@@ -42,6 +42,8 @@ export const AssistantComposer = ({
         gap: 8,
         alignItems: 'center',
         width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
         boxSizing: 'border-box',
         background: t.surfaceChrome,
         borderTop: `1px solid ${t.border}`,
@@ -69,6 +71,8 @@ export const AssistantComposer = ({
         placeholder="Ask about your household..."
         style={{
           flex: 1,
+          minWidth: 0,
+          maxWidth: '100%',
           resize: 'none',
           border: `1px solid ${t.border}`,
           borderRadius: r.pill,
@@ -81,6 +85,7 @@ export const AssistantComposer = ({
           minHeight: 44,
           lineHeight: 1.4,
           boxShadow: 'none',
+          touchAction: 'manipulation',
         }}
       />
       <button

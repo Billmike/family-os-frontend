@@ -399,7 +399,7 @@ export function Toast({ message, type = 'success', onClose }: {
 }) {
   const iconStyle = { width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
   return (
-    <div style={{
+    <div className="app-toast" style={{
       position: 'fixed', bottom: 96, left: '50%', transform: 'translateX(-50%)',
       display: 'flex', alignItems: 'center', gap: 10, zIndex: 300,
       padding: '12px 16px', borderRadius: r.md,

@@ -117,12 +117,23 @@ export type AssistantExpenseSubmit =
       occurredAt: string
     }
 
+export interface AssistantTaskSubmit {
+  title: string
+  assigneeId: string
+  due: 'today' | 'tomorrow'
+  priority: 'low' | 'medium' | 'high'
+  category: string
+  recurring: boolean
+}
+
 export interface AssistantThreadItem {
   role: 'user' | 'assistant'
   content: string
   proposal?: ExpenseProposal | null
+  taskProposal?: TaskProposal | null
   proposalState?: AssistantProposalState
   savedSummary?: AssistantSavedSummary
+  savedTaskTitle?: string
   expenseList?: ExpenseList | null
 }
 

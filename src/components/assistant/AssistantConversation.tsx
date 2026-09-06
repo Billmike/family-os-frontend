@@ -1,6 +1,6 @@
 import { fonts, t } from '../../ui'
-import type { AssistantExpenseSubmit, AssistantThreadItem } from '../../api/assistant'
-import type { BudgetSubcategoryGroup, PersonalExpenseAccount } from '../../types'
+import type { AssistantExpenseSubmit, AssistantTaskSubmit, AssistantThreadItem } from '../../api/assistant'
+import type { BudgetSubcategoryGroup, Member, PersonalExpenseAccount } from '../../types'
 import { AssistantComposer } from './AssistantComposer'
 import { AssistantMark } from './AssistantMark'
 import {
@@ -8,6 +8,7 @@ import {
   FamilyExpenseSuccessCard,
 } from './FamilyExpenseProposalCard'
 import { ExpenseListCard } from './ExpenseListCard'
+import { TaskProposalCard, TaskProposalSuccessCard } from './TaskProposalCard'
 
 interface Props {
   messages: AssistantThreadItem[]
@@ -22,10 +23,13 @@ interface Props {
   personalAccounts?: PersonalExpenseAccount[]
   destinationHint?: 'household' | 'personal' | null
   lastUsedAccountId?: string | null
+  members?: Member[]
+  defaultMemberId?: string
   savingProposalIndex?: number | null
   onDraftChange: (value: string) => void
   onSend: () => void
   onAddProposal?: (index: number, input: AssistantExpenseSubmit) => void
+  onAddTaskProposal?: (index: number, input: AssistantTaskSubmit) => void
   onCancelProposal?: (index: number) => void
 }
 
@@ -51,10 +55,13 @@ export const AssistantConversation = ({
   personalAccounts = [],
   destinationHint = null,
   lastUsedAccountId = null,
+  members = [],
+  defaultMemberId = '',
   savingProposalIndex = null,
   onDraftChange,
   onSend,
   onAddProposal,
+  onAddTaskProposal,
   onCancelProposal,
 }: Props) => {
   const isBusy = isTurnInFlight || revealingIndex !== null
@@ -183,6 +190,9 @@ export const AssistantConversation = ({
                     label={message.savedSummary.label}
                   />
                 )}
+                {message.proposalState === 'saved' && message.savedTaskTitle && (
+                  <TaskProposalSuccessCard title={message.savedTaskTitle} />
+                )}
                 {message.proposal
                   && message.proposalState !== 'cancelled'
                   && message.proposalState !== 'saved'
@@ -196,6 +206,19 @@ export const AssistantConversation = ({
                     lastUsedAccountId={lastUsedAccountId}
                     isSaving={savingProposalIndex === index}
                     onAdd={input => onAddProposal?.(index, input)}
+                    onCancel={() => onCancelProposal?.(index)}
+                  />
+                )}
+                {message.taskProposal
+                  && message.proposalState !== 'cancelled'
+                  && message.proposalState !== 'saved'
+                  && revealingIndex !== index && (
+                  <TaskProposalCard
+                    proposal={message.taskProposal}
+                    members={members}
+                    defaultMemberId={defaultMemberId}
+                    isSaving={savingProposalIndex === index}
+                    onAdd={input => onAddTaskProposal?.(index, input)}
                     onCancel={() => onCancelProposal?.(index)}
                   />
                 )}

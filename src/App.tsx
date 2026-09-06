@@ -127,16 +127,17 @@ import {
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
 import { useAssistantTypewriter } from "./components/assistant/useAssistantTypewriter";
 import * as assistantApi from "./api/assistant";
-import type { AssistantExpenseSubmit, AssistantThreadItem } from "./api/assistant";
+import type { AssistantExpenseSubmit, AssistantTaskSubmit, AssistantThreadItem } from "./api/assistant";
 import { prefersReducedMotion } from "./lib/motion";
 
-const EXPENSE_WRITE_SHEETS = new Set<BottomSheetType["type"]>([
+const ASSISTANT_CLOSING_SHEETS = new Set<BottomSheetType["type"]>([
   "addExpense",
   "chooseExpenseEntry",
   "scanReceipt",
   "addPersonalExpense",
   "editExpense",
   "editPersonalExpense",
+  "addTask",
 ]);
 
 const BUDGET_TAB_SCREENS: Record<BudgetTab, Screen> = {
@@ -471,7 +472,7 @@ function MainApp() {
   };
 
   const handleOpenSheet = (next: BottomSheetType) => {
-    if (EXPENSE_WRITE_SHEETS.has(next.type)) {
+    if (ASSISTANT_CLOSING_SHEETS.has(next.type)) {
       handleCloseAssistant();
     }
     setSheet(next);
@@ -502,7 +503,8 @@ function MainApp() {
           role: "assistant",
           content: out.assistant_text,
           proposal: out.proposal,
-          proposalState: out.proposal ? "open" : undefined,
+          taskProposal: out.task_proposal,
+          proposalState: out.proposal || out.task_proposal ? "open" : undefined,
           expenseList: out.expense_list,
         },
       ]);
@@ -579,11 +581,53 @@ function MainApp() {
     }
   };
 
+  const handleAddAssistantTask = async (
+    index: number,
+    input: AssistantTaskSubmit,
+  ) => {
+    if (assistantSavingIndex !== null) return;
+    setAssistantSavingIndex(index);
+    try {
+      await persistTask({
+        title: input.title,
+        assigneeId: input.assigneeId,
+        dueDate: input.due,
+        priority: input.priority,
+        recurring: input.recurring,
+        category: input.category,
+        description: null,
+        dueAt: null,
+      });
+      setAssistantThread((current) => [
+        ...current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                proposalState: "saved" as const,
+                savedTaskTitle: input.title,
+              }
+            : item,
+        ),
+        { role: "assistant", content: "Add another task?" },
+      ]);
+      setAssistantLiveText("Add another task?");
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setAssistantSavingIndex(null);
+    }
+  };
+
   const handleCancelAssistantProposal = (index: number) => {
     setAssistantThread((current) =>
       current.map((item, itemIndex) =>
         itemIndex === index
-          ? { ...item, proposal: null, proposalState: "cancelled" }
+          ? {
+              ...item,
+              proposal: null,
+              taskProposal: null,
+              proposalState: "cancelled",
+            }
           : item,
       ),
     );
@@ -941,24 +985,29 @@ function MainApp() {
     }
   }
 
+  async function persistTask(task: Omit<Task, "id" | "completed">) {
+    const created = await tasksApi.createTask(family.id, {
+      title: task.title,
+      category: task.category,
+      priority: priorityToApi(task.priority),
+      assignee_ids: task.assigneeId ? [task.assigneeId] : [],
+      due_at: dueDateToIso(task.dueDate, today, timeZone),
+      recurrence_rule: task.recurring ? "weekly" : null,
+    });
+    setTasks((ts) => {
+      const ui = toTask(created, today, timeZone);
+      // Realtime may already have applied task.created; avoid a duplicate row.
+      if (ts.some((t) => t.id === ui.id)) {
+        return ts.map((t) => (t.id === ui.id ? ui : t));
+      }
+      return [ui, ...ts];
+    });
+    return created;
+  }
+
   async function addTask(task: Omit<Task, "id" | "completed">) {
     try {
-      const created = await tasksApi.createTask(family.id, {
-        title: task.title,
-        category: task.category,
-        priority: priorityToApi(task.priority),
-        assignee_ids: task.assigneeId ? [task.assigneeId] : [],
-        due_at: dueDateToIso(task.dueDate, today, timeZone),
-        recurrence_rule: task.recurring ? "weekly" : null,
-      });
-      setTasks((ts) => {
-        const ui = toTask(created, today, timeZone);
-        // Realtime may already have applied task.created; avoid a duplicate row.
-        if (ts.some((t) => t.id === ui.id)) {
-          return ts.map((t) => (t.id === ui.id ? ui : t));
-        }
-        return [ui, ...ts];
-      });
+      await persistTask(task);
       setSheet(null);
       showToast("Task created");
     } catch (e) {
@@ -1986,11 +2035,16 @@ function MainApp() {
                 personalAccounts={personalSummary?.accounts ?? []}
                 destinationHint={assistantDestinationHint}
                 lastUsedAccountId={selectedPersonalAccountId}
+                members={members}
+                defaultMemberId={currentUser?.id ?? ""}
                 savingProposalIndex={assistantSavingIndex}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}
                 onAddProposal={(index, input) =>
                   void handleAddAssistantExpense(index, input)
+                }
+                onAddTaskProposal={(index, input) =>
+                  void handleAddAssistantTask(index, input)
                 }
                 onCancelProposal={handleCancelAssistantProposal}
               />
@@ -2245,11 +2299,16 @@ function MainApp() {
                 personalAccounts={personalSummary?.accounts ?? []}
                 destinationHint={assistantDestinationHint}
                 lastUsedAccountId={selectedPersonalAccountId}
+                members={members}
+                defaultMemberId={currentUser?.id ?? ""}
                 savingProposalIndex={assistantSavingIndex}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}
                 onAddProposal={(index, input) =>
                   void handleAddAssistantExpense(index, input)
+                }
+                onAddTaskProposal={(index, input) =>
+                  void handleAddAssistantTask(index, input)
                 }
                 onCancelProposal={handleCancelAssistantProposal}
               />

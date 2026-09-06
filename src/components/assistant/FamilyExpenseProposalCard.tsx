@@ -1,11 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { Check } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import type { AssistantExpenseSubmit, ExpenseProposal } from '../../api/assistant'
 import { dateInputToIso, formatMoney } from '../../api/adapters'
 import type { BudgetSubcategoryGroup, PersonalExpenseAccount } from '../../types'
 import { PERSONAL_EXPENSE_CATEGORIES } from '../../types'
 import { fonts, r, t } from '../../ui'
 import { titleCaseMerchant } from './titleCaseMerchant'
+import { ProposalField, proposalFieldInputStyle } from './ProposalField'
 
 type DestinationChoice = 'household' | 'personal'
 
@@ -223,7 +223,7 @@ export const ExpenseProposalCard = ({
             required
             value={destination}
             onChange={event => handleDestinationChange(event.target.value)}
-            style={{ ...fieldInputStyle, cursor: 'pointer' }}
+            style={{ ...proposalFieldInputStyle, cursor: 'pointer' }}
           >
             <option value="">Choose household or personal</option>
             <option value="household">Household</option>
@@ -244,7 +244,7 @@ export const ExpenseProposalCard = ({
           value={amount}
           onChange={event => setAmount(event.target.value)}
           placeholder="0.00"
-          style={fieldInputStyle}
+          style={proposalFieldInputStyle}
         />
       </ProposalField>
       {isHousehold && (
@@ -258,7 +258,7 @@ export const ExpenseProposalCard = ({
             aria-label="Subcategory"
             value={subcategoryId}
             onChange={event => setSubcategoryId(event.target.value)}
-            style={{ ...fieldInputStyle, cursor: 'pointer' }}
+            style={{ ...proposalFieldInputStyle, cursor: 'pointer' }}
           >
             <option value="">Choose a subcategory</option>
             {subcategoryGroups.map(group => (
@@ -283,7 +283,7 @@ export const ExpenseProposalCard = ({
               aria-label="Category"
               value={category}
               onChange={event => setCategory(event.target.value)}
-              style={{ ...fieldInputStyle, cursor: 'pointer' }}
+              style={{ ...proposalFieldInputStyle, cursor: 'pointer' }}
             >
               <option value="">Choose a category</option>
               {PERSONAL_EXPENSE_CATEGORIES.map(item => (
@@ -306,7 +306,7 @@ export const ExpenseProposalCard = ({
               aria-label="Personal account"
               value={accountId}
               onChange={event => setAccountId(event.target.value)}
-              style={{ ...fieldInputStyle, cursor: 'pointer' }}
+              style={{ ...proposalFieldInputStyle, cursor: 'pointer' }}
             >
               <option value="">Choose a personal account</option>
               {personalAccounts.map(account => (
@@ -329,7 +329,7 @@ export const ExpenseProposalCard = ({
           onChange={event => setMerchant(event.target.value)}
           onBlur={handleMerchantBlur}
           placeholder="Optional"
-          style={fieldInputStyle}
+          style={proposalFieldInputStyle}
         />
       </ProposalField>
       <ProposalField
@@ -344,7 +344,7 @@ export const ExpenseProposalCard = ({
           value={note}
           onChange={event => setNote(event.target.value)}
           placeholder="Optional"
-          style={fieldInputStyle}
+          style={proposalFieldInputStyle}
         />
       </ProposalField>
       <ProposalField
@@ -358,7 +358,7 @@ export const ExpenseProposalCard = ({
           aria-label="Date"
           value={date}
           onChange={event => setDate(event.target.value)}
-          style={fieldInputStyle}
+          style={proposalFieldInputStyle}
         />
       </ProposalField>
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
@@ -436,71 +436,5 @@ export const FamilyExpenseSuccessCard = ({
         {amountLabel} · {title}
       </p>
     </div>
-  )
-}
-
-const fieldInputStyle = {
-  width: '100%',
-  minHeight: 40,
-  padding: '0 10px',
-  borderRadius: r.md,
-  border: `1px solid ${t.borderStrong}`,
-  background: t.surface,
-  color: t.text,
-  fontSize: 14,
-  fontFamily: fonts.ui,
-  outline: 'none',
-  boxSizing: 'border-box' as const,
-}
-
-const ProposalField = ({
-  label,
-  confirmed,
-  confirmedText,
-  onEdit,
-  children,
-}: {
-  label: string
-  confirmed: boolean
-  confirmedText: string
-  onEdit: () => void
-  children: ReactNode
-}) => {
-  if (confirmed) {
-    return (
-      <button
-        type="button"
-        onClick={onEdit}
-        aria-label={`Edit ${label}, ${confirmedText}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          width: '100%',
-          minHeight: 40,
-          padding: '8px 10px',
-          borderRadius: r.md,
-          border: `1px solid ${t.border}`,
-          background: t.successSub,
-          color: t.text,
-          fontFamily: fonts.ui,
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
-      >
-        <span>
-          <span style={{ display: 'block', fontSize: 11, color: t.textSec, marginBottom: 2 }}>{label}</span>
-          <span style={{ fontSize: 14, fontWeight: 500 }}>{confirmedText}</span>
-        </span>
-        <Check size={16} color={t.success} aria-hidden="true" />
-      </button>
-    )
-  }
-  return (
-    <label style={{ display: 'block' }}>
-      <span style={{ display: 'block', fontSize: 11, color: t.textSec, marginBottom: 4 }}>{label}</span>
-      {children}
-    </label>
   )
 }

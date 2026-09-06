@@ -1,5 +1,11 @@
 import { fonts, t } from '../../ui'
-import type { AssistantExpenseSubmit, AssistantTaskSubmit, AssistantThreadItem } from '../../api/assistant'
+import type {
+  AssistantExpenseChangeSubmit,
+  AssistantExpenseSubmit,
+  AssistantTaskSubmit,
+  AssistantThreadItem,
+  ExpenseListRow,
+} from '../../api/assistant'
 import type { BudgetSubcategoryGroup, Member, PersonalExpenseAccount } from '../../types'
 import { AssistantComposer } from './AssistantComposer'
 import { AssistantMark } from './AssistantMark'
@@ -7,6 +13,10 @@ import {
   ExpenseProposalCard,
   FamilyExpenseSuccessCard,
 } from './FamilyExpenseProposalCard'
+import {
+  ExpenseChangeProposalCard,
+  ExpenseChangeSuccessCard,
+} from './ExpenseChangeProposalCard'
 import { ExpenseListCard } from './ExpenseListCard'
 import { TaskProposalCard, TaskProposalSuccessCard } from './TaskProposalCard'
 
@@ -30,6 +40,9 @@ interface Props {
   onSend: () => void
   onAddProposal?: (index: number, input: AssistantExpenseSubmit) => void
   onAddTaskProposal?: (index: number, input: AssistantTaskSubmit) => void
+  onSelectListRow?: (index: number, row: ExpenseListRow) => void
+  onSaveChange?: (index: number, input: AssistantExpenseChangeSubmit) => void
+  onDeleteChange?: (index: number) => void
   onCancelProposal?: (index: number) => void
 }
 
@@ -62,6 +75,9 @@ export const AssistantConversation = ({
   onSend,
   onAddProposal,
   onAddTaskProposal,
+  onSelectListRow,
+  onSaveChange,
+  onDeleteChange,
   onCancelProposal,
 }: Props) => {
   const isBusy = isTurnInFlight || revealingIndex !== null
@@ -223,7 +239,32 @@ export const AssistantConversation = ({
                   />
                 )}
                 {message.expenseList && revealingIndex !== index && (
-                  <ExpenseListCard list={message.expenseList} />
+                  <ExpenseListCard
+                    list={message.expenseList}
+                    onSelectRow={row => onSelectListRow?.(index, row)}
+                  />
+                )}
+                {message.changeOutcome && revealingIndex !== index && (
+                  <ExpenseChangeSuccessCard
+                    action={message.changeOutcome.action}
+                    amount={message.changeOutcome.amount}
+                    label={message.changeOutcome.label}
+                    currency={message.expenseList?.currency}
+                  />
+                )}
+                {message.changeProposal
+                  && !message.changeOutcome
+                  && revealingIndex !== index && (
+                  <ExpenseChangeProposalCard
+                    key={message.changeProposal.expense_id}
+                    proposal={message.changeProposal}
+                    subcategoryGroups={subcategoryGroups}
+                    currency={message.expenseList?.currency}
+                    isSaving={savingProposalIndex === index}
+                    onSave={input => onSaveChange?.(index, input)}
+                    onDelete={() => onDeleteChange?.(index)}
+                    onCancel={() => onCancelProposal?.(index)}
+                  />
                 )}
               </div>
             </div>

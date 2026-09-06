@@ -4,6 +4,7 @@ import { fonts, t } from '../../ui'
 
 interface Props {
   list: ExpenseList
+  onSelectRow?: (row: ExpenseListRow) => void
 }
 
 const formatListDate = (occurredOn: string) => {
@@ -25,10 +26,15 @@ const windowLabel = (list: ExpenseList) => {
   return list.period_label ? `Household · ${list.period_label}` : 'Household'
 }
 
-export const ExpenseListCard = ({ list }: Props) => {
+export const ExpenseListCard = ({ list, onSelectRow }: Props) => {
   const totalLabel = formatMoney(Number.parseFloat(list.total) || 0, list.currency)
   const heading = `${list.count} · ${totalLabel}`
   const label = `${windowLabel(list)}, ${heading}`
+
+  const handleSelectRow = (row: ExpenseListRow) => {
+    if (!row.writable) return
+    onSelectRow?.(row)
+  }
 
   return (
     <div
@@ -64,42 +70,60 @@ export const ExpenseListCard = ({ list }: Props) => {
             overflowY: 'auto',
           }}
         >
-          {list.rows.map((row, index) => (
-            <li
-              key={row.id}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: 12,
-                padding: '10px 0',
-                borderTop: index === 0 ? 'none' : `1px solid ${t.border}`,
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: t.text }}>
-                  {rowTitle(row)}
-                </div>
-                <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
-                  {formatListDate(row.occurred_on)}
-                  {row.category_or_subcategory_label
-                    ? ` · ${row.category_or_subcategory_label}`
-                    : ''}
-                </div>
-              </div>
-              <span
+          {list.rows.map((row, index) => {
+            const title = rowTitle(row) || 'Expense'
+            return (
+              <li
+                key={row.id}
                 style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: t.text,
-                  fontVariantNumeric: 'tabular-nums',
-                  flexShrink: 0,
+                  borderTop: index === 0 ? 'none' : `1px solid ${t.border}`,
                 }}
               >
-                {formatMoney(Number.parseFloat(row.amount) || 0, list.currency)}
-              </span>
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => handleSelectRow(row)}
+                  disabled={!row.writable}
+                  aria-label={row.writable ? `Change ${title}` : title}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    width: '100%',
+                    padding: '10px 0',
+                    border: 'none',
+                    background: 'none',
+                    cursor: row.writable ? 'pointer' : 'default',
+                    textAlign: 'left',
+                    fontFamily: fonts.ui,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: t.text }}>
+                      {rowTitle(row)}
+                    </div>
+                    <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
+                      {formatListDate(row.occurred_on)}
+                      {row.category_or_subcategory_label
+                        ? ` · ${row.category_or_subcategory_label}`
+                        : ''}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: t.text,
+                      fontVariantNumeric: 'tabular-nums',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {formatMoney(Number.parseFloat(row.amount) || 0, list.currency)}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

@@ -127,8 +127,15 @@ import {
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
 import { useAssistantTypewriter } from "./components/assistant/useAssistantTypewriter";
 import * as assistantApi from "./api/assistant";
-import type { AssistantExpenseSubmit, AssistantTaskSubmit, AssistantThreadItem } from "./api/assistant";
+import type {
+  AssistantExpenseChangeSubmit,
+  AssistantExpenseSubmit,
+  AssistantTaskSubmit,
+  AssistantThreadItem,
+  ExpenseListRow,
+} from "./api/assistant";
 import { prefersReducedMotion } from "./lib/motion";
+import { changeProposalFromListRow } from "./components/assistant/changeProposalFromListRow";
 
 const ASSISTANT_CLOSING_SHEETS = new Set<BottomSheetType["type"]>([
   "addExpense",
@@ -620,17 +627,150 @@ function MainApp() {
 
   const handleCancelAssistantProposal = (index: number) => {
     setAssistantThread((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index
-          ? {
-              ...item,
-              proposal: null,
-              taskProposal: null,
-              proposalState: "cancelled",
-            }
-          : item,
-      ),
+      current.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+        if (item.changeProposal) {
+          return {
+            ...item,
+            changeProposal: null,
+          };
+        }
+        return {
+          ...item,
+          proposal: null,
+          taskProposal: null,
+          proposalState: "cancelled" as const,
+        };
+      }),
     );
+  };
+
+  const handleSelectAssistantListRow = (index: number, row: ExpenseListRow) => {
+    if (assistantSavingIndex !== null) return;
+    setAssistantThread((current) => {
+      const list = current[index]?.expenseList;
+      if (!list) return current;
+      const proposal = changeProposalFromListRow(list, row);
+      if (!proposal) return current;
+      return current.map((item, itemIndex) => {
+        if (itemIndex === index) {
+          return {
+            ...item,
+            changeProposal: proposal,
+            changeOutcome: undefined,
+            proposal: null,
+            taskProposal: null,
+          };
+        }
+        if (item.changeProposal) {
+          return { ...item, changeProposal: null };
+        }
+        if (
+          item.proposalState === "open" &&
+          (item.proposal || item.taskProposal)
+        ) {
+          return {
+            ...item,
+            proposal: null,
+            taskProposal: null,
+            proposalState: "cancelled" as const,
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  const handleSaveAssistantChange = async (
+    index: number,
+    input: AssistantExpenseChangeSubmit,
+  ) => {
+    if (assistantSavingIndex !== null) return;
+    setAssistantSavingIndex(index);
+    try {
+      const label =
+        input.destination === "personal"
+          ? input.category
+          : subcategoryGroups
+              .flatMap((group) => group.subcategories)
+              .find((sub) => sub.id === input.subcategoryId)?.name ??
+            "Expense";
+      if (input.destination === "personal") {
+        await personalExpensesApi.updatePersonalExpense(input.expenseId, {
+          amount: input.amount,
+          category: input.category,
+          merchant: input.merchant,
+          note: input.note,
+          occurred_at: input.occurredAt,
+        });
+        await refreshPersonalSummary(input.accountId);
+      } else {
+        await expensesApi.updateExpense(input.expenseId, {
+          amount: input.amount,
+          subcategory_id: input.subcategoryId,
+          merchant: input.merchant,
+          note: input.note,
+          occurred_at: input.occurredAt,
+        });
+        void refreshSpend();
+        void refreshBudgets();
+      }
+      setAssistantThread((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                changeProposal: null,
+                changeOutcome: {
+                  action: "saved" as const,
+                  amount: String(input.amount),
+                  label,
+                },
+              }
+            : item,
+        ),
+      );
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setAssistantSavingIndex(null);
+    }
+  };
+
+  const handleDeleteAssistantChange = async (index: number) => {
+    if (assistantSavingIndex !== null) return;
+    const proposal = assistantThread[index]?.changeProposal;
+    if (!proposal) return;
+    setAssistantSavingIndex(index);
+    try {
+      if (proposal.destination === "personal") {
+        await personalExpensesApi.deletePersonalExpense(proposal.expense_id);
+        await refreshPersonalSummary(proposal.account_id ?? undefined);
+      } else {
+        await expensesApi.deleteExpense(proposal.expense_id);
+        void refreshSpend();
+        void refreshBudgets();
+      }
+      setAssistantThread((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                changeProposal: null,
+                changeOutcome: {
+                  action: "deleted" as const,
+                  amount: proposal.amount ?? "",
+                  label: proposal.merchant || proposal.amount || "expense",
+                },
+              }
+            : item,
+        ),
+      );
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setAssistantSavingIndex(null);
+    }
   };
 
   const loadAll = useCallback(async () => {
@@ -2046,6 +2186,13 @@ function MainApp() {
                 onAddTaskProposal={(index, input) =>
                   void handleAddAssistantTask(index, input)
                 }
+                onSelectListRow={handleSelectAssistantListRow}
+                onSaveChange={(index, input) =>
+                  void handleSaveAssistantChange(index, input)
+                }
+                onDeleteChange={(index) =>
+                  void handleDeleteAssistantChange(index)
+                }
                 onCancelProposal={handleCancelAssistantProposal}
               />
             </div>
@@ -2309,6 +2456,13 @@ function MainApp() {
                 }
                 onAddTaskProposal={(index, input) =>
                   void handleAddAssistantTask(index, input)
+                }
+                onSelectListRow={handleSelectAssistantListRow}
+                onSaveChange={(index, input) =>
+                  void handleSaveAssistantChange(index, input)
+                }
+                onDeleteChange={(index) =>
+                  void handleDeleteAssistantChange(index)
                 }
                 onCancelProposal={handleCancelAssistantProposal}
               />

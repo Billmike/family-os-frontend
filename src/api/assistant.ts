@@ -47,6 +47,8 @@ export interface ExpenseListRow {
   category_or_subcategory_label: string | null
   source_type: string
   writable: boolean
+  subcategory_id: string | null
+  note: string | null
 }
 
 export interface ExpenseList {
@@ -126,6 +128,33 @@ export interface AssistantTaskSubmit {
   recurring: boolean
 }
 
+export type AssistantExpenseChangeSubmit =
+  | {
+      destination: 'household'
+      expenseId: string
+      amount: number
+      subcategoryId: string
+      merchant: string | null
+      note: string | null
+      occurredAt: string
+    }
+  | {
+      destination: 'personal'
+      expenseId: string
+      accountId: string
+      amount: number
+      category: string
+      merchant: string | null
+      note: string | null
+      occurredAt: string
+    }
+
+export type AssistantChangeOutcome = {
+  action: 'saved' | 'deleted'
+  amount: string
+  label: string
+}
+
 export interface AssistantThreadItem {
   role: 'user' | 'assistant'
   content: string
@@ -135,6 +164,8 @@ export interface AssistantThreadItem {
   savedSummary?: AssistantSavedSummary
   savedTaskTitle?: string
   expenseList?: ExpenseList | null
+  changeProposal?: ExpenseChangeProposal | null
+  changeOutcome?: AssistantChangeOutcome
 }
 
 export const toAssistantMessages = (thread: AssistantThreadItem[]): AssistantMessageIn[] =>

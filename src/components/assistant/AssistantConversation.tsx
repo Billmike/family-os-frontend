@@ -12,6 +12,8 @@ interface Props {
   messages: AssistantThreadItem[]
   draft: string
   isTurnInFlight: boolean
+  revealingIndex?: number | null
+  revealChars?: number | null
   composerId?: string
   showComposer?: boolean
   today?: string
@@ -31,14 +33,16 @@ const MAX_THREAD_MESSAGES = 20
 
 export const canSendAssistantTurn = (
   draft: string,
-  isTurnInFlight: boolean,
+  isBusy: boolean,
   messageCount: number,
-) => draft.trim().length > 0 && !isTurnInFlight && messageCount < MAX_THREAD_MESSAGES
+) => draft.trim().length > 0 && !isBusy && messageCount < MAX_THREAD_MESSAGES
 
 export const AssistantConversation = ({
   messages,
   draft,
   isTurnInFlight,
+  revealingIndex = null,
+  revealChars = null,
   composerId = 'assistant-composer',
   showComposer = true,
   today = '',
@@ -52,10 +56,11 @@ export const AssistantConversation = ({
   onAddProposal,
   onCancelProposal,
 }: Props) => {
-  const canSend = canSendAssistantTurn(draft, isTurnInFlight, messages.length)
+  const isBusy = isTurnInFlight || revealingIndex !== null
+  const canSend = canSendAssistantTurn(draft, isBusy, messages.length)
 
   const handleExampleClick = () => {
-    if (isTurnInFlight) return
+    if (isBusy) return
     onDraftChange(EXAMPLE_PROMPT)
   }
 
@@ -78,7 +83,6 @@ export const AssistantConversation = ({
           gap: 16,
           padding: showComposer ? '4px 16px 16px' : '4px 0 8px',
         }}
-        aria-live="polite"
       >
         {messages.length === 0 && !isTurnInFlight && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
@@ -155,6 +159,7 @@ export const AssistantConversation = ({
               <AssistantMark size={28} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div
+                  aria-hidden={revealingIndex === index}
                   style={{
                     padding: '12px 14px',
                     borderRadius: 16,
@@ -167,7 +172,9 @@ export const AssistantConversation = ({
                     wordBreak: 'break-word',
                   }}
                 >
-                  {message.content}
+                  {revealingIndex === index && revealChars !== null
+                    ? message.content.slice(0, revealChars)
+                    : message.content}
                 </div>
                 {message.proposalState === 'saved' && message.savedSummary && (
                   <FamilyExpenseSuccessCard
@@ -175,7 +182,10 @@ export const AssistantConversation = ({
                     label={message.savedSummary.label}
                   />
                 )}
-                {message.proposal && message.proposalState !== 'cancelled' && message.proposalState !== 'saved' && (
+                {message.proposal
+                  && message.proposalState !== 'cancelled'
+                  && message.proposalState !== 'saved'
+                  && revealingIndex !== index && (
                   <ExpenseProposalCard
                     proposal={message.proposal}
                     today={today}
@@ -219,7 +229,7 @@ export const AssistantConversation = ({
       {showComposer && (
         <AssistantComposer
           draft={draft}
-          isTurnInFlight={isTurnInFlight}
+          isTurnInFlight={isBusy}
           canSend={canSend}
           composerId={composerId}
           onDraftChange={onDraftChange}

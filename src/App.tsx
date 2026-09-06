@@ -125,8 +125,10 @@ import {
   canSendAssistantTurn,
 } from "./components/assistant/AssistantConversation";
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
+import { useAssistantTypewriter } from "./components/assistant/useAssistantTypewriter";
 import * as assistantApi from "./api/assistant";
 import type { AssistantExpenseSubmit, AssistantThreadItem } from "./api/assistant";
+import { prefersReducedMotion } from "./lib/motion";
 
 const EXPENSE_WRITE_SHEETS = new Set<BottomSheetType["type"]>([
   "addExpense",
@@ -383,6 +385,10 @@ function MainApp() {
   );
   const [assistantDraft, setAssistantDraft] = useState("");
   const [assistantTurnInFlight, setAssistantTurnInFlight] = useState(false);
+  const [assistantRevealingIndex, setAssistantRevealingIndex] = useState<
+    number | null
+  >(null);
+  const [assistantLiveText, setAssistantLiveText] = useState("");
   const [assistantSavingIndex, setAssistantSavingIndex] = useState<
     number | null
   >(null);
@@ -390,6 +396,21 @@ function MainApp() {
     "household" | "personal" | null
   >(null);
   const assistantTurnGeneration = useRef(0);
+  const handleAssistantTypewriterFinish = (completed: string) => {
+    setAssistantRevealingIndex(null);
+    setAssistantLiveText(completed);
+  };
+  const revealingText =
+    assistantRevealingIndex !== null
+      ? (assistantThread[assistantRevealingIndex]?.content ?? "")
+      : "";
+  const assistantRevealChars = useAssistantTypewriter({
+    index: assistantRevealingIndex,
+    text: revealingText,
+    onFinish: handleAssistantTypewriterFinish,
+  });
+  const assistantBusy =
+    assistantTurnInFlight || assistantRevealingIndex !== null;
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
@@ -429,6 +450,8 @@ function MainApp() {
     setAssistantThread([]);
     setAssistantDraft("");
     setAssistantTurnInFlight(false);
+    setAssistantRevealingIndex(null);
+    setAssistantLiveText("");
     setAssistantSavingIndex(null);
     setAssistantDestinationHint(null);
   };
@@ -456,7 +479,7 @@ function MainApp() {
 
   const handleSendAssistant = async () => {
     const text = assistantDraft.trim();
-    if (!text || assistantTurnInFlight) return;
+    if (!text || assistantBusy) return;
     const nextThread: AssistantThreadItem[] = [
       ...assistantThread,
       { role: "user", content: text },
@@ -471,6 +494,7 @@ function MainApp() {
         assistantApi.toAssistantMessages(nextThread),
       );
       if (generation !== assistantTurnGeneration.current) return;
+      const assistantIndex = nextThread.length;
       setAssistantThread([
         ...nextThread,
         {
@@ -480,6 +504,11 @@ function MainApp() {
           proposalState: out.proposal ? "open" : undefined,
         },
       ]);
+      if (prefersReducedMotion() || out.assistant_text.length === 0) {
+        setAssistantLiveText(out.assistant_text);
+      } else {
+        setAssistantRevealingIndex(assistantIndex);
+      }
     } catch (e) {
       if (generation !== assistantTurnGeneration.current) return;
       handleError(e);
@@ -540,6 +569,7 @@ function MainApp() {
         ),
         { role: "assistant", content: "Add another expense?" },
       ]);
+      setAssistantLiveText("Add another expense?");
     } catch (e) {
       handleError(e);
     } finally {
@@ -1938,7 +1968,7 @@ function MainApp() {
             }}
           >
             <AssistantHeader
-              isTurnInFlight={assistantTurnInFlight}
+              isTurnInFlight={assistantBusy}
               onClose={handleCloseAssistant}
             />
             <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
@@ -1946,6 +1976,8 @@ function MainApp() {
                 messages={assistantThread}
                 draft={assistantDraft}
                 isTurnInFlight={assistantTurnInFlight}
+                revealingIndex={assistantRevealingIndex}
+                revealChars={assistantRevealChars}
                 composerId="assistant-composer-desktop"
                 today={today}
                 subcategoryGroups={subcategoryGroups}
@@ -2179,17 +2211,17 @@ function MainApp() {
             header={
               <AssistantHeader
                 compact
-                isTurnInFlight={assistantTurnInFlight}
+                isTurnInFlight={assistantBusy}
                 onClose={handleCloseAssistant}
               />
             }
             footer={
               <AssistantComposer
                 draft={assistantDraft}
-                isTurnInFlight={assistantTurnInFlight}
+                isTurnInFlight={assistantBusy}
                 canSend={canSendAssistantTurn(
                   assistantDraft,
-                  assistantTurnInFlight,
+                  assistantBusy,
                   assistantThread.length,
                 )}
                 composerId="assistant-composer-mobile"
@@ -2203,6 +2235,8 @@ function MainApp() {
                 messages={assistantThread}
                 draft={assistantDraft}
                 isTurnInFlight={assistantTurnInFlight}
+                revealingIndex={assistantRevealingIndex}
+                revealChars={assistantRevealChars}
                 showComposer={false}
                 today={today}
                 subcategoryGroups={subcategoryGroups}
@@ -2222,6 +2256,14 @@ function MainApp() {
         </div>
       )}
 
+      <div
+        className="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {assistantLiveText}
+      </div>
       {toast && (
         <Toast
           message={toast.msg}

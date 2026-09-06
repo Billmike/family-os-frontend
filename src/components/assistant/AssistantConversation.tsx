@@ -1,10 +1,10 @@
 import { fonts, t } from '../../ui'
-import type { AssistantThreadItem } from '../../api/assistant'
-import type { BudgetSubcategoryGroup, ExpenseDraft } from '../../types'
+import type { AssistantExpenseSubmit, AssistantThreadItem } from '../../api/assistant'
+import type { BudgetSubcategoryGroup, PersonalExpenseAccount } from '../../types'
 import { AssistantComposer } from './AssistantComposer'
 import { AssistantMark } from './AssistantMark'
 import {
-  FamilyExpenseProposalCard,
+  ExpenseProposalCard,
   FamilyExpenseSuccessCard,
 } from './FamilyExpenseProposalCard'
 
@@ -16,10 +16,13 @@ interface Props {
   showComposer?: boolean
   today?: string
   subcategoryGroups?: BudgetSubcategoryGroup[]
+  personalAccounts?: PersonalExpenseAccount[]
+  destinationHint?: 'household' | 'personal' | null
+  lastUsedAccountId?: string | null
   savingProposalIndex?: number | null
   onDraftChange: (value: string) => void
   onSend: () => void
-  onAddProposal?: (index: number, input: ExpenseDraft) => void
+  onAddProposal?: (index: number, input: AssistantExpenseSubmit) => void
   onCancelProposal?: (index: number) => void
 }
 
@@ -40,6 +43,9 @@ export const AssistantConversation = ({
   showComposer = true,
   today = '',
   subcategoryGroups = [],
+  personalAccounts = [],
+  destinationHint = null,
+  lastUsedAccountId = null,
   savingProposalIndex = null,
   onDraftChange,
   onSend,
@@ -166,14 +172,17 @@ export const AssistantConversation = ({
                 {message.proposalState === 'saved' && message.savedSummary && (
                   <FamilyExpenseSuccessCard
                     amount={message.savedSummary.amount}
-                    subcategoryName={message.savedSummary.subcategoryName}
+                    label={message.savedSummary.label}
                   />
                 )}
-                {message.proposal && message.proposal.destination !== 'personal' && message.proposalState !== 'cancelled' && message.proposalState !== 'saved' && (
-                  <FamilyExpenseProposalCard
+                {message.proposal && message.proposalState !== 'cancelled' && message.proposalState !== 'saved' && (
+                  <ExpenseProposalCard
                     proposal={message.proposal}
                     today={today}
                     subcategoryGroups={subcategoryGroups}
+                    personalAccounts={personalAccounts}
+                    destinationHint={destinationHint}
+                    lastUsedAccountId={lastUsedAccountId}
                     isSaving={savingProposalIndex === index}
                     onAdd={input => onAddProposal?.(index, input)}
                     onCancel={() => onCancelProposal?.(index)}

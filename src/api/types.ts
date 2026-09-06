@@ -339,6 +339,7 @@ export interface PersonalExpenseOut {
   merchant: string | null
   note: string | null
   occurred_at: string
+  source_type: 'manual' | 'assistant'
   created_at: string
   updated_at: string
 }

@@ -33,8 +33,27 @@ export type AssistantProposalState = 'open' | 'saved' | 'cancelled'
 
 export interface AssistantSavedSummary {
   amount: string
-  subcategoryName: string
+  label: string
 }
+
+export type AssistantExpenseSubmit =
+  | {
+      destination: 'household'
+      amount: number
+      subcategoryId: string
+      merchant: string | null
+      note: string | null
+      occurredAt: string
+    }
+  | {
+      destination: 'personal'
+      amount: number
+      accountId: string
+      category: string
+      merchant: string | null
+      note: string | null
+      occurredAt: string
+    }
 
 export interface AssistantThreadItem {
   role: 'user' | 'assistant'

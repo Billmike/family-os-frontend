@@ -141,6 +141,7 @@ export interface PersonalExpense {
   merchant: string | null
   note: string | null
   occurredAt: string
+  sourceType: 'manual' | 'assistant'
 }
 
 export interface PersonalExpenseDraft {

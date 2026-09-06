@@ -107,6 +107,7 @@ import {
   legacyGoRedirectPath,
   legacyPathRedirect,
   isBudgetSection,
+  isPersonalSection,
   pathToScreen,
   screenToPath,
 } from "./routing";
@@ -125,7 +126,7 @@ import {
 } from "./components/assistant/AssistantConversation";
 import { AssistantHeader } from "./components/assistant/AssistantHeader";
 import * as assistantApi from "./api/assistant";
-import type { AssistantThreadItem } from "./api/assistant";
+import type { AssistantExpenseSubmit, AssistantThreadItem } from "./api/assistant";
 
 const EXPENSE_WRITE_SHEETS = new Set<BottomSheetType["type"]>([
   "addExpense",
@@ -385,6 +386,9 @@ function MainApp() {
   const [assistantSavingIndex, setAssistantSavingIndex] = useState<
     number | null
   >(null);
+  const [assistantDestinationHint, setAssistantDestinationHint] = useState<
+    "household" | "personal" | null
+  >(null);
   const assistantTurnGeneration = useRef(0);
   const [toast, setToast] = useState<{
     msg: string;
@@ -426,11 +430,21 @@ function MainApp() {
     setAssistantDraft("");
     setAssistantTurnInFlight(false);
     setAssistantSavingIndex(null);
+    setAssistantDestinationHint(null);
   };
 
   const handleOpenAssistant = () => {
     setSheet(null);
     setAssistantOpen(true);
+    if (isPersonalSection(screen)) {
+      setAssistantDestinationHint("personal");
+      return;
+    }
+    if (isBudgetSection(screen)) {
+      setAssistantDestinationHint("household");
+      return;
+    }
+    setAssistantDestinationHint(null);
   };
 
   const handleOpenSheet = (next: BottomSheetType) => {
@@ -477,24 +491,40 @@ function MainApp() {
 
   const handleAddAssistantExpense = async (
     index: number,
-    input: ExpenseDraft,
+    input: AssistantExpenseSubmit,
   ) => {
     if (assistantSavingIndex !== null) return;
     setAssistantSavingIndex(index);
     try {
-      await expensesApi.createExpense(family.id, {
-        amount: input.amount,
-        subcategory_id: input.subcategoryId,
-        merchant: input.merchant,
-        note: input.note,
-        occurred_at: input.occurredAt,
-        source_type: "assistant",
-      });
-      const subcategoryName =
-        subcategoryGroups
-          .flatMap((group) => group.subcategories)
-          .find((sub) => sub.id === input.subcategoryId)?.name ??
-        "Expense";
+      const label =
+        input.destination === "personal"
+          ? input.category
+          : subcategoryGroups
+              .flatMap((group) => group.subcategories)
+              .find((sub) => sub.id === input.subcategoryId)?.name ??
+            "Expense";
+      if (input.destination === "personal") {
+        await personalExpensesApi.createPersonalExpense(input.accountId, {
+          amount: input.amount,
+          category: input.category,
+          merchant: input.merchant,
+          note: input.note,
+          occurred_at: input.occurredAt,
+          source_type: "assistant",
+        });
+        await refreshPersonalSummary(input.accountId);
+      } else {
+        await expensesApi.createExpense(family.id, {
+          amount: input.amount,
+          subcategory_id: input.subcategoryId,
+          merchant: input.merchant,
+          note: input.note,
+          occurred_at: input.occurredAt,
+          source_type: "assistant",
+        });
+        void refreshSpend();
+        void refreshBudgets();
+      }
       setAssistantThread((current) => [
         ...current.map((item, itemIndex) =>
           itemIndex === index
@@ -503,15 +533,13 @@ function MainApp() {
                 proposalState: "saved" as const,
                 savedSummary: {
                   amount: String(input.amount),
-                  subcategoryName,
+                  label,
                 },
               }
             : item,
         ),
         { role: "assistant", content: "Add another expense?" },
       ]);
-      void refreshSpend();
-      void refreshBudgets();
     } catch (e) {
       handleError(e);
     } finally {
@@ -1921,6 +1949,9 @@ function MainApp() {
                 composerId="assistant-composer-desktop"
                 today={today}
                 subcategoryGroups={subcategoryGroups}
+                personalAccounts={personalSummary?.accounts ?? []}
+                destinationHint={assistantDestinationHint}
+                lastUsedAccountId={selectedPersonalAccountId}
                 savingProposalIndex={assistantSavingIndex}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}
@@ -2175,6 +2206,9 @@ function MainApp() {
                 showComposer={false}
                 today={today}
                 subcategoryGroups={subcategoryGroups}
+                personalAccounts={personalSummary?.accounts ?? []}
+                destinationHint={assistantDestinationHint}
+                lastUsedAccountId={selectedPersonalAccountId}
                 savingProposalIndex={assistantSavingIndex}
                 onDraftChange={setAssistantDraft}
                 onSend={() => void handleSendAssistant()}

@@ -8,6 +8,7 @@ export interface PersonalExpenseCreate {
   note?: string | null
   occurred_at?: string | null
   currency?: string
+  source_type?: 'manual' | 'assistant'
 }
 
 export function listPersonalExpenses(

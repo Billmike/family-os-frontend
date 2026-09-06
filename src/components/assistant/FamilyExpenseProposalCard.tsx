@@ -1,38 +1,114 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
-import type { ExpenseProposal } from '../../api/assistant'
+import type { AssistantExpenseSubmit, ExpenseProposal } from '../../api/assistant'
 import { dateInputToIso, formatMoney } from '../../api/adapters'
-import type { BudgetSubcategoryGroup, ExpenseDraft } from '../../types'
+import type { BudgetSubcategoryGroup, PersonalExpenseAccount } from '../../types'
+import { PERSONAL_EXPENSE_CATEGORIES } from '../../types'
 import { fonts, r, t } from '../../ui'
+
+type DestinationChoice = 'household' | 'personal'
 
 interface Props {
   proposal: ExpenseProposal
   today: string
   subcategoryGroups: BudgetSubcategoryGroup[]
+  personalAccounts?: PersonalExpenseAccount[]
+  destinationHint?: DestinationChoice | null
+  lastUsedAccountId?: string | null
   currency?: string
   isSaving?: boolean
-  onAdd: (input: ExpenseDraft) => void
+  onAdd: (input: AssistantExpenseSubmit) => void
   onCancel: () => void
 }
 
-type EditableField = 'amount' | 'subcategory' | 'merchant' | 'note' | 'date'
+type EditableField =
+  | 'destination'
+  | 'amount'
+  | 'subcategory'
+  | 'category'
+  | 'account'
+  | 'merchant'
+  | 'note'
+  | 'date'
 
 export const familyProposalComplete = (amount: string, subcategoryId: string) => {
   const parsed = Number.parseFloat(amount.replace(',', '.'))
   return Number.isFinite(parsed) && parsed > 0 && Boolean(subcategoryId)
 }
 
-export const FamilyExpenseProposalCard = ({
+export const personalProposalComplete = (
+  amount: string,
+  category: string,
+  accountId: string,
+) => {
+  const parsed = Number.parseFloat(amount.replace(',', '.'))
+  return Number.isFinite(parsed) && parsed > 0 && Boolean(category) && Boolean(accountId)
+}
+
+const destinationFromProposal = (
+  proposal: ExpenseProposal,
+  destinationHint: DestinationChoice | null | undefined,
+  hasPersonalAccounts: boolean,
+): DestinationChoice | '' => {
+  if (!hasPersonalAccounts) return 'household'
+  if (
+    proposal.destination_explicit
+    && (proposal.destination === 'household' || proposal.destination === 'personal')
+  ) {
+    return proposal.destination
+  }
+  if (destinationHint === 'household' || destinationHint === 'personal') {
+    return destinationHint
+  }
+  if (proposal.destination === 'household' || proposal.destination === 'personal') {
+    return proposal.destination
+  }
+  return ''
+}
+
+const accountFromProposal = (
+  proposal: ExpenseProposal,
+  accounts: PersonalExpenseAccount[],
+  lastUsedAccountId: string | null | undefined,
+) => {
+  if (proposal.account_id && accounts.some(account => account.id === proposal.account_id)) {
+    return proposal.account_id
+  }
+  if (lastUsedAccountId && accounts.some(account => account.id === lastUsedAccountId)) {
+    return lastUsedAccountId
+  }
+  return ''
+}
+
+const categoryFromProposal = (proposal: ExpenseProposal) => {
+  if (proposal.category && (PERSONAL_EXPENSE_CATEGORIES as readonly string[]).includes(proposal.category)) {
+    return proposal.category
+  }
+  return ''
+}
+
+export const ExpenseProposalCard = ({
   proposal,
   today,
   subcategoryGroups,
+  personalAccounts = [],
+  destinationHint = null,
+  lastUsedAccountId = null,
   currency = 'EUR',
   isSaving = false,
   onAdd,
   onCancel,
 }: Props) => {
+  const hasPersonalAccounts = personalAccounts.length > 0
+  const [destination, setDestination] = useState<DestinationChoice | ''>(
+    destinationFromProposal(proposal, destinationHint, hasPersonalAccounts),
+  )
   const [amount, setAmount] = useState(proposal.amount ?? '')
   const [subcategoryId, setSubcategoryId] = useState(proposal.subcategory_id ?? '')
+  const [category, setCategory] = useState(categoryFromProposal(proposal))
+  const [accountId, setAccountId] = useState(
+    accountFromProposal(proposal, personalAccounts, lastUsedAccountId),
+  )
   const [merchant, setMerchant] = useState(proposal.merchant ?? '')
   const [note, setNote] = useState(proposal.note ?? '')
   const [date, setDate] = useState(
@@ -54,21 +130,56 @@ export const FamilyExpenseProposalCard = ({
     [subcategoryGroups],
   )
   const selectedSub = flatOptions.find(option => option.id === subcategoryId)
-  const canAdd = familyProposalComplete(amount, subcategoryId) && !isSaving
+  const selectedAccount = personalAccounts.find(account => account.id === accountId)
+  const isHousehold = destination === 'household'
+  const isPersonal = destination === 'personal'
+  const destinationConfirmed = Boolean(
+    hasPersonalAccounts
+    && proposal.destination_explicit
+    && !editing.destination
+    && destination
+    && destination === proposal.destination,
+  )
+  const canAdd = (
+    isHousehold
+      ? familyProposalComplete(amount, subcategoryId)
+      : isPersonal
+        ? personalProposalComplete(amount, category, accountId)
+        : false
+  ) && !isSaving
 
   const handleEdit = (field: EditableField) => {
     setEditing(current => ({ ...current, [field]: true }))
   }
 
+  const handleDestinationChange = (value: string) => {
+    if (value === 'household' || value === 'personal' || value === '') {
+      setDestination(value)
+    }
+  }
+
   const handleAdd = () => {
     if (!canAdd) return
     const parsed = Number.parseFloat(amount.replace(',', '.'))
-    onAdd({
+    const shared = {
       amount: parsed,
-      subcategoryId,
       merchant: merchant.trim() || null,
       note: note.trim() || null,
       occurredAt: dateInputToIso(date),
+    }
+    if (isPersonal) {
+      onAdd({
+        destination: 'personal',
+        accountId,
+        category,
+        ...shared,
+      })
+      return
+    }
+    onAdd({
+      destination: 'household',
+      subcategoryId,
+      ...shared,
     })
   }
 
@@ -93,6 +204,26 @@ export const FamilyExpenseProposalCard = ({
         fontFamily: fonts.ui,
       }}
     >
+      {hasPersonalAccounts && (
+        <ProposalField
+          label="Destination"
+          confirmed={destinationConfirmed}
+          confirmedText={destination === 'personal' ? 'Personal' : 'Household'}
+          onEdit={() => handleEdit('destination')}
+        >
+          <select
+            aria-label="Destination"
+            required
+            value={destination}
+            onChange={event => handleDestinationChange(event.target.value)}
+            style={{ ...fieldInputStyle, cursor: 'pointer' }}
+          >
+            <option value="">Choose household or personal</option>
+            <option value="household">Household</option>
+            <option value="personal">Personal</option>
+          </select>
+        </ProposalField>
+      )}
       <ProposalField
         label="Amount"
         confirmed={proposal.amount_explicit && !editing.amount && Boolean(amount)}
@@ -109,28 +240,75 @@ export const FamilyExpenseProposalCard = ({
           style={fieldInputStyle}
         />
       </ProposalField>
-      <ProposalField
-        label="Subcategory"
-        confirmed={proposal.subcategory_id_explicit && !editing.subcategory && Boolean(selectedSub)}
-        confirmedText={selectedSub ? `${selectedSub.group} · ${selectedSub.name}` : ''}
-        onEdit={() => handleEdit('subcategory')}
-      >
-        <select
-          aria-label="Subcategory"
-          value={subcategoryId}
-          onChange={event => setSubcategoryId(event.target.value)}
-          style={{ ...fieldInputStyle, cursor: 'pointer' }}
+      {isHousehold && (
+        <ProposalField
+          label="Subcategory"
+          confirmed={proposal.subcategory_id_explicit && !editing.subcategory && Boolean(selectedSub)}
+          confirmedText={selectedSub ? `${selectedSub.group} · ${selectedSub.name}` : ''}
+          onEdit={() => handleEdit('subcategory')}
         >
-          <option value="">Choose a subcategory</option>
-          {subcategoryGroups.map(group => (
-            <optgroup key={group.group} label={group.group}>
-              {group.subcategories.map(sub => (
-                <option key={sub.id} value={sub.id}>{sub.name}</option>
+          <select
+            aria-label="Subcategory"
+            value={subcategoryId}
+            onChange={event => setSubcategoryId(event.target.value)}
+            style={{ ...fieldInputStyle, cursor: 'pointer' }}
+          >
+            <option value="">Choose a subcategory</option>
+            {subcategoryGroups.map(group => (
+              <optgroup key={group.group} label={group.group}>
+                {group.subcategories.map(sub => (
+                  <option key={sub.id} value={sub.id}>{sub.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </ProposalField>
+      )}
+      {isPersonal && (
+        <>
+          <ProposalField
+            label="Category"
+            confirmed={proposal.category_explicit && !editing.category && Boolean(category)}
+            confirmedText={category}
+            onEdit={() => handleEdit('category')}
+          >
+            <select
+              aria-label="Category"
+              value={category}
+              onChange={event => setCategory(event.target.value)}
+              style={{ ...fieldInputStyle, cursor: 'pointer' }}
+            >
+              <option value="">Choose a category</option>
+              {PERSONAL_EXPENSE_CATEGORIES.map(item => (
+                <option key={item} value={item}>{item}</option>
               ))}
-            </optgroup>
-          ))}
-        </select>
-      </ProposalField>
+            </select>
+          </ProposalField>
+          <ProposalField
+            label="Personal account"
+            confirmed={
+              proposal.account_id_explicit
+              && !editing.account
+              && Boolean(selectedAccount)
+              && accountId === proposal.account_id
+            }
+            confirmedText={selectedAccount?.name ?? ''}
+            onEdit={() => handleEdit('account')}
+          >
+            <select
+              aria-label="Personal account"
+              value={accountId}
+              onChange={event => setAccountId(event.target.value)}
+              style={{ ...fieldInputStyle, cursor: 'pointer' }}
+            >
+              <option value="">Choose a personal account</option>
+              {personalAccounts.map(account => (
+                <option key={account.id} value={account.id}>{account.name}</option>
+              ))}
+            </select>
+          </ProposalField>
+        </>
+      )}
       <ProposalField
         label="Merchant"
         confirmed={proposal.merchant_explicit && !editing.merchant && Boolean(merchant)}
@@ -223,19 +401,20 @@ export const FamilyExpenseProposalCard = ({
 
 export const FamilyExpenseSuccessCard = ({
   amount,
-  subcategoryName,
+  label,
   currency = 'EUR',
 }: {
   amount: string
-  subcategoryName: string
+  label: string
   currency?: string
 }) => {
   const parsed = Number.parseFloat(amount.replace(',', '.'))
   const amountLabel = Number.isFinite(parsed) ? formatMoney(parsed, currency) : amount
+  const title = label
   return (
     <div
       role="status"
-      aria-label={`Added ${amountLabel} in ${subcategoryName}`}
+      aria-label={`Added ${amountLabel} in ${title}`}
       style={{
         marginTop: 10,
         padding: 12,
@@ -246,7 +425,7 @@ export const FamilyExpenseSuccessCard = ({
       }}
     >
       <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: t.text }}>
-        {amountLabel} · {subcategoryName}
+        {amountLabel} · {title}
       </p>
     </div>
   )

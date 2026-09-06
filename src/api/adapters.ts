@@ -504,6 +504,7 @@ export function toPersonalExpense(expense: PersonalExpenseOut): PersonalExpense 
     merchant: expense.merchant,
     note: expense.note,
     occurredAt: expense.occurred_at,
+    sourceType: expense.source_type ?? 'manual',
   }
 }
 

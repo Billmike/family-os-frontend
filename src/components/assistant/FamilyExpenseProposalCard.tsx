@@ -5,6 +5,7 @@ import { dateInputToIso, formatMoney } from '../../api/adapters'
 import type { BudgetSubcategoryGroup, PersonalExpenseAccount } from '../../types'
 import { PERSONAL_EXPENSE_CATEGORIES } from '../../types'
 import { fonts, r, t } from '../../ui'
+import { titleCaseMerchant } from './titleCaseMerchant'
 
 type DestinationChoice = 'household' | 'personal'
 
@@ -158,12 +159,18 @@ export const ExpenseProposalCard = ({
     }
   }
 
+  const handleMerchantBlur = () => {
+    setMerchant(current => titleCaseMerchant(current))
+  }
+
   const handleAdd = () => {
     if (!canAdd) return
+    const titledMerchant = titleCaseMerchant(merchant)
+    setMerchant(titledMerchant)
     const parsed = Number.parseFloat(amount.replace(',', '.'))
     const shared = {
       amount: parsed,
-      merchant: merchant.trim() || null,
+      merchant: titledMerchant || null,
       note: note.trim() || null,
       occurredAt: dateInputToIso(date),
     }
@@ -320,6 +327,7 @@ export const ExpenseProposalCard = ({
           aria-label="Merchant"
           value={merchant}
           onChange={event => setMerchant(event.target.value)}
+          onBlur={handleMerchantBlur}
           placeholder="Optional"
           style={fieldInputStyle}
         />

@@ -112,7 +112,7 @@ export const AssistantConversation = ({
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
-          padding: showComposer ? `4px ${sidePad}px 16px` : `4px ${sidePad}px 8px`,
+          padding: showComposer ? `16px ${sidePad}px 16px` : `16px ${sidePad}px 8px`,
         }}
       >
         {messages.length === 0 && !isTurnInFlight && (

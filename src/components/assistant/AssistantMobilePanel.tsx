@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
-import { prefersReducedMotion } from '../../lib/motion'
 import { t } from '../../ui'
 import { useVisualViewportBox } from './useVisualViewportBox'
 
@@ -8,6 +7,7 @@ interface Props {
   header: ReactNode
   footer: ReactNode
   children: ReactNode
+  isExiting?: boolean
 }
 
 const PHONE_OPEN_CLASS = 'assistant-phone-open'
@@ -20,10 +20,10 @@ export const AssistantMobilePanel = ({
   header,
   footer,
   children,
+  isExiting = false,
 }: Props) => {
   const panelRef = useRef<HTMLDivElement>(null)
   const box = useVisualViewportBox()
-  const reduceMotion = prefersReducedMotion()
 
   useEffect(() => {
     panelRef.current?.focus()
@@ -69,9 +69,10 @@ export const AssistantMobilePanel = ({
       ref={panelRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Ask assistant"
+      aria-label="Heimdall"
       tabIndex={-1}
-      className="assistant-mobile-panel"
+      aria-hidden={isExiting || undefined}
+      className={`assistant-mobile-panel${isExiting ? ' is-exiting' : ''}`}
       style={{
         position: 'fixed',
         top: box.offsetTop,
@@ -89,7 +90,6 @@ export const AssistantMobilePanel = ({
         touchAction: 'none',
         boxSizing: 'border-box',
         outline: 'none',
-        animation: reduceMotion ? 'none' : 'fadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
       <div

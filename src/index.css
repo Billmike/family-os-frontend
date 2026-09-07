@@ -249,6 +249,7 @@ html.assistant-phone-open .app-toast {
 @keyframes sheetUp  { from { transform: translateY(100%) } to { transform: translateY(0) } }
 @keyframes sheetFade { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes fadeIn   { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fadeOut  { from { opacity: 1 } to { opacity: 0 } }
 @keyframes toastIn  { from { opacity: 0; transform: translateX(-50%) translateY(8px) } to { opacity: 1; transform: translateX(-50%) translateY(0) } }
 @keyframes shimmer  { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
 @keyframes spin     { to { transform: rotate(360deg) } }
@@ -356,10 +357,47 @@ html.assistant-phone-open .app-toast {
   min-height: 0;
 }
 
+/* Assistant panel — desktop side column grows/shrinks so the main column reflows with it */
+@keyframes assistantPanelIn  { from { width: 0 } to { width: var(--assistant-panel-width) } }
+@keyframes assistantPanelOut { from { width: var(--assistant-panel-width) } to { width: 0 } }
+
+.assistant-side-panel {
+  --assistant-panel-width: 400px;
+  width: var(--assistant-panel-width);
+  overflow: hidden;
+  animation: assistantPanelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.assistant-side-panel-inner {
+  width: var(--assistant-panel-width);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 150ms cubic-bezier(0.22, 1, 0.36, 1) 130ms both;
+}
+.assistant-side-panel.is-exiting {
+  animation: assistantPanelOut 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  pointer-events: none;
+}
+.assistant-side-panel.is-exiting .assistant-side-panel-inner {
+  animation: fadeOut 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Assistant panel — phone overlay fades */
+.assistant-mobile-panel {
+  animation: fadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.assistant-mobile-panel.is-exiting {
+  animation: fadeOut 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .basket-target.is-pulsing { animation: none; }
   .bottom-sheet-panel { animation: none !important; }
-  .assistant-mobile-panel { animation: none !important; }
+  .assistant-mobile-panel,
+  .assistant-side-panel,
+  .assistant-side-panel-inner { animation: none !important; }
   .activity-row-enter .activity-row-motion,
   .activity-row-enter-table { animation: none; }
   .activity-row-shell,

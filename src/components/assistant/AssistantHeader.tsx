@@ -42,7 +42,7 @@ export const AssistantHeader = ({ isTurnInFlight, onClose }: Props) => {
               lineHeight: 1.15,
             }}
           >
-            FamilyOS AI
+            Heimdall
           </p>
           <p
             style={{
@@ -73,7 +73,7 @@ export const AssistantHeader = ({ isTurnInFlight, onClose }: Props) => {
         <button
           type="button"
           onClick={handleClose}
-          aria-label="Close assistant"
+          aria-label="Close Heimdall"
           style={{
             background: "none",
             border: "none",

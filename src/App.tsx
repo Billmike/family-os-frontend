@@ -137,7 +137,8 @@ import type {
   AssistantThreadItem,
   ExpenseListRow,
 } from "./api/assistant";
-import { prefersReducedMotion } from "./lib/motion";
+import { MOTION_MS, prefersReducedMotion } from "./lib/motion";
+import { useAnimatedPresence } from "./lib/useAnimatedPresence";
 import { changeProposalFromListRow } from "./components/assistant/changeProposalFromListRow";
 
 const ASSISTANT_CLOSING_SHEETS = new Set<BottomSheetType["type"]>([
@@ -456,9 +457,14 @@ function MainApp() {
     showToast(msg, "error");
   }
 
-  const clearAssistantSession = () => {
-    assistantTurnGeneration.current += 1;
+  const dismissAssistant = () => {
     setAssistantOpen(false);
+  };
+
+  // Runs once the Assistant panel has finished animating out, so the
+  // conversation does not blank while the panel is still visible.
+  const resetAssistantSession = () => {
+    assistantTurnGeneration.current += 1;
     setAssistantThread([]);
     setAssistantDraft("");
     setAssistantTurnInFlight(false);
@@ -468,10 +474,16 @@ function MainApp() {
     setAssistantDestinationHint(null);
   };
 
+  const assistantPresence = useAnimatedPresence({
+    isOpen: assistantOpen && assistantEnabled,
+    exitMs: MOTION_MS.exit,
+    onExited: resetAssistantSession,
+  });
+
   const { handleClose: handleCloseAssistant } = usePhoneAssistantHistory({
     isOpen: assistantOpen && assistantEnabled,
     isPhone: isPhoneAssistant,
-    onDismiss: clearAssistantSession,
+    onDismiss: dismissAssistant,
   });
 
   const handleOpenAssistant = () => {
@@ -1952,7 +1964,7 @@ function MainApp() {
 
       <div
         style={{ flex: 1, display: "flex", overflow: "hidden" }}
-        {...(assistantOpen && assistantEnabled && isPhoneAssistant
+        {...(assistantPresence.shouldRender && isPhoneAssistant
           ? { inert: true }
           : {})}
       >
@@ -2156,13 +2168,14 @@ function MainApp() {
           </div>
         </div>
 
-        {assistantOpen && assistantEnabled && !isPhoneAssistant && (
+        {assistantPresence.shouldRender && !isPhoneAssistant && (
           <aside
+            aria-hidden={assistantPresence.isExiting ? true : undefined}
+            className={`assistant-side-panel${assistantPresence.isExiting ? " is-exiting" : ""}`}
             role="dialog"
-            aria-label="Ask assistant"
+            aria-label="Heimdall"
             aria-modal="false"
             style={{
-              width: 400,
               flexShrink: 0,
               alignSelf: "stretch",
               display: "flex",
@@ -2173,43 +2186,45 @@ function MainApp() {
               zIndex: 1000,
             }}
           >
-            <AssistantHeader
-              isTurnInFlight={assistantBusy}
-              onClose={handleCloseAssistant}
-            />
-            <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-              <AssistantConversation
-                messages={assistantThread}
-                draft={assistantDraft}
-                isTurnInFlight={assistantTurnInFlight}
-                revealingIndex={assistantRevealingIndex}
-                revealChars={assistantRevealChars}
-                composerId="assistant-composer-desktop"
-                today={today}
-                subcategoryGroups={subcategoryGroups}
-                personalAccounts={personalSummary?.accounts ?? []}
-                destinationHint={assistantDestinationHint}
-                lastUsedAccountId={selectedPersonalAccountId}
-                members={members}
-                defaultMemberId={currentUser?.id ?? ""}
-                savingProposalIndex={assistantSavingIndex}
-                onDraftChange={setAssistantDraft}
-                onSend={() => void handleSendAssistant()}
-                onAddProposal={(index, input) =>
-                  void handleAddAssistantExpense(index, input)
-                }
-                onAddTaskProposal={(index, input) =>
-                  void handleAddAssistantTask(index, input)
-                }
-                onSelectListRow={handleSelectAssistantListRow}
-                onSaveChange={(index, input) =>
-                  void handleSaveAssistantChange(index, input)
-                }
-                onDeleteChange={(index) =>
-                  void handleDeleteAssistantChange(index)
-                }
-                onCancelProposal={handleCancelAssistantProposal}
+            <div className="assistant-side-panel-inner">
+              <AssistantHeader
+                isTurnInFlight={assistantBusy}
+                onClose={handleCloseAssistant}
               />
+              <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+                <AssistantConversation
+                  messages={assistantThread}
+                  draft={assistantDraft}
+                  isTurnInFlight={assistantTurnInFlight}
+                  revealingIndex={assistantRevealingIndex}
+                  revealChars={assistantRevealChars}
+                  composerId="assistant-composer-desktop"
+                  today={today}
+                  subcategoryGroups={subcategoryGroups}
+                  personalAccounts={personalSummary?.accounts ?? []}
+                  destinationHint={assistantDestinationHint}
+                  lastUsedAccountId={selectedPersonalAccountId}
+                  members={members}
+                  defaultMemberId={currentUser?.id ?? ""}
+                  savingProposalIndex={assistantSavingIndex}
+                  onDraftChange={setAssistantDraft}
+                  onSend={() => void handleSendAssistant()}
+                  onAddProposal={(index, input) =>
+                    void handleAddAssistantExpense(index, input)
+                  }
+                  onAddTaskProposal={(index, input) =>
+                    void handleAddAssistantTask(index, input)
+                  }
+                  onSelectListRow={handleSelectAssistantListRow}
+                  onSaveChange={(index, input) =>
+                    void handleSaveAssistantChange(index, input)
+                  }
+                  onDeleteChange={(index) =>
+                    void handleDeleteAssistantChange(index)
+                  }
+                  onCancelProposal={handleCancelAssistantProposal}
+                />
+              </div>
             </div>
           </aside>
         )}
@@ -2419,8 +2434,9 @@ function MainApp() {
         />
       )}
 
-      {assistantOpen && assistantEnabled && isPhoneAssistant && (
+      {assistantPresence.shouldRender && isPhoneAssistant && (
         <AssistantMobilePanel
+          isExiting={assistantPresence.isExiting}
           header={
             <AssistantHeader
               isTurnInFlight={assistantBusy}

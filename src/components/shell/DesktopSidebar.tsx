@@ -121,7 +121,7 @@ export const DesktopSidebar = ({
         <button
           type="button"
           onClick={onOpenAssistant}
-          aria-label="Ask assistant"
+          aria-label="Ask Heimdall"
           tabIndex={0}
           style={{
             display: 'flex',
@@ -141,7 +141,7 @@ export const DesktopSidebar = ({
           }}
         >
           <AssistantMark size={22} />
-          Ask assistant
+          Ask Heimdall
         </button>
       )}
       <div

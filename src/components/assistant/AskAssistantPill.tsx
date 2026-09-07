@@ -24,7 +24,7 @@ export const AskAssistantPill = ({ onOpen, compact = false }: Props) => {
       type="button"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      aria-label="Ask assistant"
+      aria-label="Ask Heimdall"
       tabIndex={0}
       style={{
         display: 'flex',
@@ -46,7 +46,7 @@ export const AskAssistantPill = ({ onOpen, compact = false }: Props) => {
       }}
     >
       <AssistantMark size={compact ? 28 : 26} />
-      {!compact && <span>Ask assistant</span>}
+      {!compact && <span>Ask Heimdall</span>}
     </button>
   )
 }

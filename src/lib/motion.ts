@@ -6,6 +6,7 @@ export const MOTION_MS = {
   feedback: 150,
   state: 280,
   enter: 220,
+  exit: 200,
   collapse: 280,
   focalMin: 280,
   focalMax: 700,

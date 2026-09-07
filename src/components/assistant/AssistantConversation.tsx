@@ -8,11 +8,11 @@ import type {
 } from '../../api/assistant'
 import type { BudgetSubcategoryGroup, Member, PersonalExpenseAccount } from '../../types'
 import { AssistantComposer } from './AssistantComposer'
-import { AssistantMark } from './AssistantMark'
 import {
   ExpenseProposalCard,
   FamilyExpenseSuccessCard,
 } from './FamilyExpenseProposalCard'
+import { useIsPhoneAssistant } from './useIsPhoneAssistant'
 import {
   ExpenseChangeProposalCard,
   ExpenseChangeSuccessCard,
@@ -80,6 +80,8 @@ export const AssistantConversation = ({
   onDeleteChange,
   onCancelProposal,
 }: Props) => {
+  const isPhone = useIsPhoneAssistant()
+  const sidePad = isPhone ? 12 : 16
   const isBusy = isTurnInFlight || revealingIndex !== null
   const canSend = canSendAssistantTurn(draft, isBusy, messages.length)
 
@@ -110,46 +112,39 @@ export const AssistantConversation = ({
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
-          padding: showComposer ? '4px 16px 16px' : '4px 16px 8px',
+          padding: showComposer ? `4px ${sidePad}px 16px` : `4px ${sidePad}px 8px`,
         }}
       >
         {messages.length === 0 && !isTurnInFlight && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <AssistantMark size={28} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-              <div
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: 16,
-                  background: t.surfaceChrome,
-                  border: `1px solid ${t.border}`,
-                  color: t.text,
-                  fontSize: 14,
-                  lineHeight: 1.5,
-                }}
-              >
-                Tell me a spend and I will draft it. Try an example below.
-              </div>
-              <button
-                type="button"
-                onClick={handleExampleClick}
-                aria-label={`Use example: ${EXAMPLE_PROMPT}`}
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '8px 12px',
-                  borderRadius: 9999,
-                  border: `1px solid ${t.borderStrong}`,
-                  background: t.surfaceChrome,
-                  color: t.text,
-                  fontSize: 13,
-                  fontFamily: fonts.ui,
-                  cursor: 'pointer',
-                  minHeight: 36,
-                }}
-              >
-                {EXAMPLE_PROMPT}
-              </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+            <div
+              style={{
+                color: t.text,
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              Tell me a spend and I will draft it. Try an example below.
             </div>
+            <button
+              type="button"
+              onClick={handleExampleClick}
+              aria-label={`Use example: ${EXAMPLE_PROMPT}`}
+              style={{
+                alignSelf: 'flex-start',
+                padding: '8px 12px',
+                borderRadius: 9999,
+                border: `1px solid ${t.borderStrong}`,
+                background: t.surfaceChrome,
+                color: t.text,
+                fontSize: 13,
+                fontFamily: fonts.ui,
+                cursor: 'pointer',
+                minHeight: 36,
+              }}
+            >
+              {EXAMPLE_PROMPT}
+            </button>
           </div>
         )}
         {messages.map((message, index) => {
@@ -179,21 +174,14 @@ export const AssistantConversation = ({
             <div
               key={`${message.role}-${index}`}
               style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                maxWidth: '92%',
+                width: '100%',
+                minWidth: 0,
+                maxWidth: '100%',
               }}
             >
-              <AssistantMark size={28} />
-              <div style={{ minWidth: 0, flex: 1 }}>
                 <div
                   aria-hidden={revealingIndex === index}
                   style={{
-                    padding: '12px 14px',
-                    borderRadius: 16,
-                    background: t.surfaceChrome,
-                    border: `1px solid ${t.border}`,
                     color: t.text,
                     fontSize: 14,
                     lineHeight: 1.5,
@@ -271,7 +259,6 @@ export const AssistantConversation = ({
                     onCancel={() => onCancelProposal?.(index)}
                   />
                 )}
-              </div>
             </div>
           )
         })}
@@ -279,9 +266,8 @@ export const AssistantConversation = ({
           <div
             role="status"
             aria-label="Assistant is typing"
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}
+            style={{ display: 'flex', alignItems: 'flex-start' }}
           >
-            <AssistantMark size={28} />
             <div
               style={{
                 display: 'flex',

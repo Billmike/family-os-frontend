@@ -3,7 +3,10 @@ import { Check } from 'lucide-react'
 import { fonts, r, t } from '../../ui'
 
 export const proposalFieldInputStyle: CSSProperties = {
+  display: 'block',
   width: '100%',
+  minWidth: 0,
+  maxWidth: '100%',
   minHeight: 40,
   padding: '0 10px',
   borderRadius: r.md,
@@ -41,6 +44,9 @@ export const ProposalField = ({
           justifyContent: 'space-between',
           gap: 8,
           width: '100%',
+          minWidth: 0,
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           minHeight: 40,
           padding: '8px 10px',
           borderRadius: r.md,
@@ -61,7 +67,7 @@ export const ProposalField = ({
     )
   }
   return (
-    <label style={{ display: 'block' }}>
+    <label style={{ display: 'block', minWidth: 0, maxWidth: '100%' }}>
       <span style={{ display: 'block', fontSize: 11, color: t.textSec, marginBottom: 4 }}>{label}</span>
       {children}
     </label>

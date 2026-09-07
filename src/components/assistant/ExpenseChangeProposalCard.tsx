@@ -127,6 +127,10 @@ export const ExpenseChangeProposalCard = ({
         flexDirection: 'column',
         gap: 10,
         fontFamily: fonts.ui,
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}
     >
       <p style={{ margin: 0, fontSize: 11, color: t.textSec }}>
@@ -232,6 +236,7 @@ export const ExpenseChangeProposalCard = ({
         <input
           type="date"
           aria-label="Date"
+          className="proposal-date-input"
           value={date}
           onChange={event => setDate(event.target.value)}
           style={proposalFieldInputStyle}

@@ -209,6 +209,10 @@ export const ExpenseProposalCard = ({
         flexDirection: 'column',
         gap: 10,
         fontFamily: fonts.ui,
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}
     >
       {hasPersonalAccounts && (
@@ -356,6 +360,7 @@ export const ExpenseProposalCard = ({
         <input
           type="date"
           aria-label="Date"
+          className="proposal-date-input"
           value={date}
           onChange={event => setDate(event.target.value)}
           style={proposalFieldInputStyle}

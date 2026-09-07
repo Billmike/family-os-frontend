@@ -211,6 +211,19 @@ html.assistant-phone-open body {
   width: 100%;
   max-width: 100%;
 }
+.proposal-date-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.proposal-date-input::-webkit-datetime-edit {
+  min-width: 0;
+  overflow: hidden;
+}
+
 html.assistant-phone-open .app-toast {
   bottom: auto;
   top: calc(var(--assistant-vv-top, 0px) + var(--assistant-vv-height, 100dvh) - 80px);

@@ -355,6 +355,28 @@ export function cycleStatus(period: { startDate: string; endDate: string }, toda
   return 'upcoming'
 }
 
+const MS_DAY = 86_400_000
+
+export function daysInclusive(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00`)
+  const end = Date.parse(`${to}T00:00:00`)
+  return Math.round((end - start) / MS_DAY) + 1
+}
+
+export function cycleIdentityStatus(
+  period: { startDate: string; endDate: string } | null,
+  today: string,
+): string {
+  if (!period) return 'No cycle yet'
+  const status = cycleStatus(period, today)
+  if (status === 'current') {
+    const remainingDays = daysInclusive(today, period.endDate)
+    return `Current · ${remainingDays} days left`
+  }
+  const dateRange = formatCycleDateRange(period.startDate, period.endDate)
+  return status === 'ended' ? `Ended · ${dateRange}` : `Upcoming · ${dateRange}`
+}
+
 export function sortBudgetPeriods<T extends { startDate: string; endDate: string }>(periods: T[]): T[] {
   return [...periods].sort((a, b) => {
     const start = a.startDate.localeCompare(b.startDate)

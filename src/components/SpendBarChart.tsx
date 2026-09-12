@@ -1,4 +1,3 @@
-import { t } from '../ui'
 import { formatMoney } from '../api/adapters'
 import { MOTION_MS, prefersReducedMotion } from '../lib/motion'
 
@@ -90,7 +89,7 @@ export function SpendBarChart({
                 width="14"
                 height={height}
                 rx="6"
-                fill={selected ? 'var(--ds-primary)' : 'var(--ds-primary-subtle)'}
+                fill={selected ? 'var(--budget-bar)' : 'var(--budget-bar-muted)'}
                 style={{
                   ['--bar-y' as string]: `${BAR_MAX - height}px`,
                   ['--bar-h' as string]: `${height}px`,
@@ -101,7 +100,7 @@ export function SpendBarChart({
             <span style={{
               fontSize: 10,
               fontWeight: selected ? 600 : 400,
-              color: selected ? t.primary : t.textTer,
+              color: selected ? 'var(--budget-text)' : 'var(--budget-dim)',
               letterSpacing: '-0.02em',
             }}>
               {selected ? row.label : row.shortLabel}

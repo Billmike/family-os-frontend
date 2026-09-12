@@ -13,6 +13,7 @@ interface FillProps {
   color: string
   durationMs?: number
   height?: number
+  trackColor?: string
 }
 
 export const ScaleFill = ({
@@ -20,6 +21,7 @@ export const ScaleFill = ({
   color,
   durationMs = MOTION_MS.state,
   height = 6,
+  trackColor = t.surfaceMuted,
 }: FillProps) => {
   const reduced = prefersReducedMotion()
   const width = Math.min(Math.max(percent, 0), 100)
@@ -31,7 +33,7 @@ export const ScaleFill = ({
       style={{
         height,
         borderRadius: 9999,
-        background: t.surfaceMuted,
+        background: trackColor,
         overflow: 'hidden',
       }}
     >
@@ -58,9 +60,17 @@ interface Props {
   ariaLabel: string
   height?: number
   durationMs?: number
+  trackColor?: string
 }
 
-export function BudgetBar({ percentUsed, state, ariaLabel, height = 4, durationMs = MOTION_MS.state }: Props) {
+export function BudgetBar({
+  percentUsed,
+  state,
+  ariaLabel,
+  height = 4,
+  durationMs = MOTION_MS.state,
+  trackColor,
+}: Props) {
   return (
     <div
       role="progressbar"
@@ -75,6 +85,7 @@ export function BudgetBar({ percentUsed, state, ariaLabel, height = 4, durationM
         color={stateColor(state)}
         durationMs={durationMs}
         height={height}
+        trackColor={trackColor}
       />
     </div>
   )

@@ -4,8 +4,8 @@ import { ArrowRight, ChevronDown, Plus, Receipt, Wallet } from 'lucide-react'
 import type { Budget, Expense, BudgetPeriod, AppHandlers } from '../types'
 import {
   t,
+  r,
   EmptyState,
-  SectionLabel,
   Skeleton,
   FAB,
   ExpenseCategoryIcon,
@@ -31,6 +31,13 @@ import { MOTION_EASE, MOTION_MS, useDeltaDuration } from '../lib/motion'
 
 const ACTIVITY_PREVIEW_LIMIT = 5
 const CHART_CYCLE_LIMIT = 12
+
+const paperCard = {
+  background: 'var(--budget-card)',
+  border: '1px solid var(--budget-grid)',
+  boxShadow: 'var(--budget-card-shadow)',
+  borderRadius: r.lg,
+} as const
 
 interface Props {
   period: BudgetPeriod | null
@@ -146,7 +153,7 @@ export default function ExpensesScreen({
 
   if (periods.length === 0 || !period) {
     return (
-      <div>
+      <div className="budget-overview" style={{ paddingTop: 8 }}>
         <EmptyState
           icon={Wallet}
           title="No budget cycle yet"
@@ -176,7 +183,7 @@ export default function ExpensesScreen({
   }))
 
   const handleOpenExpense = (expense: Expense) => {
-    if (expense.sourceType === 'shopping_session') return
+    if (!isMemberWritableExpense(expense.sourceType)) return
     openSheet({ type: 'editExpense', expense })
   }
 
@@ -187,205 +194,228 @@ export default function ExpensesScreen({
   }
 
   return (
-    <div style={{ padding: '8px 20px 32px' }}>
-      <div className="canvas-split">
-        <div>
-          <p style={{
-            fontSize: 44,
-            fontWeight: 500,
-            color: t.text,
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1,
-            margin: 0,
-            fontFamily: 'var(--ds-font-display)',
-          }}>
-            <RollingNumber
-              value={used}
-              currency={period.currency}
-              variant="odometer"
-              durationMs={heroDuration}
-            />
-          </p>
-        {expected > 0 ? (
-          <>
+    <div className="budget-overview" style={{ paddingTop: 16, paddingLeft: 16, paddingRight: 16 }}>
+      <div className="budget-overview-split">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <section aria-label="Cycle spend" style={{ ...paperCard, padding: '20px 20px 16px' }}>
             <p style={{
-              fontSize: 14,
-              color: budgetStateColor(state),
-              margin: '12px 0 0',
+              fontSize: 44,
+              fontWeight: 500,
+              color: 'var(--budget-text)',
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1,
+              margin: 0,
+              fontFamily: 'var(--ds-font-display)',
             }}>
-              {formatMoney(used, period.currency)} of {formatMoney(expected, period.currency)}
-              {' · '}
-              {remaining >= 0
-                ? `${formatMoney(remaining, period.currency)} left`
-                : `${formatMoney(Math.abs(remaining), period.currency)} over`}
+              <RollingNumber
+                value={used}
+                currency={period.currency}
+                variant="odometer"
+                durationMs={heroDuration}
+              />
             </p>
-            <BudgetBar
-              percentUsed={percentUsed}
-              state={state}
-              ariaLabel={`Cycle budget ${Math.round(percentUsed)} percent used`}
-              durationMs={tallyDuration}
-            />
-          </>
-        ) : null}
+            {expected > 0 ? (
+              <>
+                <p style={{
+                  fontSize: 14,
+                  color: budgetStateColor(state),
+                  margin: '12px 0 0',
+                }}>
+                  {formatMoney(used, period.currency)} of {formatMoney(expected, period.currency)}
+                  {' · '}
+                  {remaining >= 0
+                    ? `${formatMoney(remaining, period.currency)} left`
+                    : `${formatMoney(Math.abs(remaining), period.currency)} over`}
+                </p>
+                <BudgetBar
+                  percentUsed={percentUsed}
+                  state={state}
+                  ariaLabel={`Cycle budget ${Math.round(percentUsed)} percent used`}
+                  durationMs={tallyDuration}
+                  trackColor="var(--budget-toggle)"
+                />
+              </>
+            ) : null}
+          </section>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 24,
-        marginTop: 20,
-      }}>
-        <StatCell label="Entries" value={entryCount} format="integer" durationMs={tallyDuration} />
-        <StatCell
-          label="Avg"
-          value={average}
-          currency={period.currency}
-          format="money"
-          durationMs={tallyDuration}
-          last
-        />
-      </div>
+          <section aria-label="Entries and average" style={paperCard}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+            }}>
+              <StatCell label="Entries" value={entryCount} format="integer" durationMs={tallyDuration} />
+              <StatCell
+                label="Avg"
+                value={average}
+                currency={period.currency}
+                format="money"
+                durationMs={tallyDuration}
+                last
+              />
+            </div>
+          </section>
 
-      {chartBuckets.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <SpendBarChart
-            buckets={chartBuckets}
-            selectedId={period.id}
-            currency={period.currency}
-            onSelect={onSelectPeriod}
-            durationMs={tallyDuration}
-          />
+          {chartBuckets.length > 0 && (
+            <section aria-label="Recent cycles" style={{ ...paperCard, padding: '12px 12px 8px' }}>
+              <SpendBarChart
+                buckets={chartBuckets}
+                selectedId={period.id}
+                currency={period.currency}
+                onSelect={onSelectPeriod}
+                durationMs={tallyDuration}
+              />
+            </section>
+          )}
         </div>
-      )}
-        </div>
 
-        <div>
-      {spendGroups.length > 0 && (
-        <>
-          <SectionLabel>Spending by group</SectionLabel>
-          <SpendGroupList
-            groups={spendGroups}
-            currency={period.currency}
-            durationMs={tallyDuration}
-          />
-        </>
-      )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {spendGroups.length > 0 && (
+            <div>
+              <p style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--budget-label)',
+                letterSpacing: '0.01em',
+                padding: '0 4px 8px',
+                fontFamily: 'var(--ds-font)',
+                margin: 0,
+              }}>
+                Spending by group
+              </p>
+              <SpendGroupList
+                groups={spendGroups}
+                currency={period.currency}
+                durationMs={tallyDuration}
+              />
+            </div>
+          )}
 
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        paddingRight: 16,
-      }}>
-        <SectionLabel>Activity</SectionLabel>
-        {showViewMore && (
-          <button
-            type="button"
-            onClick={handleViewMore}
-            aria-label="View more expenses"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
+          <section aria-label="Activity" style={paperCard}>
+            <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 3,
-              color: t.primary,
-              fontSize: 13,
-              fontWeight: 500,
-              padding: '4px 0',
-              fontFamily: 'var(--ds-font)',
-              flexShrink: 0,
-            }}
-          >
-            View more <ArrowRight size={13} />
-          </button>
-        )}
-      </div>
-      <div style={{ minHeight: 56 }}>
-        {loadingEntries ? (
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Skeleton h={16} />
-            <Skeleton h={16} w="70%" />
-          </div>
-        ) : entries.length === 0 ? (
-          <>
-            <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Receipt size={16} color={t.textTer} strokeWidth={1.75} />
-              <p style={{ fontSize: 14, color: t.textTer, margin: 0 }}>
-                No expenses in this cycle.
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '12px 16px 4px',
+            }}>
+              <p style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: 'var(--budget-text)',
+                margin: 0,
+                fontFamily: 'var(--ds-font)',
+              }}>
+                Activity
               </p>
-            </div>
-            {loadError && <CycleExpensesLoadError onRetry={retry} />}
-          </>
-        ) : (
-          <>
-          {activityItems.map(({ item: expense, phase }, i) => {
-            const isManual = isMemberWritableExpense(expense.sourceType)
-            const title = expenseTitle(expense)
-            const itemCount = expense.sourceItemCount
-            const subtitle = expense.sourceType === 'shopping_session' && itemCount != null
-              ? `${expense.group} · ${expense.subcategoryName} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
-              : `${expense.group} · ${expense.subcategoryName}`
-            return (
-              <ActivityRowShell
-                key={expense.id}
-                phase={phase}
-                onEnterEnd={() => handleEnterEnd(expense.id)}
-                onExitEnd={() => handleExitEnd(expense.id)}
-              >
+              {showViewMore && (
                 <button
                   type="button"
-                  onClick={() => handleOpenExpense(expense)}
-                  disabled={!isManual}
-                  aria-label={isManual ? `Edit ${title}` : title}
+                  onClick={handleViewMore}
+                  aria-label="View more expenses"
                   style={{
-                    width: '100%',
-                    padding: '14px 16px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    border: 'none',
-                    borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-                    background: 'none',
-                    cursor: isManual ? 'pointer' : 'default',
-                    textAlign: 'left',
+                    gap: 3,
+                    color: t.primary,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    padding: '4px 0',
                     fontFamily: 'var(--ds-font)',
+                    flexShrink: 0,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    <span style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 10,
-                      background: t.surfaceMuted,
-                      color: BUDGET_GROUP_COLORS[expense.group] ?? t.textSec,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <ExpenseCategoryIcon category={expense.group} size={16} />
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{title}</div>
-                      <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
-                        {formatSessionDate(expense.occurredAt)} · {subtitle}
-                      </div>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: t.text, flexShrink: 0 }}>
-                    <RollingNumber value={expense.amount} currency={expense.currency} />
-                  </span>
+                  View more <ArrowRight size={13} />
                 </button>
-              </ActivityRowShell>
-            )
-          })}
-            {loadError && <CycleExpensesLoadError onRetry={retry} />}
-          </>
-        )}
-      </div>
+              )}
+            </div>
+            <div style={{ minHeight: 56 }}>
+              {loadingEntries ? (
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Skeleton h={16} />
+                  <Skeleton h={16} w="70%" />
+                </div>
+              ) : entries.length === 0 ? (
+                <>
+                  <div style={{ padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Receipt size={16} color="var(--budget-dim)" strokeWidth={1.75} />
+                    <p style={{ fontSize: 14, color: 'var(--budget-dim)', margin: 0 }}>
+                      No expenses in this cycle.
+                    </p>
+                  </div>
+                  {loadError && <CycleExpensesLoadError onRetry={retry} />}
+                </>
+              ) : (
+                <>
+                  {activityItems.map(({ item: expense, phase }, i) => {
+                    const isManual = isMemberWritableExpense(expense.sourceType)
+                    const title = expenseTitle(expense)
+                    const itemCount = expense.sourceItemCount
+                    const subtitle = expense.sourceType === 'shopping_session' && itemCount != null
+                      ? `${expense.group} · ${expense.subcategoryName} · ${itemCount} item${itemCount !== 1 ? 's' : ''}`
+                      : `${expense.group} · ${expense.subcategoryName}`
+                    return (
+                      <ActivityRowShell
+                        key={expense.id}
+                        phase={phase}
+                        onEnterEnd={() => handleEnterEnd(expense.id)}
+                        onExitEnd={() => handleExitEnd(expense.id)}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleOpenExpense(expense)}
+                          disabled={!isManual}
+                          aria-label={isManual ? `Edit ${title}` : title}
+                          style={{
+                            width: '100%',
+                            padding: '14px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            border: 'none',
+                            borderTop: i > 0 ? '1px solid var(--budget-grid)' : 'none',
+                            background: 'none',
+                            cursor: isManual ? 'pointer' : 'default',
+                            textAlign: 'left',
+                            fontFamily: 'var(--ds-font)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                            <span style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'var(--budget-toggle)',
+                              color: BUDGET_GROUP_COLORS[expense.group] ?? 'var(--budget-dim)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>
+                              <ExpenseCategoryIcon category={expense.group} size={16} />
+                            </span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 15, color: 'var(--budget-text)', fontWeight: 500 }}>{title}</div>
+                              <div style={{ fontSize: 12, color: 'var(--budget-dim)', marginTop: 2 }}>
+                                {formatSessionDate(expense.occurredAt)} · {subtitle}
+                              </div>
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--budget-text)', flexShrink: 0 }}>
+                            <RollingNumber value={expense.amount} currency={expense.currency} />
+                          </span>
+                        </button>
+                      </ActivityRowShell>
+                    )
+                  })}
+                  {loadError && <CycleExpensesLoadError onRetry={retry} />}
+                </>
+              )}
+            </div>
+          </section>
         </div>
       </div>
 
@@ -426,13 +456,17 @@ function SpendGroupList({
   }
 
   return (
-    <div>
-      {groups.map((group, i) => {
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {groups.map(group => {
         const isOpen = Boolean(expanded[group.group])
         const panelId = groupPanelId(group.group)
         const color = BUDGET_GROUP_COLORS[group.group] ?? t.primary
         return (
-          <div key={group.group} style={{ borderTop: i > 0 ? `1px solid ${t.border}` : 'none' }}>
+          <section
+            key={group.group}
+            aria-label={group.group}
+            style={{ ...paperCard, overflow: 'hidden' }}
+          >
             <SpendGroupHeader
               group={group}
               currency={currency}
@@ -465,7 +499,7 @@ function SpendGroupList({
                 ))}
               </div>
             </div>
-          </div>
+          </section>
         )
       })}
     </div>
@@ -515,11 +549,12 @@ function SpendGroupHeader({
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span aria-hidden style={{ width: 3, height: 16, borderRadius: 9999, background: color, flexShrink: 0 }} />
           <span style={{
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: t.surfaceMuted,
+            background: 'var(--budget-toggle)',
             color,
             display: 'flex',
             alignItems: 'center',
@@ -529,15 +564,15 @@ function SpendGroupHeader({
             <BudgetGroupIcon group={group.group} size={16} />
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: t.text, fontWeight: 500 }}>{group.group}</div>
-            <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>{linesLabel}</div>
+            <div style={{ fontSize: 14, color: 'var(--budget-text)', fontWeight: 500 }}>{group.group}</div>
+            <div style={{ fontSize: 12, color: 'var(--budget-dim)', marginTop: 2 }}>{linesLabel}</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <span style={{
             fontSize: 13,
             fontWeight: 600,
-            color: t.text,
+            color: 'var(--budget-text)',
           }}>
             <RollingNumber value={group.actual} currency={currency} durationMs={durationMs} />
             {hasLimit ? (
@@ -549,7 +584,7 @@ function SpendGroupHeader({
           </span>
           <ChevronDown
             size={16}
-            color={t.textTer}
+            color="var(--budget-dim)"
             aria-hidden
             style={{
               transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
@@ -564,6 +599,7 @@ function SpendGroupHeader({
             percent={percentUsed}
             color={state === 'over' ? t.error : budgetStateColor(state)}
             durationMs={durationMs}
+            trackColor="var(--budget-toggle)"
           />
         </div>
       ) : null}
@@ -592,18 +628,18 @@ function CategoryRow({ category, amount, currency, share, budget, color, duratio
   return (
     <div style={{
       padding: '12px 16px 12px 60px',
-      borderTop: divider ? `1px solid ${t.border}` : 'none',
+      borderTop: divider ? '1px solid var(--budget-grid)' : 'none',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <span style={{ fontSize: 14, color: t.textSec, fontWeight: 500, minWidth: 0 }}>{category}</span>
+        <span style={{ fontSize: 14, color: 'var(--budget-text)', fontWeight: 500, minWidth: 0, opacity: 0.78 }}>{category}</span>
         {hasBudget && budget ? (
-          <span style={{ fontSize: 13, fontWeight: 600, color: t.textSec, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--budget-text)', flexShrink: 0, opacity: 0.78 }}>
             <RollingNumber value={amount} currency={currency} durationMs={durationMs} />
             {' / '}
             <RollingNumber value={budget.amount} currency={currency} durationMs={durationMs} />
           </span>
         ) : (
-          <span style={{ fontSize: 14, fontWeight: 600, color: t.textSec, flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--budget-text)', flexShrink: 0, opacity: 0.78 }}>
             <RollingNumber value={amount} currency={currency} durationMs={durationMs} />
           </span>
         )}
@@ -616,7 +652,12 @@ function CategoryRow({ category, amount, currency, share, budget, color, duratio
         aria-valuenow={hasBudget && budget ? Math.min(budget.percentUsed, 100) : undefined}
         style={{ marginTop: 8 }}
       >
-        <ScaleFill percent={fillPercent} color={barColor} durationMs={durationMs} />
+        <ScaleFill
+          percent={fillPercent}
+          color={barColor}
+          durationMs={durationMs}
+          trackColor="var(--budget-toggle)"
+        />
       </div>
     </div>
   )
@@ -641,12 +682,12 @@ function StatCell({
     <div style={{
       padding: '14px 12px',
       textAlign: 'center',
-      borderRight: last ? 'none' : `1px solid ${t.border}`,
+      borderRight: last ? 'none' : '1px solid var(--budget-grid)',
     }}>
       <p style={{
         fontSize: 15,
         fontWeight: 600,
-        color: t.text,
+        color: 'var(--budget-text)',
         letterSpacing: '-0.02em',
         margin: 0,
       }}>
@@ -657,7 +698,7 @@ function StatCell({
           durationMs={durationMs}
         />
       </p>
-      <p style={{ fontSize: 11, color: t.textTer, marginTop: 4 }}>{label}</p>
+      <p style={{ fontSize: 11, color: 'var(--budget-dim)', marginTop: 4 }}>{label}</p>
     </div>
   )
 }

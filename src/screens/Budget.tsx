@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Copy, Plus, Wallet, X } from 'lucide-react'
+import { Check, ChevronDown, Copy, Plus, Wallet, X } from 'lucide-react'
 import type {
   AppHandlers,
   Budget,
@@ -10,6 +10,7 @@ import type {
 } from '../types'
 import { BUDGET_GROUPS } from '../types'
 import {
+  cycleIdentityStatus,
   cycleStatus,
   formatCycleDateRange,
   formatCycleDay,
@@ -30,6 +31,20 @@ import BudgetInsights from '../components/BudgetInsights'
 import ExpensesScreen from './Expenses'
 import { MoneyChrome } from '../components/MoneyChrome'
 import { MonthSwitcher } from '../components/MonthSwitcher'
+import { MOTION_EASE, MOTION_MS } from '../lib/motion'
+
+const paperCard = {
+  background: 'var(--budget-card)',
+  border: '1px solid var(--budget-grid)',
+  boxShadow: 'var(--budget-card-shadow)',
+  borderRadius: r.lg,
+} as const
+
+const planGroupPanelId = (group: string) =>
+  `plan-group-${group.toLowerCase().replace(/\s+/g, '-')}`
+
+const lineCountLabel = (count: number) =>
+  count === 1 ? '1 line' : `${count} lines`
 
 export type BudgetTab = 'plan' | 'spend' | 'insights'
 
@@ -86,6 +101,8 @@ export default function BudgetScreen({
   onSelectPersonal,
   openSheet,
 }: Props) {
+  const statusLabel = cycleIdentityStatus(period, today)
+
   if (loading) {
     return (
       <MoneyChrome
@@ -94,8 +111,9 @@ export default function BudgetScreen({
         onSelectFamily={() => undefined}
         onSelectPersonal={onSelectPersonal}
         onSelectFamilyView={onSelectTab}
+        statusLabel={statusLabel}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `0 ${SIDE_PAD}px` }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `16px ${SIDE_PAD}px` }}>
           <Skeleton h={120} />
           <Skeleton h={200} />
           <Skeleton h={200} />
@@ -132,6 +150,7 @@ export default function BudgetScreen({
       onPrev={handlePrevCycle}
       onNext={handleNextCycle}
       onAllCycles={onOpenCycleList}
+      tone="paper"
     />
   ) : null
 
@@ -142,6 +161,7 @@ export default function BudgetScreen({
       onSelectFamily={() => undefined}
       onSelectPersonal={onSelectPersonal}
       onSelectFamilyView={onSelectTab}
+      statusLabel={statusLabel}
       switcher={cycleSwitcher}
     >
       {tab === 'spend' ? (
@@ -159,7 +179,7 @@ export default function BudgetScreen({
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
-            padding: tab === 'insights' ? `0 ${SIDE_PAD}px 0` : `16px ${SIDE_PAD}px 0`,
+            padding: `16px ${SIDE_PAD}px 32px`,
           }}
         >
           {tab === 'insights' ? (
@@ -183,18 +203,11 @@ export default function BudgetScreen({
                   type="button"
                   onClick={onCopyCycle}
                   style={{
-                    border: `1px solid ${t.border}`,
-                    background: t.surfaceElev,
-                    borderRadius: r.md,
+                    ...ghostBtn,
                     padding: '10px 14px',
                     fontSize: 13,
                     fontWeight: 500,
-                    cursor: 'pointer',
-                    color: t.text,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontFamily: fonts.ui,
+                    color: 'var(--budget-text)',
                   }}
                 >
                   <Copy size={14} aria-hidden />
@@ -204,39 +217,23 @@ export default function BudgetScreen({
             </>
           ) : period ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: status === 'current' ? t.primary : t.textTer,
-                    background: status === 'current' ? t.primarySubtle : t.surfaceMuted,
-                    borderRadius: r.pill,
-                    padding: '4px 10px',
-                  }}
-                >
-                  {status === 'current' ? 'Current' : status === 'ended' ? 'Ended' : 'Upcoming'}
-                </span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={onEditDates} aria-label="Edit cycle dates" style={ghostBtn}>
-                    Dates
-                  </button>
-                  <button type="button" onClick={onCopyCycle} aria-label="Copy from this cycle" style={ghostBtn}>
-                    <Copy size={14} aria-hidden />
-                  </button>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button type="button" onClick={onEditDates} aria-label="Edit cycle dates" style={ghostBtn}>
+                  Dates
+                </button>
+                <button type="button" onClick={onCopyCycle} aria-label="Copy from this cycle" style={ghostBtn}>
+                  <Copy size={14} aria-hidden />
+                </button>
               </div>
 
               {showGapBanner && (
                 <div
                   style={{
-                    background: t.surface,
-                    border: `1px solid ${t.border}`,
-                    borderRadius: r.lg,
-                    padding: '12px 14px',
+                    ...paperCard,
+                    padding: '14px 16px',
                   }}
                 >
-                  <p style={{ fontSize: 13, color: t.text, margin: 0, lineHeight: 1.45 }}>
+                  <p style={{ fontSize: 13, color: 'var(--budget-text)', margin: 0, lineHeight: 1.45 }}>
                     This cycle ended {formatCycleDay(period.endDate)}. Nothing is planned for today.
                   </p>
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -289,30 +286,35 @@ export default function BudgetScreen({
 }
 
 const ghostBtn: React.CSSProperties = {
-  border: `1px solid ${t.border}`,
-  background: t.surface,
+  border: '1px solid var(--budget-grid)',
+  background: 'var(--budget-card)',
   borderRadius: r.md,
   padding: '8px 10px',
   fontSize: 12,
   fontWeight: 600,
   cursor: 'pointer',
-  color: t.textSec,
+  color: 'var(--budget-text)',
   display: 'inline-flex',
   alignItems: 'center',
   gap: 4,
+  fontFamily: fonts.ui,
 }
 
 function CollapsibleHeader({
   expanded,
   onToggle,
   markColor,
+  panelId,
   children,
+  trailing,
   ariaLabel,
 }: {
   expanded: boolean
   onToggle: () => void
   markColor: string
+  panelId: string
   children: React.ReactNode
+  trailing?: React.ReactNode
   ariaLabel: string
 }) {
   return (
@@ -320,30 +322,38 @@ function CollapsibleHeader({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
+      aria-controls={panelId}
       aria-label={ariaLabel}
       style={{
         width: '100%',
-        background: 'transparent',
-        color: t.text,
+        padding: '12px 16px',
         border: 'none',
-        fontWeight: 500,
-        fontSize: 14,
-        padding: '12px 4px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
+        background: 'none',
         cursor: 'pointer',
-        fontFamily: fonts.ui,
         textAlign: 'left',
+        fontFamily: fonts.ui,
       }}
     >
-      <span aria-hidden style={{ width: 3, height: 16, borderRadius: 9999, background: markColor, flexShrink: 0 }} />
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flex: 1 }}>
-        {children}
-      </span>
-      <span aria-hidden style={{ display: 'flex', alignItems: 'center', color: t.textTer }}>
-        {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span aria-hidden style={{ width: 3, height: 16, borderRadius: 9999, background: markColor, flexShrink: 0 }} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+            {children}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {trailing}
+          <ChevronDown
+            size={16}
+            color="var(--budget-dim)"
+            aria-hidden
+            style={{
+              transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+              transition: `transform ${MOTION_MS.feedback}ms ${MOTION_EASE}`,
+            }}
+          />
+        </div>
+      </div>
     </button>
   )
 }
@@ -351,6 +361,7 @@ function CollapsibleHeader({
 function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
   const [expanded, setExpanded] = useState(true)
   const s = period.summary
+  const panelId = 'plan-monthly-summary'
   const rows = [
     { label: 'Income', sign: '+', amount: s.incomeExpected },
     ...period.groups
@@ -365,35 +376,45 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
   return (
     <section
       aria-label="Monthly summary"
-      style={{
-        borderRadius: r.lg,
-        overflow: 'hidden',
-        border: `1px solid ${t.border}`,
-        background: t.surface,
-      }}
+      style={{ ...paperCard, overflow: 'hidden' }}
     >
       <CollapsibleHeader
         expanded={expanded}
         onToggle={() => setExpanded(v => !v)}
         markColor={BUDGET_GROUP_COLORS.Summary}
+        panelId={panelId}
         ariaLabel={expanded ? 'Collapse monthly summary' : 'Expand monthly summary'}
+        trailing={
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--budget-text)' }}>
+            {formatMoney(s.leftOverExpected, period.currency)}
+          </span>
+        }
       >
-        Monthly Summary
+        <span style={{ fontSize: 14, color: 'var(--budget-text)', fontWeight: 500 }}>
+          Monthly Summary
+        </span>
       </CollapsibleHeader>
 
-      {expanded && (
-        <>
+      <div
+        id={panelId}
+        role="region"
+        aria-label="Monthly summary rows"
+        aria-hidden={!expanded}
+        inert={!expanded}
+        className={expanded ? 'spend-group-panel is-open' : 'spend-group-panel'}
+      >
+        <div className="spend-group-panel-inner">
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1.6fr 1fr',
               gap: 0,
-              padding: '8px 12px',
+              padding: '8px 16px',
               fontSize: 11,
               fontWeight: 600,
-              color: t.textSec,
-              background: 'var(--ds-surface-muted)',
-              borderBottom: `1px dashed ${t.border}`,
+              color: 'var(--budget-dim)',
+              background: 'var(--budget-toggle)',
+              borderTop: '1px solid var(--budget-grid)',
             }}
           >
             <span>Category</span>
@@ -405,17 +426,17 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1.6fr 1fr',
-                padding: '10px 12px',
-                borderBottom: `1px dashed ${t.border}`,
-                fontSize: 13,
-                color: t.text,
+                padding: '12px 16px',
+                borderTop: '1px solid var(--budget-grid)',
+                fontSize: 14,
+                color: 'var(--budget-text)',
               }}
             >
               <span>
-                <span style={{ color: t.textTer, marginRight: 6 }}>{row.sign}</span>
+                <span style={{ color: 'var(--budget-dim)', marginRight: 6 }}>{row.sign}</span>
                 {row.label}
               </span>
-              <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
                 {formatMoney(row.amount, period.currency)}
               </span>
             </div>
@@ -424,11 +445,12 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
             style={{
               display: 'grid',
               gridTemplateColumns: '1.6fr 1fr',
-              padding: '10px 12px',
-              background: 'var(--ds-surface-muted)',
-              fontSize: 13,
-              fontWeight: 700,
-              borderBottom: `1px dashed ${t.border}`,
+              padding: '12px 16px',
+              background: 'var(--budget-toggle)',
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--budget-text)',
+              borderTop: '1px solid var(--budget-grid)',
             }}
           >
             <span>Total Expenses</span>
@@ -438,10 +460,12 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
             style={{
               display: 'grid',
               gridTemplateColumns: '1.6fr 1fr',
-              padding: '10px 12px',
-              fontSize: 13,
-              fontWeight: 700,
+              padding: '12px 16px',
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--budget-text)',
               alignItems: 'center',
+              borderTop: '1px solid var(--budget-grid)',
             }}
           >
             <span>= Left Over</span>
@@ -458,8 +482,8 @@ function MonthlySummaryCard({ period }: { period: BudgetPeriod }) {
               {formatMoney(s.leftOverExpected, period.currency)}
             </span>
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </section>
   )
 }
@@ -492,6 +516,8 @@ function GroupCard({
   const [draftName, setDraftName] = useState('')
   const [draftAmount, setDraftAmount] = useState('')
   const [adding, setAdding] = useState(false)
+  const panelId = planGroupPanelId(block.group)
+  const linesLabel = lineCountLabel(block.lines.length)
 
   const handleAdd = async () => {
     const name = draftName.trim()
@@ -518,39 +544,70 @@ function GroupCard({
   return (
     <section
       aria-label={block.group}
-      style={{
-        padding: '4px 0 8px',
-        borderBottom: `1px solid ${t.border}`,
-      }}
+      style={{ ...paperCard, overflow: 'hidden' }}
     >
       <CollapsibleHeader
         expanded={expanded}
         onToggle={() => setExpanded(v => !v)}
         markColor={color}
-        ariaLabel={expanded ? `Collapse ${block.group}` : `Expand ${block.group}`}
-      >
-        <BudgetGroupIcon group={block.group} size={16} />
-        {block.group}
-        {!expanded && (
-          <span style={{ fontWeight: 600, opacity: 0.9, marginLeft: 4 }}>
-            · {formatMoney(block.expected, currency)}
+        panelId={panelId}
+        ariaLabel={
+          expanded
+            ? `Collapse ${block.group}, ${formatMoney(block.expected, currency)}, ${linesLabel}`
+            : `Expand ${block.group}, ${formatMoney(block.expected, currency)}, ${linesLabel}`
+        }
+        trailing={
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--budget-text)' }}>
+            {formatMoney(block.expected, currency)}
           </span>
-        )}
+        }
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 10,
+            background: 'var(--budget-toggle)',
+            color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <BudgetGroupIcon group={block.group} size={16} />
+        </span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 14, color: 'var(--budget-text)', fontWeight: 500 }}>
+            {block.group}
+          </span>
+          <span style={{ display: 'block', fontSize: 12, color: 'var(--budget-dim)', marginTop: 2 }}>
+            {linesLabel}
+          </span>
+        </span>
       </CollapsibleHeader>
 
-      {expanded && (
-        <>
+      <div
+        id={panelId}
+        role="region"
+        aria-label={`${block.group} lines`}
+        aria-hidden={!expanded}
+        inert={!expanded}
+        className={expanded ? 'spend-group-panel is-open' : 'spend-group-panel'}
+      >
+        <div className="spend-group-panel-inner">
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '28px 1.5fr 1fr 28px',
               gap: 0,
-              padding: '8px 12px',
+              padding: '8px 16px',
               fontSize: 11,
               fontWeight: 600,
-              color: t.textSec,
-              background: 'var(--ds-surface-muted)',
-              borderBottom: `1px dashed ${t.border}`,
+              color: 'var(--budget-dim)',
+              background: 'var(--budget-toggle)',
+              borderTop: '1px solid var(--budget-grid)',
             }}
           >
             <span aria-hidden>✓</span>
@@ -576,12 +633,12 @@ function GroupCard({
               display: 'grid',
               gridTemplateColumns: '28px 1.5fr 1fr auto',
               gap: 8,
-              padding: '10px 12px',
+              padding: '10px 16px',
               alignItems: 'center',
-              borderTop: block.lines.length ? `1px dashed ${t.border}` : 'none',
+              borderTop: '1px solid var(--budget-grid)',
             }}
           >
-            <Plus size={14} color={t.textTer} aria-hidden />
+            <Plus size={14} color="var(--budget-dim)" aria-hidden />
             <Input
               value={draftName}
               onChange={setDraftName}
@@ -615,11 +672,11 @@ function GroupCard({
             style={{
               display: 'grid',
               gridTemplateColumns: '28px 1.5fr 1fr 28px',
-              padding: '10px 12px',
-              fontWeight: 500,
-              fontSize: 13,
-              color: t.text,
-              borderTop: `1px solid ${t.border}`,
+              padding: '12px 16px',
+              fontWeight: 600,
+              fontSize: 14,
+              color: 'var(--budget-text)',
+              borderTop: '1px solid var(--budget-grid)',
             }}
           >
             <span />
@@ -627,8 +684,8 @@ function GroupCard({
             <span style={{ textAlign: 'right' }}>{formatMoney(block.expected, currency)}</span>
             <span />
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </section>
   )
 }
@@ -705,8 +762,8 @@ function BudgetLineRow({
         display: 'grid',
         gridTemplateColumns: '28px 1.5fr 1fr 28px',
         gap: 8,
-        padding: '8px 12px',
-        borderBottom: `1px dashed ${t.border}`,
+        padding: '8px 16px',
+        borderTop: '1px solid var(--budget-grid)',
         alignItems: 'center',
         background: line.settled ? 'var(--ds-success-subtle)' : undefined,
       }}
@@ -720,8 +777,8 @@ function BudgetLineRow({
           width: 22,
           height: 22,
           borderRadius: 4,
-          border: `1.5px solid ${line.settled ? t.success : t.borderStrong}`,
-          background: line.settled ? t.success : t.surface,
+          border: `1.5px solid ${line.settled ? t.success : 'var(--budget-grid)'}`,
+          background: line.settled ? t.success : 'var(--budget-card)',
           color: '#fff',
           display: 'inline-flex',
           alignItems: 'center',
@@ -732,7 +789,7 @@ function BudgetLineRow({
       >
         {line.settled ? <Check size={12} strokeWidth={3} aria-hidden /> : null}
       </button>
-      <div style={{ background: 'var(--ds-surface-muted)', borderRadius: r.sm }}>
+      <div style={{ background: 'var(--budget-toggle)', borderRadius: r.sm }}>
         <Input
           value={name}
           onChange={handleNameChange}
@@ -740,7 +797,7 @@ function BudgetLineRow({
           aria-label={`${line.subcategoryName} name`}
         />
       </div>
-      <div style={{ background: 'var(--ds-surface-muted)', borderRadius: r.sm }}>
+      <div style={{ background: 'var(--budget-toggle)', borderRadius: r.sm }}>
         <Input
           inputMode="decimal"
           value={amount}

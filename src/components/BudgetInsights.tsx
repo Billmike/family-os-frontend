@@ -13,10 +13,25 @@ import {
   BUDGET_GROUP_COLORS,
   EmptyState,
   Skeleton,
-  SectionLabel,
   t,
+  r,
   fonts,
 } from "../ui";
+
+const paperCard = {
+  background: "var(--budget-card)",
+  border: "1px solid var(--budget-grid)",
+  boxShadow: "var(--budget-card-shadow)",
+  borderRadius: r.lg,
+} as const;
+
+const cardTitleStyle = {
+  fontSize: 14,
+  fontWeight: 500,
+  color: "var(--budget-text)",
+  margin: 0,
+  fontFamily: fonts.ui,
+} as const;
 
 interface Props {
   period: BudgetPeriod | null;
@@ -384,9 +399,10 @@ export default function BudgetInsights({
 
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Skeleton h={140} />
         <Skeleton h={220} />
-        <Skeleton h={220} />
+        <Skeleton h={180} />
       </div>
     );
   }
@@ -396,7 +412,7 @@ export default function BudgetInsights({
       <EmptyState
         icon={Wallet}
         title="No insight data yet"
-        body="Once you have a few cycles of actuals, distribution charts will show up here."
+        body="Once a few cycles have actuals, comparison will show up here."
       />
     );
   }
@@ -406,46 +422,52 @@ export default function BudgetInsights({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 8,
-        paddingBottom: 24,
+        gap: 16,
       }}
     >
       {snapshot && (
         <section
           aria-label="Cycle snapshot"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            borderBottom: `1px solid ${t.border}`,
-          }}
+          style={paperCard}
         >
-          <SnapshotStat
-            label="Spent this cycle"
-            value={formatMoney(snapshot.spent, currency)}
-            detail={`of ${formatMoney(snapshot.budgeted, currency)}`}
-            valueColor={
-              snapshot.spent > snapshot.budgeted + 0.005 ? t.attention : t.text
-            }
-          />
-          <SnapshotStat
-            label="Net position"
-            value={formatMoney(Math.abs(snapshot.net), currency)}
-            detail={snapshot.net >= 0 ? "remaining" : "over budget"}
-            valueColor={snapshot.net >= 0 ? t.success : t.attention}
-            divided
-          />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            }}
+          >
+            <SnapshotStat
+              label="Spent this cycle"
+              value={formatMoney(snapshot.spent, currency)}
+              detail={`of ${formatMoney(snapshot.budgeted, currency)}`}
+              valueColor={
+                snapshot.spent > snapshot.budgeted + 0.005
+                  ? t.attention
+                  : "var(--budget-text)"
+              }
+            />
+            <SnapshotStat
+              label="Net position"
+              value={formatMoney(Math.abs(snapshot.net), currency)}
+              detail={snapshot.net >= 0 ? "remaining" : "over budget"}
+              valueColor={snapshot.net >= 0 ? t.success : t.attention}
+              divided
+            />
+          </div>
         </section>
       )}
 
-      <section>
-        <SectionLabel>Where the money went</SectionLabel>
+      <section aria-label="Where the money went" style={paperCard}>
+        <p style={{ ...cardTitleStyle, padding: "12px 16px 4px" }}>
+          Where the money went
+        </p>
         {ranked.length === 0 ? (
           <p
             style={{
               margin: 0,
-              padding: "8px 16px 16px",
-              fontSize: 13,
-              color: t.textSec,
+              padding: "16px 16px 20px",
+              fontSize: 14,
+              color: "var(--budget-dim)",
               fontFamily: fonts.ui,
             }}
           >
@@ -454,9 +476,9 @@ export default function BudgetInsights({
         ) : (
           <ol
             aria-label="Ranked subcategory spend"
-            style={{ listStyle: "none", margin: 0, padding: "0 0 8px" }}
+            style={{ listStyle: "none", margin: 0, padding: "4px 16px 8px" }}
           >
-            {ranked.map((row) => {
+            {ranked.map((row, index) => {
               const over = row.variance > 0.005;
               const under = row.variance < -0.005;
               const barColor = BUDGET_GROUP_COLORS[row.group] ?? t.primary;
@@ -468,15 +490,15 @@ export default function BudgetInsights({
                     gridTemplateColumns: "28px 1fr auto",
                     gap: 10,
                     alignItems: "center",
-                    padding: "10px 0",
-                    borderBottom: `1px dashed ${t.border}`,
+                    padding: "12px 0",
+                    borderTop: index > 0 ? "1px solid var(--budget-grid)" : "none",
                   }}
                 >
                   <span
                     style={{
                       fontSize: 12,
                       fontWeight: 500,
-                      color: t.textTer,
+                      color: "var(--budget-dim)",
                       fontFamily: fonts.ui,
                       fontVariantNumeric: "tabular-nums",
                     }}
@@ -497,7 +519,7 @@ export default function BudgetInsights({
                         style={{
                           fontSize: 14,
                           fontWeight: 500,
-                          color: t.text,
+                          color: "var(--budget-text)",
                           fontFamily: fonts.ui,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -509,7 +531,7 @@ export default function BudgetInsights({
                       <span
                         style={{
                           fontSize: 11,
-                          color: t.textTer,
+                          color: "var(--budget-dim)",
                           fontFamily: fonts.ui,
                           flexShrink: 0,
                         }}
@@ -522,7 +544,7 @@ export default function BudgetInsights({
                       style={{
                         height: 6,
                         borderRadius: 4,
-                        background: t.surfaceMuted,
+                        background: "var(--budget-toggle)",
                         overflow: "hidden",
                       }}
                     >
@@ -549,7 +571,7 @@ export default function BudgetInsights({
                       style={{
                         fontSize: 13,
                         fontWeight: 600,
-                        color: t.text,
+                        color: "var(--budget-text)",
                         fontFamily: fonts.ui,
                         fontVariantNumeric: "tabular-nums",
                       }}
@@ -564,7 +586,7 @@ export default function BudgetInsights({
                           ? t.attention
                           : under
                             ? t.success
-                            : t.textTer,
+                            : "var(--budget-dim)",
                         fontFamily: fonts.ui,
                         fontVariantNumeric: "tabular-nums",
                       }}
@@ -582,8 +604,13 @@ export default function BudgetInsights({
       </section>
 
       {chartBuckets.length > 0 && (
-        <section>
-          <SectionLabel>Monthly spend — last 6 cycles</SectionLabel>
+        <section
+          aria-label="Monthly spend — last 6 cycles"
+          style={{ ...paperCard, padding: "0 12px 8px" }}
+        >
+          <p style={{ ...cardTitleStyle, padding: "12px 4px 4px" }}>
+            Monthly spend — last 6 cycles
+          </p>
           <SpendBarChart
             buckets={chartBuckets}
             selectedId={period?.id ?? ""}
@@ -594,9 +621,9 @@ export default function BudgetInsights({
           <p
             style={{
               margin: 0,
-              padding: "8px 4px 16px",
+              padding: "8px 4px 8px",
               fontSize: 12,
-              color: t.textSec,
+              color: "var(--budget-dim)",
               fontFamily: fonts.ui,
             }}
           >
@@ -606,16 +633,36 @@ export default function BudgetInsights({
       )}
 
       {vsPrevious && (
-        <section>
-          <SectionLabel>
-            Vs previous cycle ·{" "}
-            {formatYearMonthCompact(vsPrevious.previousMonth)}
-          </SectionLabel>
+        <section aria-label="Vs previous cycle" style={paperCard}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              gap: 12,
+              padding: "12px 16px 4px",
+            }}
+          >
+            <p style={cardTitleStyle}>
+              Vs previous cycle
+            </p>
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--budget-dim)",
+                margin: 0,
+                fontFamily: fonts.ui,
+                flexShrink: 0,
+              }}
+            >
+              {formatYearMonthCompact(vsPrevious.previousMonth)}
+            </p>
+          </div>
           <ul
             aria-label="Biggest changes versus previous cycle"
-            style={{ listStyle: "none", margin: 0, padding: 0 }}
+            style={{ listStyle: "none", margin: 0, padding: "4px 16px 8px" }}
           >
-            {vsPrevious.rows.map((row) => {
+            {vsPrevious.rows.map((row, index) => {
               const over = row.delta > 0;
               return (
                 <li
@@ -625,8 +672,8 @@ export default function BudgetInsights({
                     gridTemplateColumns: "10px 1fr auto",
                     gap: 10,
                     alignItems: "center",
-                    padding: "10px 0",
-                    borderBottom: `1px dashed ${t.border}`,
+                    padding: "12px 0",
+                    borderTop: index > 0 ? "1px solid var(--budget-grid)" : "none",
                   }}
                 >
                   <span
@@ -643,7 +690,7 @@ export default function BudgetInsights({
                       style={{
                         fontSize: 14,
                         fontWeight: 500,
-                        color: t.text,
+                        color: "var(--budget-text)",
                         fontFamily: fonts.ui,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -655,7 +702,7 @@ export default function BudgetInsights({
                     <div
                       style={{
                         fontSize: 11,
-                        color: t.textTer,
+                        color: "var(--budget-dim)",
                         fontFamily: fonts.ui,
                         marginTop: 2,
                       }}
@@ -689,7 +736,7 @@ const SnapshotStat = ({
   label,
   value,
   detail,
-  valueColor = t.text,
+  valueColor = "var(--budget-text)",
   divided = false,
 }: {
   label: string;
@@ -705,7 +752,7 @@ const SnapshotStat = ({
       flexDirection: "column",
       gap: 4,
       padding: "16px 16px 18px",
-      borderLeft: divided ? `1px solid ${t.border}` : undefined,
+      borderLeft: divided ? "1px solid var(--budget-grid)" : undefined,
     }}
   >
     <span
@@ -714,7 +761,7 @@ const SnapshotStat = ({
         fontWeight: 500,
         letterSpacing: "0.04em",
         textTransform: "uppercase",
-        color: t.textTer,
+        color: "var(--budget-dim)",
         fontFamily: fonts.ui,
       }}
     >
@@ -722,7 +769,7 @@ const SnapshotStat = ({
     </span>
     <span
       style={{
-        fontSize: 28,
+        fontSize: 32,
         fontWeight: 500,
         letterSpacing: "-0.03em",
         color: valueColor,
@@ -735,7 +782,7 @@ const SnapshotStat = ({
     <span
       style={{
         fontSize: 12,
-        color: t.textSec,
+        color: "var(--budget-dim)",
         fontFamily: fonts.ui,
       }}
     >

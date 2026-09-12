@@ -2059,6 +2059,7 @@ function MainApp() {
                 period={budgetPeriod}
                 periods={budgetPeriods}
                 selectedPeriodId={selectedPeriodId}
+                today={today}
                 loadPeriodExpenses={loadPeriodExpenses}
                 onSelectPeriod={setSelectedPeriodId}
                 onSelectPersonal={() => navigateToScreen("personal")}

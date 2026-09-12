@@ -178,6 +178,19 @@
   --shop-coral-subtle: #FEF0E8;
   --shop-toggle: #F5EDE4;
   --shop-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+
+  /* Budget inherits Calendar/Home/Tasks/Shopping paper language. Olive stays the screen accent. */
+  --budget-page: #FAFAF9;
+  --budget-panel: #FFFFFF;
+  --budget-card: #FFFFFF;
+  --budget-text: #1C1C1E;
+  --budget-dim: #9A8878;
+  --budget-label: #C4A98A;
+  --budget-grid: #EDE0D4;
+  --budget-toggle: #F5EDE4;
+  --budget-bar: #3A4A32;
+  --budget-bar-muted: #E4E8DC;
+  --budget-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 html.dark {
@@ -310,6 +323,18 @@ html.dark {
   --shop-coral-subtle: #3D2218;
   --shop-toggle: #2A221C;
   --shop-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+
+  --budget-page: #121213;
+  --budget-panel: #1D1D1F;
+  --budget-card: #1D1D1F;
+  --budget-text: #F2F2F7;
+  --budget-dim: #B6A89C;
+  --budget-label: #C9A582;
+  --budget-grid: #3A2F27;
+  --budget-toggle: #2A221C;
+  --budget-bar: #8A9A74;
+  --budget-bar-muted: #3E4634;
+  --budget-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 @theme {
@@ -409,6 +434,7 @@ html.assistant-phone-open .app-toast {
 @keyframes calendarEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes tasksEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes shoppingEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes budgetEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 
 @media (prefers-reduced-motion: reduce) {
   .onboarding-motion, .onboarding-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
@@ -416,6 +442,8 @@ html.assistant-phone-open .app-toast {
   .calendar-motion, .calendar-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
   .tasks-motion, .tasks-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
   .shopping-motion, .shopping-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+  /* Enter only — do not restyle RollingNumber, bars, chart, group panels, or Activity rows. */
+  .budget-motion { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
 }
 
 .basket-target {
@@ -593,6 +621,18 @@ html.assistant-phone-open .app-toast {
   }
 }
 
+/* Overview and Activity scroll clear the FAB so the last paper card stays reachable. */
+.budget-overview,
+.budget-activity {
+  padding-bottom: calc(72px + 56px + 28px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .budget-overview,
+  .budget-activity {
+    padding-bottom: calc(24px + 56px + 28px);
+  }
+}
+
 /* Tasks scroll clears the FAB so the last swimlane stays reachable. */
 .tasks-screen {
   padding-bottom: calc(72px + 56px + 28px + env(safe-area-inset-bottom, 0px));
@@ -652,8 +692,19 @@ html.assistant-phone-open .app-toast {
 }
 
 /* Desktop two-column canvases */
+.budget-overview-split {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 @media (min-width: 768px) {
   .canvas-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: start;
+  }
+  .budget-overview-split {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 48px;

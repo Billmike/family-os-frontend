@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @font-face {
@@ -105,6 +106,41 @@
   /* ── Typography ───────────────────────────────── */
   --ds-font: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --ds-font-display: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+
+  /* Onboarding is the first migration to the refreshed, brighter direction. */
+  --ob-font: 'Plus Jakarta Sans', var(--ds-font);
+  --ob-bg: #FAFAF9;
+  --ob-surface: #FFFFFF;
+  --ob-text: #1C1C1E;
+  --ob-text-secondary: #636366;
+  --ob-text-tertiary: #8E8E93;
+  --ob-border: #E8E8EA;
+  --ob-border-strong: #D0D0D5;
+  --ob-primary: #E8622A;
+  --ob-primary-subtle: #FEF0E8;
+  --ob-primary-gradient: linear-gradient(135deg, #FF8A5B 0%, #E8622A 100%);
+  --ob-on-primary: #FFFFFF;
+  --ob-focus: rgba(232, 98, 42, 0.22);
+  --ob-success: #16A34A;
+  --ob-success-subtle: #DCFCE7;
+  --ob-member-orange: #F97316; --ob-member-orange-bg: #FFF7ED;
+  --ob-member-violet: #8B5CF6; --ob-member-violet-bg: #EDE9FE;
+  --ob-member-emerald: #10B981; --ob-member-emerald-bg: #ECFDF5;
+  --ob-member-coral: #E8622A; --ob-member-coral-bg: #FEF0E8;
+  --ob-member-cyan: #06B6D4; --ob-member-cyan-bg: #ECFEFF;
+  --ob-member-pink: #EC4899; --ob-member-pink-bg: #FDF2F8;
+  --ob-shadow: 0 4px 20px rgba(232, 98, 42, 0.24);
+
+  /* Dashboard is the next screen adopting the refreshed visual direction. */
+  --dash-page: #FAFAF9;
+  --dash-hero: #FDF6EF;
+  --dash-card: #FFFFFF;
+  --dash-text: #1C1C1E;
+  --dash-note: #7A6A5A;
+  --dash-label: #C4A98A;
+  --dash-rail: #E8D9CC;
+  --dash-border: #EDE0D4;
+  --dash-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 html.dark {
@@ -171,6 +207,38 @@ html.dark {
 
   --ds-shadow-md:   0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.28);
   --ds-shadow-high: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.28);
+
+  --ob-bg: #111113;
+  --ob-surface: #1C1C1E;
+  --ob-text: #F2F2F7;
+  --ob-text-secondary: #AEAEB2;
+  --ob-text-tertiary: #8E8E93;
+  --ob-border: #38383A;
+  --ob-border-strong: #48484A;
+  --ob-primary: #FF8C5A;
+  --ob-primary-subtle: #3D2218;
+  --ob-primary-gradient: linear-gradient(135deg, #FFAA7D 0%, #FF8C5A 100%);
+  --ob-on-primary: #16140F;
+  --ob-focus: rgba(255, 140, 90, 0.30);
+  --ob-success: #30D158;
+  --ob-success-subtle: #0D2E1A;
+  --ob-member-orange: #FB923C; --ob-member-orange-bg: #3A2511;
+  --ob-member-violet: #A78BFA; --ob-member-violet-bg: #282044;
+  --ob-member-emerald: #34D399; --ob-member-emerald-bg: #103A31;
+  --ob-member-coral: #FF8C5A; --ob-member-coral-bg: #3D2218;
+  --ob-member-cyan: #22D3EE; --ob-member-cyan-bg: #10343B;
+  --ob-member-pink: #F472B6; --ob-member-pink-bg: #3B162B;
+  --ob-shadow: 0 4px 20px rgba(0, 0, 0, 0.38);
+
+  --dash-page: #121213;
+  --dash-hero: #211913;
+  --dash-card: #1D1D1F;
+  --dash-text: #F2F2F7;
+  --dash-note: #B6A89C;
+  --dash-label: #C9A582;
+  --dash-rail: #4A3A2E;
+  --dash-border: #3A2F27;
+  --dash-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 @theme {
@@ -257,6 +325,20 @@ html.assistant-phone-open .app-toast {
   0%   { transform: scale(1); }
   40%  { transform: scale(1.08); }
   100% { transform: scale(1); }
+}
+
+/* Onboarding: deliberately warm and lightly playful; reduced-motion users get a still layout. */
+@keyframes onboardingFloat { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-12px) } }
+@keyframes onboardingSpin { 0%,100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-8px) rotate(12deg) } }
+@keyframes onboardingSparkle { 0%,100% { transform: scale(1) rotate(0) } 50% { transform: scale(1.28) rotate(16deg) } }
+@keyframes onboardingBlob { 0%,100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40% } 50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60% } }
+@keyframes onboardingEnter { from { opacity: 0; transform: translateY(18px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes onboardingPop { 0% { opacity: 0; transform: scale(.7) } 75% { transform: scale(1.06) } 100% { opacity: 1; transform: scale(1) } }
+@keyframes dashboardEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-motion, .onboarding-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+  .dashboard-motion, .dashboard-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
 }
 
 .basket-target {

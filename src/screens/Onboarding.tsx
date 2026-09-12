@@ -18,6 +18,7 @@ import { LOGIN_PATH, isLoginPath } from '../routing'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step =
+  | 'splash'
   | 'welcome'
   | 'login'
   | 'register'
@@ -30,12 +31,12 @@ type Step =
   | 'install'
 
 const MEMBER_COLORS = [
-  { color: 'var(--ds-member-1)', bg: 'var(--ds-member-1-bg)', label: 'Indigo' },
-  { color: 'var(--ds-member-2)', bg: 'var(--ds-member-2-bg)', label: 'Sky' },
-  { color: 'var(--ds-member-3)', bg: 'var(--ds-member-3-bg)', label: 'Emerald' },
-  { color: 'var(--ds-member-4)', bg: 'var(--ds-member-4-bg)', label: 'Amber' },
-  { color: 'var(--ds-member-5)', bg: 'var(--ds-member-5-bg)', label: 'Rose' },
-  { color: 'var(--ds-member-6)', bg: 'var(--ds-member-6-bg)', label: 'Violet' },
+  { color: 'var(--ob-member-orange)', bg: 'var(--ob-member-orange-bg)', label: 'Orange' },
+  { color: 'var(--ob-member-violet)', bg: 'var(--ob-member-violet-bg)', label: 'Violet' },
+  { color: 'var(--ob-member-emerald)', bg: 'var(--ob-member-emerald-bg)', label: 'Emerald' },
+  { color: 'var(--ob-member-coral)', bg: 'var(--ob-member-coral-bg)', label: 'Coral' },
+  { color: 'var(--ob-member-cyan)', bg: 'var(--ob-member-cyan-bg)', label: 'Cyan' },
+  { color: 'var(--ob-member-pink)', bg: 'var(--ob-member-pink-bg)', label: 'Pink' },
 ]
 
 const PROGRESS_STEPS: Step[] = ['family', 'members', 'invite']
@@ -61,28 +62,53 @@ interface Props {
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
 
+const onboardingTheme = {
+  '--ds-bg': 'var(--ob-bg)',
+  '--ds-surface': 'var(--ob-surface)',
+  '--ds-surface-elevated': 'var(--ob-surface)',
+  '--ds-surface-muted': 'color-mix(in srgb, var(--ob-surface) 86%, var(--ob-border))',
+  '--ds-text-primary': 'var(--ob-text)',
+  '--ds-text-secondary': 'var(--ob-text-secondary)',
+  '--ds-text-tertiary': 'var(--ob-text-tertiary)',
+  '--ds-border': 'var(--ob-border)',
+  '--ds-border-strong': 'var(--ob-border-strong)',
+  '--ds-primary': 'var(--ob-primary)',
+  '--ds-primary-subtle': 'var(--ob-primary-subtle)',
+  '--ds-on-primary': 'var(--ob-on-primary)',
+  '--ds-focus': 'var(--ob-focus)',
+  '--ds-success': 'var(--ob-success)',
+  '--ds-success-subtle': 'var(--ob-success-subtle)',
+  '--ds-radius-md': '12px',
+  '--ds-radius-lg': '16px',
+  '--ds-radius-xl': '20px',
+  '--ds-shadow-low': '0 1px 3px rgba(0,0,0,.06)',
+} as CSSProperties
+
 const shell: CSSProperties = {
+  ...onboardingTheme,
   minHeight: '100dvh', display: 'flex', flexDirection: 'column',
   alignItems: 'center', justifyContent: 'flex-start',
-  background: t.bg, padding: '24px 16px 40px',
+  background: 'var(--ob-bg)', padding: '24px 20px 40px',
   overflowY: 'auto', boxSizing: 'border-box',
+  fontFamily: 'var(--ob-font)',
 }
 
 const card: CSSProperties = {
-  width: '100%', maxWidth: 440,
+  width: '100%', maxWidth: 480,
   background: 'transparent', borderRadius: 0,
   boxShadow: 'none', border: 'none',
-  padding: '24px 8px 24px',
+  padding: '24px 4px 24px',
   display: 'flex', flexDirection: 'column', gap: 0,
   marginTop: 'auto', marginBottom: 'auto',
+  animation: 'onboardingEnter .35s ease-out',
 }
 
 const inputStyle: CSSProperties = {
-  width: '100%', height: 48, padding: '0 14px',
-  borderRadius: 'var(--ds-radius-md)',
-  border: `1.5px solid var(--ds-border-strong)`,
-  background: t.surface, fontSize: 16,
-  fontFamily: 'var(--ds-font)', color: t.text,
+  width: '100%', height: 52, padding: '0 16px',
+  borderRadius: 'var(--ds-radius-lg)',
+  border: `1.5px solid var(--ob-border-strong)`,
+  background: 'var(--ob-surface)', fontSize: 16,
+  fontFamily: 'var(--ob-font)', color: 'var(--ob-text)',
   outline: 'none', boxSizing: 'border-box',
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
@@ -109,8 +135,8 @@ function Input({ placeholder, value, onChange, autoFocus, type = 'text', name, a
       value={value}
       onChange={e => onChange(e.target.value)}
       autoFocus={autoFocus}
-      onFocus={e => { e.target.style.borderColor = 'var(--ds-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--ds-focus)' }}
-      onBlur={e => { e.target.style.borderColor = 'var(--ds-border-strong)'; e.target.style.boxShadow = 'none' }}
+      onFocus={e => { e.target.style.borderColor = 'var(--ob-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--ob-focus)' }}
+      onBlur={e => { e.target.style.borderColor = 'var(--ob-border-strong)'; e.target.style.boxShadow = 'none' }}
     />
   )
 }
@@ -182,12 +208,13 @@ function PrimaryBtn({ onClick, disabled, children, type = 'button' }: {
 }) {
   return (
     <button type={type} onClick={onClick} disabled={disabled} style={{
-      width: '100%', padding: '14px', borderRadius: r.md, border: 'none',
-      background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
-      color: disabled ? 'var(--ds-disabled-text)' : t.onPrimary,
-      fontSize: 16, fontWeight: 500, cursor: disabled ? 'not-allowed' : 'pointer',
-      fontFamily: 'var(--ds-font)', display: 'flex', alignItems: 'center',
+      width: '100%', maxWidth: 420, alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', padding: '16px', borderRadius: r.pill, border: 'none',
+      background: disabled ? 'var(--ds-disabled-bg)' : 'var(--ob-primary-gradient)',
+      color: disabled ? 'var(--ds-disabled-text)' : 'var(--ob-on-primary)',
+      fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
+      fontFamily: 'var(--ob-font)', display: 'flex', alignItems: 'center',
       justifyContent: 'center', gap: 8, transition: 'background 0.15s',
+      boxShadow: disabled ? 'none' : 'var(--ob-shadow)',
     }}>
       {children}
     </button>
@@ -197,10 +224,10 @@ function PrimaryBtn({ onClick, disabled, children, type = 'button' }: {
 function GhostBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick} style={{
-      width: '100%', padding: '12px', borderRadius: r.md,
-      border: `1px solid ${t.border}`, background: 'transparent',
-      fontSize: 15, fontWeight: 400, cursor: 'pointer', color: t.textSec,
-      fontFamily: 'var(--ds-font)',
+      width: '100%', maxWidth: 420, alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', padding: '14px', borderRadius: r.pill,
+      border: '1.5px solid var(--ob-border)', background: 'transparent',
+      fontSize: 15, fontWeight: 500, cursor: 'pointer', color: 'var(--ob-text-secondary)',
+      fontFamily: 'var(--ob-font)',
     }}>
       {children}
     </button>
@@ -213,7 +240,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
       alignSelf: 'flex-start',
       background: 'none', border: 'none', cursor: 'pointer',
       display: 'flex', alignItems: 'center', gap: 4,
-      color: t.textSec, fontFamily: 'var(--ds-font)', fontSize: 14,
+      color: 'var(--ob-text-secondary)', fontFamily: 'var(--ob-font)', fontSize: 14,
       padding: '0 0 16px', margin: 0,
     }}>
       <ChevronLeft size={18} /> Back
@@ -230,7 +257,7 @@ function ProgressDots({ current }: { current: Step }) {
         <div key={i} style={{
           height: 4, borderRadius: 9999,
           width: i === idx ? 20 : 6,
-          background: i <= idx ? t.primary : t.border,
+          background: i <= idx ? 'var(--ob-primary)' : 'var(--ob-border)',
           transition: 'all 0.3s',
         }} />
       ))}
@@ -239,15 +266,15 @@ function ProgressDots({ current }: { current: Step }) {
 }
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 12, fontWeight: 700, color: t.textTer, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>{children}</p>
+  return <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ob-text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>{children}</p>
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h1 style={{ fontSize: 28, fontWeight: 500, color: t.text, letterSpacing: '-0.02em', lineHeight: 1.25, marginBottom: 8, fontFamily: 'var(--ds-font-display)' }}>{children}</h1>
+  return <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--ob-text)', letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 8, fontFamily: 'var(--ob-font)' }}>{children}</h1>
 }
 
 function Sub({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.65, marginBottom: 24 }}>{children}</p>
+  return <p style={{ fontSize: 15, color: 'var(--ob-text-secondary)', lineHeight: 1.65, marginBottom: 28 }}>{children}</p>
 }
 
 function ErrorText({ message }: { message: string | null }) {
@@ -261,6 +288,59 @@ function errMessage(e: unknown): string {
   return 'Something went wrong'
 }
 
+const WELCOME_SLIDES = [
+  {
+    background: '#FFF5F0', darkBackground: '#2A1A15', accent: 'var(--ob-primary)', hero: '🏠',
+    title: 'Welcome to\nFamilyOS',
+    subtitle: "Your household's command centre, designed for the whole family.",
+    decorations: [['⭐', '14%', '10%', 'onboardingSparkle'], ['✨', '22%', '78%', 'onboardingSpin'], ['💫', '72%', '12%', 'onboardingFloat'], ['🌟', '76%', '80%', 'onboardingSparkle']],
+  },
+  {
+    background: '#F5F2FF', darkBackground: '#201B31', accent: 'var(--ob-member-violet)', hero: '📅',
+    title: 'Stay in sync,\nalways',
+    subtitle: 'Share calendars, events, and tasks with every family member.',
+    decorations: [['✅', '16%', '12%', 'onboardingFloat'], ['🔔', '18%', '76%', 'onboardingSpin'], ['⭐', '70%', '8%', 'onboardingSparkle'], ['💬', '74%', '80%', 'onboardingFloat']],
+  },
+  {
+    background: '#F0FBF7', darkBackground: '#102720', accent: 'var(--ob-member-emerald)', hero: '👨‍👩‍👧',
+    title: 'Manage life\ntogether',
+    subtitle: 'Tasks, shopping, and household plans—everything your family needs in one place.',
+    decorations: [['❤️', '16%', '8%', 'onboardingFloat'], ['⭐', '18%', '78%', 'onboardingSparkle'], ['🛒', '72%', '10%', 'onboardingSpin'], ['✨', '76%', '80%', 'onboardingFloat']],
+  },
+] as const
+
+function SplashSlide({ index, onNext, onSkip, onSignIn }: { index: number; onNext: () => void; onSkip: () => void; onSignIn: () => void }) {
+  const slide = WELCOME_SLIDES[index]
+  const isLast = index === WELCOME_SLIDES.length - 1
+  return (
+    <div className="onboarding-motion" style={{
+      minHeight: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
+      background: `linear-gradient(var(--ob-splash-overlay, transparent), var(--ob-splash-overlay, transparent)), ${slide.background}`,
+      color: 'var(--ob-text)', fontFamily: 'var(--ob-font)', transition: 'background .45s ease',
+    }}>
+      <style>{`html.dark { --ob-splash-overlay: color-mix(in srgb, ${slide.darkBackground} 100%, transparent); }`}</style>
+      <div style={{ padding: '18px 22px 0', minHeight: 42, display: 'flex', justifyContent: 'flex-end' }}>
+        {!isLast && <button type="button" onClick={onSkip} style={{ border: 0, background: 'transparent', color: 'var(--ob-text-tertiary)', fontFamily: 'var(--ob-font)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Skip</button>}
+      </div>
+      <div style={{ flex: 1, minHeight: 270, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', width: 260, height: 260, background: `color-mix(in srgb, ${slide.accent} 12%, transparent)`, animation: 'onboardingBlob 8s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', width: 180, height: 180, background: `color-mix(in srgb, ${slide.accent} 7%, transparent)`, animation: 'onboardingBlob 12s ease-in-out infinite reverse' }} />
+        <div key={index} style={{ fontSize: 94, lineHeight: 1, zIndex: 1, animation: 'onboardingFloat 3.2s ease-in-out infinite, onboardingPop .5s ease-out', filter: 'drop-shadow(0 12px 24px rgba(0,0,0,.12))' }}>{slide.hero}</div>
+        {slide.decorations.map(([emoji, top, left, animation], decorationIndex) => <span key={decorationIndex} style={{ position: 'absolute', top, left, zIndex: 1, fontSize: decorationIndex === 0 ? 28 : 22, animation: `${animation} ${2.5 + decorationIndex * .35}s ease-in-out infinite` }}>{emoji}</span>)}
+      </div>
+      <div key={`copy-${index}`} style={{ padding: '0 28px 40px', textAlign: 'center', animation: 'onboardingEnter .4s ease-out' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 28 }}>
+          {WELCOME_SLIDES.map((_, dotIndex) => <span key={dotIndex} style={{ width: dotIndex === index ? 26 : 8, height: 8, borderRadius: 9999, background: dotIndex === index ? slide.accent : `color-mix(in srgb, ${slide.accent} 24%, transparent)`, transition: 'all .3s ease' }} />)}
+        </div>
+        <h1 style={{ whiteSpace: 'pre-line', fontSize: 36, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.14, marginBottom: 12 }}>{slide.title}</h1>
+        <p style={{ maxWidth: 320, margin: '0 auto 32px', color: 'var(--ob-text-secondary)', fontSize: 16, lineHeight: 1.62 }}>{slide.subtitle}</p>
+        <PrimaryBtn onClick={onNext}>{isLast ? 'Get started' : 'Next'} <ArrowRight size={18} /></PrimaryBtn>
+        {index === 0 && <button type="button" onClick={onSignIn} style={{ display: 'block', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '15px auto 0', padding: '14px', border: '1.5px solid var(--ob-border)', borderRadius: r.pill, background: 'transparent', color: 'var(--ob-text-secondary)', fontFamily: 'var(--ob-font)', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>I already have an account</button>}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Onboarding component ────────────────────────────────────────────────
 
 export default function Onboarding({ handlers }: Props) {
@@ -272,8 +352,9 @@ export default function Onboarding({ handlers }: Props) {
     if (pendingAtStart) return 'welcome'
     if (handlers.needsFamily) return 'family'
     if (isLoginPath(location.pathname)) return 'login'
-    return 'welcome'
+    return 'splash'
   })
+  const [slideIdx, setSlideIdx] = useState(0)
   const [familyName, setFamilyName] = useState('')
   const [userName, setUserName] = useState(handlers.userName ?? '')
   const [email, setEmail] = useState('')
@@ -297,7 +378,7 @@ export default function Onboarding({ handlers }: Props) {
     setError(null)
     if (!handlers.needsFamily) {
       if (s === 'login' && !isLoginPath(location.pathname)) navigate(LOGIN_PATH)
-      if (s === 'welcome' && isLoginPath(location.pathname)) navigate('/')
+      if ((s === 'welcome' || s === 'splash') && isLoginPath(location.pathname)) navigate('/')
     }
     setStep(s)
   }
@@ -305,7 +386,7 @@ export default function Onboarding({ handlers }: Props) {
   useEffect(() => {
     if (handlers.needsFamily) return
     if (isLoginPath(location.pathname)) {
-      if (step !== 'login') setStep('login')
+      if (step !== 'login' && step !== 'splash') setStep('login')
       return
     }
     if (step === 'login') setStep('welcome')
@@ -496,6 +577,21 @@ export default function Onboarding({ handlers }: Props) {
     await acceptInviteToken(joinToken.trim() || inviteToken.trim() || getPendingInviteToken() || '')
   }
 
+  if (step === 'splash') return (
+    <SplashSlide
+      index={slideIdx}
+      onNext={() => {
+        if (slideIdx < WELCOME_SLIDES.length - 1) {
+          setSlideIdx(current => current + 1)
+        } else {
+          go('register')
+        }
+      }}
+      onSignIn={() => go('login')}
+      onSkip={() => go('register')}
+    />
+  )
+
   // Welcome
   if (step === 'welcome') return (
     <div style={shell}>
@@ -549,7 +645,7 @@ export default function Onboarding({ handlers }: Props) {
           void doLogin()
         }}
       >
-        <BackBtn onClick={() => go('welcome')} />
+        <BackBtn onClick={() => go(hasPendingInvite ? 'welcome' : 'splash')} />
         <Eyebrow>Sign in</Eyebrow>
         <Heading>Welcome back</Heading>
         <Sub>
@@ -605,7 +701,7 @@ export default function Onboarding({ handlers }: Props) {
           void doRegister()
         }}
       >
-        <BackBtn onClick={() => go('welcome')} />
+        <BackBtn onClick={() => go(hasPendingInvite ? 'welcome' : 'splash')} />
         <Eyebrow>Create account</Eyebrow>
         <Heading>Create your account</Heading>
         <Sub>

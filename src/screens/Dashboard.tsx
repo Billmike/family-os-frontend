@@ -1,375 +1,122 @@
-import type { CalendarEvent, Task, ShoppingItem, ShoppingSession, BudgetPeriod, AppHandlers, PersonalAccountSummary } from '../types'
-import { Plus } from 'lucide-react'
-import { t, fonts, MemberAvatar, TaskCheckbox, ShoppingCheckbox, Skeleton } from '../ui'
-import { getMember, formatTime, getGreeting } from '../data'
-import { formatMoney, formatYearMonthTitle, deriveBudgetState } from '../api/adapters'
-import { BudgetBar, budgetStateColor } from '../components/BudgetBar'
+import type { AppHandlers, BudgetPeriod, CalendarEvent, ShoppingItem, ShoppingSession, Task } from '../types'
+import { ArrowRight, Calendar, CheckSquare, Clock, ShoppingCart, Wallet } from 'lucide-react'
+import { MemberAvatar, Skeleton } from '../ui'
+import { formatTime, getGreeting, getMember } from '../data'
+import { deriveBudgetState, formatMoney, formatYearMonthTitle } from '../api/adapters'
+import { BudgetBar } from '../components/BudgetBar'
 
 interface Props extends Partial<AppHandlers> {
-  events: CalendarEvent[]
-  tasks: Task[]
-  shopping: ShoppingItem[]
-  activeSession: ShoppingSession | null
-  currentPeriod: BudgetPeriod | null
-  periods: BudgetPeriod[]
-  personalSummary: PersonalAccountSummary | null
-  memberName: string
-  currentMemberId?: string
-  dateLabel: string
-  today: string
-  loading?: boolean
-  navigate: AppHandlers['navigate']
-  onOpenSpend: () => void
-  onOpenPersonal: () => void
-  openSheet: AppHandlers['openSheet']
-  completeTask: AppHandlers['completeTask']
-  addToBasket: AppHandlers['addToBasket']
+  events: CalendarEvent[]; tasks: Task[]; shopping: ShoppingItem[]; activeSession: ShoppingSession | null
+  currentPeriod: BudgetPeriod | null; memberName: string; currentMemberId?: string; dateLabel: string; today: string; loading?: boolean
+  navigate: AppHandlers['navigate']; onOpenSpend: () => void; openSheet: AppHandlers['openSheet']
 }
 
-export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, personalSummary, memberName, currentMemberId, dateLabel, today, navigate, onOpenSpend, onOpenPersonal, openSheet, completeTask, addToBasket, loading }: Props) {
-  const todayEvents = events.filter(e => e.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime))
-  const nextEvent = events
-    .filter(e => e.date > today)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))[0]
-  const openTasks = tasks.filter(tk => !tk.completed)
-  const assignedToMe = openTasks.filter(tk => currentMemberId && tk.assigneeId === currentMemberId)
-  const dashTasks = openTasks.slice(0, 3)
-  const dashShopping = shopping.filter(i => !i.completed).slice(0, 3)
-  const basketCount = activeSession?.itemCount ?? 0
-  const showNeeds = dashTasks.length > 0 || dashShopping.length > 0
+const RAIL_WIDTH = 40
 
-  if (loading) {
-    return (
-      <div style={{ padding: '24px 20px' }}>
-        <Skeleton h={32} w={220} />
-        <div style={{ marginTop: 8 }}><Skeleton h={16} w={160} /></div>
-        <div style={{ marginTop: 28 }}><Skeleton h={88} /></div>
-        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Skeleton h={72} />
-          <Skeleton h={72} />
-          <Skeleton h={72} />
-          <Skeleton h={72} />
-        </div>
-      </div>
-    )
-  }
+const greetingIcon = () => {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return '☀️'
+  if (hour >= 12 && hour < 17) return '🌤️'
+  if (hour >= 17 && hour < 21) return '🌇'
+  return '🌙'
+}
 
-  return (
-    <div style={{ padding: '8px 0 32px' }}>
-      <div className="canvas-split" style={{ padding: '8px 20px 0', maxWidth: 1120, margin: '0 auto' }}>
-        <div>
-          <h1 style={{
-            fontFamily: fonts.display,
-            fontSize: 32,
-            fontWeight: 500,
-            color: t.text,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.2,
-            margin: '16px 0 4px',
-          }}>
-            {getGreeting()}, {memberName}
-          </h1>
-          <p style={{ fontSize: 14, color: t.textSec, margin: 0 }}>{dateLabel}</p>
+function briefing(events: CalendarEvent[], tasks: Task[], currentMemberId?: string) {
+  const myTasks = tasks.filter(task => !task.completed && task.assigneeId === currentMemberId)
+  if (!events.length && !myTasks.length) return 'You have a clear day — enjoy the breathing room.'
+  const counts = [events.length && `${events.length} ${events.length === 1 ? 'event' : 'events'}`, myTasks.length && `${myTasks.length} ${myTasks.length === 1 ? 'task' : 'tasks'}`].filter(Boolean)
+  return `You have ${counts.join(' and ')} today.${events[0] ? ` Next up: ${events[0].title} at ${formatTime(events[0].startTime)}.` : ''}`
+}
 
-          <section style={{ marginTop: 28 }} aria-label="Today">
-            <h2 style={{
-              fontFamily: fonts.display,
-              fontSize: 20,
-              fontWeight: 500,
-              color: t.text,
-              margin: '0 0 12px',
-            }}>
-              Today
-            </h2>
-            {todayEvents.length === 0 ? (
-              <p style={{ fontSize: 14, color: t.textSec, margin: 0 }}>
-                Nothing on the calendar today.
-              </p>
-            ) : (
-              <div>
-                {todayEvents.map(ev => {
-                  const member = getMember(ev.memberId)
-                  return (
-                    <button
-                      key={ev.id}
-                      type="button"
-                      onClick={() => openSheet({ type: 'eventDetail', eventId: ev.id })}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '10px 0',
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontFamily: fonts.ui,
-                      }}
-                    >
-                      <span style={{ fontSize: 13, fontWeight: 500, color: t.textSec, minWidth: 48, flexShrink: 0 }}>
-                        {formatTime(ev.startTime)}
-                      </span>
-                      <span style={{ width: 3, height: 28, borderRadius: 9999, background: member.color, flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: 'block', fontSize: 15, fontWeight: 500, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {ev.title}
-                        </span>
-                        {ev.location && (
-                          <span style={{ display: 'block', fontSize: 12, color: t.textTer, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {ev.location}
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            {nextEvent && (
-              <p style={{ fontSize: 13, color: t.textTer, margin: '8px 0 0' }}>
-                Next: {nextEvent.title}
-                {' · '}
-                {new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                {' '}
-                {formatTime(nextEvent.startTime)}
-              </p>
-            )}
-          </section>
-        </div>
+function duration(event: CalendarEvent) {
+  if (!event.endTime) return null
+  const [startHour, startMinute] = event.startTime.split(':').map(Number)
+  const [endHour, endMinute] = event.endTime.split(':').map(Number)
+  const minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute)
+  if (minutes <= 0) return null
+  return minutes < 60 ? `${minutes}m` : minutes % 60 === 0 ? `${minutes / 60}h` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
 
-        <div>
-          <section aria-label="Pulse" style={{ marginTop: 16 }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10,
-            }}>
-              <PulseTile
-                label="Family"
-                onClick={onOpenSpend}
-                ariaLabel="Open family budget"
-              >
-                <FamilyPulse period={currentPeriod} />
-              </PulseTile>
-              <PulseTile
-                label="Personal"
-                onClick={onOpenPersonal}
-                ariaLabel="Open personal spend"
-              >
-                <PersonalPulse summary={personalSummary} />
-              </PulseTile>
-              <PulseTile
-                label="Tasks"
-                onClick={() => navigate('tasks')}
-                ariaLabel="Open tasks"
-              >
-                <p style={{ fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text }}>
-                  {openTasks.length}
-                </p>
-                <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
-                  {assignedToMe.length > 0
-                    ? `${assignedToMe.length} need you`
-                    : openTasks.length === 0
-                      ? 'All caught up'
-                      : 'open'}
-                </p>
-              </PulseTile>
-              <PulseTile
-                label="Shopping"
-                onClick={() => navigate('shopping')}
-                ariaLabel="Open shopping"
-              >
-                <p style={{ fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text }}>
-                  {shopping.filter(i => !i.completed).length}
-                </p>
-                <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
-                  {basketCount > 0
-                    ? `list · ${basketCount} in basket`
-                    : 'on the list'}
-                </p>
-              </PulseTile>
-            </div>
-          </section>
-
-          {showNeeds && (
-            <section aria-label="Needs you" style={{ marginTop: 28 }}>
-              <h2 style={{
-                fontFamily: fonts.display,
-                fontSize: 20,
-                fontWeight: 500,
-                color: t.text,
-                margin: '0 0 8px',
-              }}>
-                Needs you
-              </h2>
-              {dashTasks.map(task => {
-                const member = getMember(task.assigneeId)
-                const isToday = task.dueDate === 'today' || task.dueDate === today
-                return (
-                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-                    <TaskCheckbox checked={task.completed} onChange={() => completeTask(task.id)} />
-                    <button
-                      type="button"
-                      onClick={() => openSheet({ type: 'taskDetail', taskId: task.id })}
-                      style={{
-                        flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none',
-                        cursor: 'pointer', textAlign: 'left', fontFamily: fonts.ui,
-                      }}
-                    >
-                      <p style={{ fontSize: 15, color: t.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {task.title}
-                      </p>
-                      <p style={{ fontSize: 12, color: t.textTer, margin: '2px 0 0' }}>
-                        {isToday ? 'Today' : task.dueDate === 'tomorrow' ? 'Tomorrow' : task.dueDate}
-                        {' · '}
-                        {member.name}
-                      </p>
-                    </button>
-                  </div>
-                )
-              })}
-              {dashShopping.map(item => (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-                  <ShoppingCheckbox checked={false} onChange={() => addToBasket(item.id)} />
-                  <span style={{ fontSize: 15, color: t.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.name}
-                  </span>
-                  {item.quantity > 1 && (
-                    <span style={{ fontSize: 13, color: t.textTer }}>×{item.quantity}</span>
-                  )}
-                </div>
-              ))}
-              {dashShopping.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => openSheet({ type: 'addShoppingItem' })}
-                  aria-label="Add shopping item"
-                  style={{
-                    marginTop: 4,
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: t.textSec,
-                    fontSize: 13,
-                    fontFamily: fonts.ui,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '8px 0',
-                    minHeight: 44,
-                  }}
-                >
-                  <Plus size={14} /> Add item
-                </button>
-              )}
-            </section>
-          )}
-        </div>
-      </div>
+function TimelineEvent({ event, first, last, onOpen }: { event: CalendarEvent; first: boolean; last: boolean; onOpen: () => void }) {
+  const member = getMember(event.memberId)
+  const eventDuration = duration(event)
+  return <div style={{ display: 'flex', minHeight: 72 }}>
+    <div style={{ width: RAIL_WIDTH, position: 'relative', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+      {!first && <span style={{ position: 'absolute', top: 0, height: '50%', width: 1, background: 'var(--dash-rail)' }} />}
+      {!last && <span style={{ position: 'absolute', bottom: 0, height: '50%', width: 1, background: 'var(--dash-rail)' }} />}
+      <span style={{ position: 'absolute', top: 'calc(50% - 24px)', fontSize: 10, fontWeight: 700, color: 'var(--dash-label)', whiteSpace: 'nowrap' }}>{formatTime(event.startTime)}</span>
+      <span style={{ position: 'absolute', top: '50%', width: 9, height: 9, transform: 'translateY(-50%)', borderRadius: 9999, background: member.color, boxShadow: `0 0 0 3px color-mix(in srgb, ${member.color} 14%, transparent)` }} />
     </div>
-  )
+    <div style={{ flex: 1, padding: `8px 0 ${last ? 0 : 12}px 12px` }}>
+      <button type="button" onClick={onOpen} style={cardStyle({ padding: '11px 13px 11px 17px', minHeight: 56, display: 'flex', alignItems: 'center', gap: 10, position: 'relative', overflow: 'hidden', textAlign: 'left' })}>
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: member.color }} />
+        <span style={{ flex: 1, minWidth: 0 }}><span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--dash-text)', fontSize: 14, fontWeight: 700 }}>{event.title}</span>{(eventDuration || event.location) && <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 3, color: 'var(--dash-label)', fontSize: 11, fontWeight: 500 }}>{[eventDuration, event.location].filter(Boolean).join(' · ')}</span>}</span>
+        <MemberAvatar member={member} size={30} />
+      </button>
+    </div>
+  </div>
 }
 
-function PulseTile({
-  label,
-  onClick,
-  ariaLabel,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  ariaLabel: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      style={{
-        textAlign: 'left',
-        border: 'none',
-        background: 'transparent',
-        padding: '10px 4px 12px',
-        cursor: 'pointer',
-        fontFamily: fonts.ui,
-        minHeight: 72,
-      }}
-    >
-      <p style={{ fontSize: 11, color: t.textTer, margin: '0 0 6px' }}>{label}</p>
-      {children}
-    </button>
-  )
+function cardStyle(extra: Record<string, string | number | boolean>) {
+  return { width: '100%', boxSizing: 'border-box' as const, border: '1px solid var(--dash-border)', borderRadius: 'var(--ds-radius-lg)', background: 'var(--dash-card)', boxShadow: 'var(--dash-card-shadow)', cursor: 'pointer', fontFamily: 'var(--ds-font)', ...extra }
 }
 
-function FamilyPulse({ period }: { period: BudgetPeriod | null }) {
-  if (!period) {
-    return (
-      <>
-        <p style={{ fontSize: 15, color: t.textSec, margin: 0 }}>No cycle</p>
-        <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>Start one</p>
-      </>
-    )
-  }
-  const used = period.summary.totalExpensesActual
-  const expected = period.summary.totalExpensesExpected
-  const remaining = expected - used
-  const { percentUsed, state } = deriveBudgetState(used, expected)
-  return (
-    <>
-      <p style={{
-        fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text,
-        fontVariantNumeric: 'tabular-nums',
-      }}>
-        {formatMoney(used, period.currency)}
-      </p>
-      {expected > 0 ? (
-        <>
-          <BudgetBar
-            percentUsed={percentUsed}
-            state={state}
-            ariaLabel={`Household budget ${Math.round(percentUsed)} percent used`}
-            height={3}
-          />
-          <p style={{ fontSize: 12, color: remaining < 0 ? budgetStateColor(state) : t.textSec, margin: '4px 0 0' }}>
-            {remaining >= 0
-              ? `${formatMoney(remaining, period.currency)} left`
-              : `${formatMoney(Math.abs(remaining), period.currency)} over`}
-          </p>
-        </>
-      ) : (
-        <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
-          {formatYearMonthTitle(period.labelMonth)}
-        </p>
-      )}
-    </>
-  )
+function PulseTile({ label, value, note, icon: Icon, alert, onClick, children }: { label: string; value: string; note: string; icon: typeof Calendar; alert?: boolean; onClick: () => void; children?: React.ReactNode }) {
+  return <button type="button" onClick={onClick} style={cardStyle({ minWidth: 0, minHeight: 150, position: 'relative', display: 'flex', flexDirection: 'column', padding: '16px 14px 14px', textAlign: 'left' })}>
+    {alert && <span aria-label="Needs attention" style={{ position: 'absolute', top: 11, right: 11, width: 7, height: 7, borderRadius: 9999, background: 'var(--ds-error)', boxShadow: '0 0 0 2px var(--dash-card)' }} />}
+    <Icon size={15} color="var(--dash-label)" strokeWidth={1.75} style={{ marginBottom: 10 }} />
+    <span style={{ fontSize: 27, fontWeight: 800, lineHeight: 1, letterSpacing: '-.04em', color: 'var(--dash-text)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    {children && <span style={{ margin: '8px 0' }}>{children}</span>}
+    <span style={{ marginTop: children ? 0 : 8, color: 'var(--dash-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{label}</span>
+    <span style={{ marginTop: 2, color: 'var(--dash-note)', fontSize: 12, lineHeight: 1.4 }}>{note}</span>
+  </button>
 }
 
-function PersonalPulse({ summary }: { summary: PersonalAccountSummary | null }) {
-  const accounts = summary?.accounts ?? []
-  const total = summary?.currentMonthTotal ?? 0
-  const currency = summary?.currency ?? 'EUR'
-  if (accounts.length === 0) {
-    return (
-      <>
-        <p style={{ fontSize: 15, color: t.textSec, margin: 0 }}>No accounts</p>
-        <p style={{ fontSize: 12, color: t.textTer, margin: '4px 0 0' }}>Set one up</p>
-      </>
-    )
-  }
-  return (
-    <>
-      <p style={{
-        fontSize: 22, fontWeight: 500, fontFamily: fonts.display, margin: 0, color: t.text,
-        fontVariantNumeric: 'tabular-nums',
-      }}>
-        {formatMoney(total, currency)}
-      </p>
-      <p style={{ fontSize: 12, color: t.textSec, margin: '4px 0 0' }}>
-        {accounts.length === 1 ? accounts[0].name : `${accounts.length} accounts`}
-      </p>
-    </>
-  )
+export default function Dashboard({ events, tasks, shopping, activeSession, currentPeriod, memberName, currentMemberId, dateLabel, today, loading, navigate, onOpenSpend, openSheet }: Props) {
+  const todayEvents = events.filter(event => event.date === today).sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const nextFutureEvent = events.filter(event => event.date > today).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime))[0]
+  const openTasks = tasks.filter(task => !task.completed)
+  const myOpenTasks = openTasks.filter(task => task.assigneeId === currentMemberId)
+  const shoppingCount = shopping.filter(item => !item.completed).length
+  const basketCount = activeSession?.itemCount ?? 0
+  const nextEvent = todayEvents[0]
+  const nextMember = nextEvent ? getMember(nextEvent.memberId) : null
+  const familyPulse = currentPeriod ? (() => {
+    const used = currentPeriod.summary.totalExpensesActual
+    const expected = currentPeriod.summary.totalExpensesExpected
+    const remaining = expected - used
+    const budget = deriveBudgetState(used, expected)
+    return { value: formatMoney(used, currentPeriod.currency), note: expected > 0 ? remaining >= 0 ? `${formatMoney(remaining, currentPeriod.currency)} left` : `${formatMoney(Math.abs(remaining), currentPeriod.currency)} over` : formatYearMonthTitle(currentPeriod.labelMonth), alert: budget.state === 'over', expected, ...budget }
+  })() : null
+
+  if (loading) return <DashboardSkeleton />
+
+  return <div className="dashboard-motion" style={{ minHeight: '100%', paddingBottom: 48, background: 'var(--dash-page)' }}>
+    <section style={{ padding: '24px 20px 20px', background: 'var(--dash-hero)', borderBottom: '1px solid var(--dash-border)', animation: 'dashboardEnter .4s ease-out' }}><div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <p style={{ margin: '0 0 14px', color: 'var(--dash-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' }}>{dateLabel}</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}><h1 style={{ flex: 1, margin: 0, color: 'var(--dash-text)', fontSize: 34, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.12 }}>{getGreeting()},<br />{memberName}.</h1><span aria-hidden style={{ fontSize: 34, lineHeight: 1.1 }}>{greetingIcon()}</span></div>
+      <p style={{ margin: `0 0 ${nextEvent ? 18 : 0}px`, maxWidth: 520, color: 'var(--dash-note)', fontSize: 15, lineHeight: 1.6 }}>{briefing(todayEvents, tasks, currentMemberId)}</p>
+      {nextEvent && nextMember && <button type="button" onClick={() => openSheet({ type: 'eventDetail', eventId: nextEvent.id })} style={cardStyle({ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px 13px 17px', position: 'relative', overflow: 'hidden', textAlign: 'left', animation: 'dashboardEnter .4s .12s both ease-out' })}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: nextMember.color }} /><span style={{ padding: '4px 10px', borderRadius: 'var(--ds-radius-md)', background: `color-mix(in srgb, ${nextMember.color} 12%, transparent)`, color: nextMember.color, fontSize: 13, fontWeight: 700 }}>{formatTime(nextEvent.startTime)}</span><span style={{ flex: 1, minWidth: 0 }}><span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--dash-text)', fontSize: 14, fontWeight: 700 }}>{nextEvent.title}</span>{nextEvent.location && <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2, color: 'var(--dash-label)', fontSize: 12 }}>{nextEvent.location}</span>}</span><MemberAvatar member={nextMember} size={26} /></button>}
+    </div></section>
+
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <section style={{ padding: '20px 16px 8px', background: 'linear-gradient(to bottom, var(--dash-hero) 0, var(--dash-page) 72px)', animation: 'dashboardEnter .4s .08s both ease-out' }}><SectionHead label="Today" action="See all" onAction={() => navigate('calendar')} offset />{todayEvents.length ? <div style={{ paddingTop: 8 }}>{todayEvents.map((event, index) => <TimelineEvent key={event.id} event={event} first={index === 0} last={index === todayEvents.length - 1} onOpen={() => openSheet({ type: 'eventDetail', eventId: event.id })} />)}{nextFutureEvent && <NextEvent event={nextFutureEvent} />}</div> : <EmptyAgenda nextEvent={nextFutureEvent} />}</section>
+      <section style={{ padding: '20px 16px 8px', animation: 'dashboardEnter .4s .16s both ease-out' }}><SectionHead label="Pulse" /><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+        <PulseTile label="Budget" value={familyPulse?.value ?? '—'} note={familyPulse?.note ?? 'Start a cycle'} icon={Wallet} alert={familyPulse?.alert} onClick={onOpenSpend}>{familyPulse?.expected ? <BudgetBar percentUsed={familyPulse.percentUsed} state={familyPulse.state} ariaLabel={`Household budget ${Math.round(familyPulse.percentUsed)} percent used`} height={2} /> : null}</PulseTile>
+        <PulseTile label="Tasks" value={String(openTasks.length)} note={myOpenTasks.length ? `${myOpenTasks.length} need you` : openTasks.length ? 'All clear' : 'Nothing open'} icon={CheckSquare} alert={myOpenTasks.some(task => task.dueDate === today || task.dueDate === 'today')} onClick={() => navigate('tasks')} />
+        <PulseTile label="Shopping" value={String(shoppingCount)} note={basketCount ? `${basketCount} in basket` : shoppingCount ? 'Items to get' : 'List is clear'} icon={ShoppingCart} onClick={() => navigate('shopping')} />
+        <PulseTile label="Calendar" value={String(todayEvents.length)} note={todayEvents.length === 0 ? 'Free today' : todayEvents.length === 1 ? '1 event today' : `${todayEvents.length} events today`} icon={Calendar} onClick={() => navigate('calendar')} />
+      </div></section>
+    </div>
+  </div>
 }
+
+function SectionHead({ label, action, onAction, offset = false }: { label: string; action?: string; onAction?: () => void; offset?: boolean }) {
+  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingLeft: offset ? RAIL_WIDTH + 12 : 0 }}><span style={{ color: 'var(--dash-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{label}</span>{action && onAction && <button type="button" onClick={onAction} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: 4, border: 0, background: 'transparent', color: 'var(--ds-primary)', fontFamily: 'var(--ds-font)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{action} <ArrowRight size={12} /></button>}</div>
+}
+
+function NextEvent({ event }: { event: CalendarEvent }) { return <p style={{ margin: '8px 0 0', paddingLeft: RAIL_WIDTH + 12, color: 'var(--dash-note)', fontSize: 12 }}>Next: <span style={{ color: 'var(--dash-text)', fontWeight: 500 }}>{event.title}</span> · {new Date(`${event.date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p> }
+
+function EmptyAgenda({ nextEvent }: { nextEvent?: CalendarEvent }) { return <div style={{ padding: '16px 0 8px 52px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 14, border: '1px solid var(--dash-border)', borderRadius: 'var(--ds-radius-lg)', background: 'var(--dash-card)', boxShadow: 'var(--dash-card-shadow)' }}><Clock size={16} color="var(--dash-label)" /><span><span style={{ display: 'block', color: 'var(--dash-text)', fontSize: 14, fontWeight: 500 }}>Nothing scheduled today</span>{nextEvent && <span style={{ display: 'block', marginTop: 2, color: 'var(--dash-note)', fontSize: 12 }}>Next: {nextEvent.title} · {new Date(`${nextEvent.date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>}</span></div></div> }
+
+function DashboardSkeleton() { return <div style={{ padding: '24px 20px' }}><Skeleton h={16} w={160} /><div style={{ marginTop: 14 }}><Skeleton h={76} w={260} /></div><div style={{ marginTop: 20 }}><Skeleton h={72} /></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 24 }}><Skeleton h={150} /><Skeleton h={150} /><Skeleton h={150} /><Skeleton h={150} /></div></div> }

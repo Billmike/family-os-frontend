@@ -58,12 +58,12 @@ function TimelineEvent({ event, first, last, onOpen }: { event: CalendarEvent; f
 }
 
 function cardStyle(extra: Record<string, string | number | boolean>) {
-  return { width: '100%', boxSizing: 'border-box' as const, border: '1px solid var(--dash-border)', borderRadius: 'var(--ds-radius-lg)', background: 'var(--dash-card)', boxShadow: 'var(--dash-card-shadow)', cursor: 'pointer', fontFamily: 'var(--ds-font)', ...extra }
+  return { width: '100%', boxSizing: 'border-box' as const, border: '1px solid var(--dash-border)', borderRadius: 'var(--ds-radius-lg)', background: 'var(--ds-surface-chrome)', boxShadow: 'var(--dash-card-shadow)', cursor: 'pointer', fontFamily: 'var(--ds-font)', ...extra }
 }
 
 function PulseTile({ label, value, note, icon: Icon, alert, onClick, children }: { label: string; value: string; note: string; icon: typeof Calendar; alert?: boolean; onClick: () => void; children?: React.ReactNode }) {
   return <button type="button" onClick={onClick} style={cardStyle({ minWidth: 0, minHeight: 150, position: 'relative', display: 'flex', flexDirection: 'column', padding: '16px 14px 14px', textAlign: 'left' })}>
-    {alert && <span aria-label="Needs attention" style={{ position: 'absolute', top: 11, right: 11, width: 7, height: 7, borderRadius: 9999, background: 'var(--ds-error)', boxShadow: '0 0 0 2px var(--dash-card)' }} />}
+    {alert && <span aria-label="Needs attention" style={{ position: 'absolute', top: 11, right: 11, width: 7, height: 7, borderRadius: 9999, background: 'var(--ds-error)', boxShadow: '0 0 0 2px var(--ds-surface-chrome)' }} />}
     <Icon size={15} color="var(--dash-label)" strokeWidth={1.75} style={{ marginBottom: 10 }} />
     <span style={{ fontSize: 27, fontWeight: 800, lineHeight: 1, letterSpacing: '-.04em', color: 'var(--dash-text)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     {children && <span style={{ margin: '8px 0' }}>{children}</span>}
@@ -91,7 +91,7 @@ export default function Dashboard({ events, tasks, shopping, activeSession, curr
 
   if (loading) return <DashboardSkeleton />
 
-  return <div className="dashboard-motion" style={{ minHeight: '100%', paddingBottom: 48, background: 'var(--dash-page)' }}>
+  return <div className="dashboard-motion" style={{ minHeight: '100%', paddingBottom: 48, background: 'var(--ds-bg)' }}>
     <section style={{ padding: '24px 20px 20px', background: 'var(--dash-hero)', borderBottom: '1px solid var(--dash-border)', animation: 'dashboardEnter .4s ease-out' }}><div style={{ maxWidth: 720, margin: '0 auto' }}>
       <p style={{ margin: '0 0 14px', color: 'var(--dash-label)', fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' }}>{dateLabel}</p>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}><h1 style={{ flex: 1, margin: 0, color: 'var(--dash-text)', fontSize: 34, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.12 }}>{getGreeting()},<br />{memberName}.</h1><span aria-hidden style={{ fontSize: 34, lineHeight: 1.1 }}>{greetingIcon()}</span></div>
@@ -100,7 +100,7 @@ export default function Dashboard({ events, tasks, shopping, activeSession, curr
     </div></section>
 
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      <section style={{ padding: '20px 16px 8px', background: 'linear-gradient(to bottom, var(--dash-hero) 0, var(--dash-page) 72px)', animation: 'dashboardEnter .4s .08s both ease-out' }}><SectionHead label="Today" action="See all" onAction={() => navigate('calendar')} offset />{todayEvents.length ? <div style={{ paddingTop: 8 }}>{todayEvents.map((event, index) => <TimelineEvent key={event.id} event={event} first={index === 0} last={index === todayEvents.length - 1} onOpen={() => openSheet({ type: 'eventDetail', eventId: event.id })} />)}{nextFutureEvent && <NextEvent event={nextFutureEvent} />}</div> : <EmptyAgenda nextEvent={nextFutureEvent} />}</section>
+      <section style={{ padding: '20px 16px 8px', background: 'linear-gradient(to bottom, var(--dash-hero) 0, var(--ds-bg) 72px)', animation: 'dashboardEnter .4s .08s both ease-out' }}><SectionHead label="Today" action="See all" onAction={() => navigate('calendar')} offset />{todayEvents.length ? <div style={{ paddingTop: 8 }}>{todayEvents.map((event, index) => <TimelineEvent key={event.id} event={event} first={index === 0} last={index === todayEvents.length - 1} onOpen={() => openSheet({ type: 'eventDetail', eventId: event.id })} />)}{nextFutureEvent && <NextEvent event={nextFutureEvent} />}</div> : <EmptyAgenda nextEvent={nextFutureEvent} />}</section>
       <section style={{ padding: '20px 16px 8px', animation: 'dashboardEnter .4s .16s both ease-out' }}><SectionHead label="Pulse" /><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
         <PulseTile label="Budget" value={familyPulse?.value ?? '—'} note={familyPulse?.note ?? 'Start a cycle'} icon={Wallet} alert={familyPulse?.alert} onClick={onOpenSpend}>{familyPulse?.expected ? <BudgetBar percentUsed={familyPulse.percentUsed} state={familyPulse.state} ariaLabel={`Household budget ${Math.round(familyPulse.percentUsed)} percent used`} height={2} /> : null}</PulseTile>
         <PulseTile label="Tasks" value={String(openTasks.length)} note={myOpenTasks.length ? `${myOpenTasks.length} need you` : openTasks.length ? 'All clear' : 'Nothing open'} icon={CheckSquare} alert={myOpenTasks.some(task => task.dueDate === today || task.dueDate === 'today')} onClick={() => navigate('tasks')} />
@@ -117,6 +117,6 @@ function SectionHead({ label, action, onAction, offset = false }: { label: strin
 
 function NextEvent({ event }: { event: CalendarEvent }) { return <p style={{ margin: '8px 0 0', paddingLeft: RAIL_WIDTH + 12, color: 'var(--dash-note)', fontSize: 12 }}>Next: <span style={{ color: 'var(--dash-text)', fontWeight: 500 }}>{event.title}</span> · {new Date(`${event.date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p> }
 
-function EmptyAgenda({ nextEvent }: { nextEvent?: CalendarEvent }) { return <div style={{ padding: '16px 0 8px 52px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 14, border: '1px solid var(--dash-border)', borderRadius: 'var(--ds-radius-lg)', background: 'var(--dash-card)', boxShadow: 'var(--dash-card-shadow)' }}><Clock size={16} color="var(--dash-label)" /><span><span style={{ display: 'block', color: 'var(--dash-text)', fontSize: 14, fontWeight: 500 }}>Nothing scheduled today</span>{nextEvent && <span style={{ display: 'block', marginTop: 2, color: 'var(--dash-note)', fontSize: 12 }}>Next: {nextEvent.title} · {new Date(`${nextEvent.date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>}</span></div></div> }
+function EmptyAgenda({ nextEvent }: { nextEvent?: CalendarEvent }) { return <div style={{ padding: '16px 0 8px 52px' }}><div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 14, border: '1px solid var(--dash-border)', borderRadius: 'var(--ds-radius-lg)', background: 'var(--ds-surface-chrome)', boxShadow: 'var(--dash-card-shadow)' }}><Clock size={16} color="var(--dash-label)" /><span><span style={{ display: 'block', color: 'var(--dash-text)', fontSize: 14, fontWeight: 500 }}>Nothing scheduled today</span>{nextEvent && <span style={{ display: 'block', marginTop: 2, color: 'var(--dash-note)', fontSize: 12 }}>Next: {nextEvent.title} · {new Date(`${nextEvent.date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>}</span></div></div> }
 
 function DashboardSkeleton() { return <div style={{ padding: '24px 20px' }}><Skeleton h={16} w={160} /><div style={{ marginTop: 14 }}><Skeleton h={76} w={260} /></div><div style={{ marginTop: 20 }}><Skeleton h={72} /></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 24 }}><Skeleton h={150} /><Skeleton h={150} /><Skeleton h={150} /><Skeleton h={150} /></div></div> }

@@ -11,8 +11,8 @@ export type TaskPriority = 'high' | 'medium' | 'low'
 
 export const t = {
   bg:           'var(--ds-bg)',
-  surface:      'var(--ds-surface)',
-  surfaceElev:  'var(--ds-surface-elevated)',
+  surface:      'var(--ds-surface-chrome)',
+  surfaceElev:  'var(--ds-surface-chrome)',
   surfaceChrome:'var(--ds-surface-chrome)',
   surfaceMuted: 'var(--ds-surface-muted)',
   bgGlass:      'var(--ds-bg-glass)',
@@ -626,7 +626,7 @@ const inputBase: CSSProperties = {
   width: '100%', height: 44, padding: '0 12px',
   borderRadius: 'var(--ds-radius-md)',
   border: `1px solid var(--ds-border-strong)`,
-  background: 'var(--ds-surface)',
+  background: 'var(--ds-surface-chrome)',
   fontSize: 16, fontFamily: 'var(--ds-font)',
   color: 'var(--ds-text-primary)',
   outline: 'none', boxSizing: 'border-box',

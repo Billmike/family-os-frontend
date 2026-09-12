@@ -36,7 +36,7 @@ import { MonthSwitcher } from '../components/MonthSwitcher'
 import { MOTION_EASE, MOTION_MS } from '../lib/motion'
 
 const paperCard = {
-  background: 'var(--budget-card)',
+  background: 'var(--ds-surface-chrome)',
   border: '1px solid var(--budget-grid)',
   boxShadow: 'var(--budget-card-shadow)',
   borderRadius: r.lg,
@@ -207,7 +207,7 @@ export default function BudgetScreen({
                   style={{
                     padding: '10px 14px',
                     fontSize: 13,
-                    background: 'var(--budget-card)',
+                    background: 'var(--ds-surface-chrome)',
                   }}
                 >
                   <Copy size={14} aria-hidden />
@@ -289,7 +289,7 @@ const ghostToolbarStyle: CSSProperties = {
   padding: '8px 10px',
   fontSize: 12,
   fontWeight: 600,
-  background: 'var(--budget-card)',
+  background: 'var(--ds-surface-chrome)',
 }
 
 function CollapsibleHeader({
@@ -763,7 +763,7 @@ function BudgetLineRow({
           height: 22,
           borderRadius: 4,
           border: `1.5px solid ${line.settled ? t.success : 'var(--budget-grid)'}`,
-          background: line.settled ? t.success : 'var(--budget-card)',
+          background: line.settled ? t.success : 'var(--ds-surface-chrome)',
           color: '#fff',
           display: 'inline-flex',
           alignItems: 'center',

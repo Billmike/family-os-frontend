@@ -239,7 +239,7 @@ function WeekStrip({ weekDays, selectedDate, today, events, onSelect }: {
   onSelect: (date: string) => void
 }) {
   return (
-    <div style={{ display: 'flex', background: 'var(--cal-panel)' }}>
+    <div style={{ display: 'flex', background: 'var(--ds-surface-chrome)' }}>
       {weekDays.map(day => {
         const dayEvents = events.filter(event => event.date === day)
         const isToday = day === today
@@ -302,7 +302,7 @@ function MemberFilter({ members, selected, onChange }: {
       padding: '10px 16px',
       overflowX: 'auto',
       scrollbarWidth: 'none',
-      background: 'var(--cal-panel)',
+      background: 'var(--ds-surface-chrome)',
       borderBottom: '1px solid var(--cal-grid)',
       flexShrink: 0,
     }}>
@@ -316,7 +316,7 @@ function MemberFilter({ members, selected, onChange }: {
           padding: '5px 14px',
           borderRadius: 9999,
           border: `1.5px solid ${selected === null ? 'var(--cal-text)' : 'var(--cal-grid)'}`,
-          background: selected === null ? 'var(--cal-text)' : 'var(--cal-panel)',
+          background: selected === null ? 'var(--cal-text)' : 'var(--ds-surface-chrome)',
           color: selected === null ? 'var(--cal-on-selected)' : 'var(--cal-dim)',
           fontSize: 12,
           fontWeight: 600,
@@ -345,7 +345,7 @@ function MemberFilter({ members, selected, onChange }: {
               padding: '5px 12px 5px 5px',
               borderRadius: 9999,
               border: `1.5px solid ${active ? member.color : 'var(--cal-grid)'}`,
-              background: active ? member.color : 'var(--cal-panel)',
+              background: active ? member.color : 'var(--ds-surface-chrome)',
               color: active ? '#fff' : 'var(--cal-dim)',
               fontSize: 12,
               fontWeight: 600,
@@ -588,7 +588,7 @@ function DayTimeline({ date, today, events, onEventTap }: {
             right: 12,
             minHeight: 44,
             padding: '16px 14px',
-            background: 'var(--cal-panel)',
+            background: 'var(--ds-surface-chrome)',
             borderRadius: r.lg,
             border: '1px solid var(--cal-grid)',
             display: 'flex',
@@ -623,7 +623,7 @@ function MonthGrid({ monthStart, selectedDate, today, events, onSelect }: {
         display: 'grid',
         gridTemplateColumns: 'repeat(7, 1fr)',
         borderBottom: '1px solid var(--cal-grid)',
-        background: 'var(--cal-panel)',
+        background: 'var(--ds-surface-chrome)',
         position: 'sticky',
         top: 0,
         zIndex: 5,
@@ -759,7 +759,7 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
         flexDirection: 'column',
         height: '100%',
         minHeight: '100%',
-        background: 'var(--cal-page)',
+        background: 'var(--ds-bg)',
       }}
     >
       <div style={{
@@ -772,7 +772,7 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
         minHeight: 0,
       }}>
         <div style={{
-          background: 'var(--cal-panel)',
+          background: 'var(--ds-surface-chrome)',
           borderBottom: '1px solid var(--cal-grid)',
           flexShrink: 0,
           zIndex: 10,
@@ -817,7 +817,7 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
                     padding: '4px 11px',
                     borderRadius: 9999,
                     border: 'none',
-                    background: viewMode === mode ? 'var(--cal-panel)' : 'transparent',
+                    background: viewMode === mode ? 'var(--ds-surface-chrome)' : 'transparent',
                     fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer',

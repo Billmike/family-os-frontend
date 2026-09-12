@@ -13,8 +13,6 @@
 
   /* ── Surfaces (warm paper) ─────────────────────── */
   --ds-bg:               #F3EDE4;
-  --ds-surface:          #F3EDE4;
-  --ds-surface-elevated: #FAF7F1;
   --ds-surface-chrome:   #FFFFFF;
   --ds-surface-muted:    #E8E2D6;
   --ds-bg-glass:         #F3EDE4;
@@ -98,8 +96,6 @@
   /* ── Typography ───────────────────────────────── */
   --ds-font: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 
-  --ob-bg: #FAFAF9;
-  --ob-surface: #FFFFFF;
   --ob-text: #1C1C1E;
   --ob-text-secondary: #636366;
   --ob-text-tertiary: #8E8E93;
@@ -120,10 +116,8 @@
   --ob-member-pink: #EC4899; --ob-member-pink-bg: #FDF2F8;
   --ob-shadow: 0 4px 20px rgba(232, 98, 42, 0.24);
 
-  /* Dashboard is the next screen adopting the refreshed visual direction. */
-  --dash-page: #FAFAF9;
+  /* Dashboard ink. Surfaces use --ds-bg / --ds-surface-chrome. Hero fades into the canvas. */
   --dash-hero: #FDF6EF;
-  --dash-card: #FFFFFF;
   --dash-text: #1C1C1E;
   --dash-note: #7A6A5A;
   --dash-label: #C4A98A;
@@ -131,9 +125,7 @@
   --dash-border: #EDE0D4;
   --dash-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
 
-  /* Calendar is the next screen adopting the refreshed visual direction. */
-  --cal-page: #FAFAF9;
-  --cal-panel: #FFFFFF;
+  /* Calendar ink / accent. Surfaces use --ds-bg / --ds-surface-chrome. */
   --cal-text: #1C1C1E;
   --cal-muted: #C4A98A;
   --cal-dim: #9A8878;
@@ -145,20 +137,14 @@
   --cal-toggle: #F5EDE4;
   --cal-event-text: #1C1C1E;
 
-  /* Tasks inherits Calendar/Home paper language. */
-  --task-page: #FAFAF9;
-  --task-panel: #FFFFFF;
-  --task-card: #FFFFFF;
+  /* Tasks ink. Surfaces use --ds-bg / --ds-surface-chrome. */
   --task-text: #1C1C1E;
   --task-dim: #9A8878;
   --task-grid: #EDE0D4;
   --task-on-selected: #FFFFFF;
   --task-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
 
-  /* Shopping inherits Calendar/Home/Tasks paper language. */
-  --shop-page: #FAFAF9;
-  --shop-panel: #FFFFFF;
-  --shop-card: #FFFFFF;
+  /* Shopping ink / coral. Surfaces use --ds-bg / --ds-surface-chrome. */
   --shop-text: #1C1C1E;
   --shop-dim: #9A8878;
   --shop-grid: #EDE0D4;
@@ -168,10 +154,7 @@
   --shop-toggle: #F5EDE4;
   --shop-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
 
-  /* Budget inherits Calendar/Home/Tasks/Shopping paper language. Olive stays the screen accent. */
-  --budget-page: #FAFAF9;
-  --budget-panel: #FFFFFF;
-  --budget-card: #FFFFFF;
+  /* Budget ink / olive bar. Surfaces use --ds-bg / --ds-surface-chrome. */
   --budget-text: #1C1C1E;
   --budget-dim: #9A8878;
   --budget-label: #C4A98A;
@@ -186,8 +169,6 @@ html.dark {
   color-scheme: dark;
 
   --ds-bg:               #16140F;
-  --ds-surface:          #1C1A15;
-  --ds-surface-elevated: #242218;
   --ds-surface-chrome:   #2A2720;
   --ds-surface-muted:    #1A1814;
   --ds-bg-glass:         #16140F;
@@ -249,8 +230,6 @@ html.dark {
   --ds-shadow-md:   0 4px 16px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.28);
   --ds-shadow-high: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.28);
 
-  --ob-bg: #111113;
-  --ob-surface: #1C1C1E;
   --ob-text: #F2F2F7;
   --ob-text-secondary: #AEAEB2;
   --ob-text-tertiary: #8E8E93;
@@ -271,9 +250,7 @@ html.dark {
   --ob-member-pink: #F472B6; --ob-member-pink-bg: #3B162B;
   --ob-shadow: 0 4px 20px rgba(0, 0, 0, 0.38);
 
-  --dash-page: #121213;
-  --dash-hero: #211913;
-  --dash-card: #1D1D1F;
+  --dash-hero: #211913; /* Home hero wash; fades into --ds-bg */
   --dash-text: #F2F2F7;
   --dash-note: #B6A89C;
   --dash-label: #C9A582;
@@ -281,8 +258,6 @@ html.dark {
   --dash-border: #3A2F27;
   --dash-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 
-  --cal-page: #121213;
-  --cal-panel: #1D1D1F;
   --cal-text: #F2F2F7;
   --cal-muted: #C9A582;
   --cal-dim: #B6A89C;
@@ -294,18 +269,12 @@ html.dark {
   --cal-toggle: #2A221C;
   --cal-event-text: #F2F2F7;
 
-  --task-page: #121213;
-  --task-panel: #1D1D1F;
-  --task-card: #1D1D1F;
   --task-text: #F2F2F7;
   --task-dim: #B6A89C;
   --task-grid: #3A2F27;
   --task-on-selected: #121213;
   --task-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 
-  --shop-page: #121213;
-  --shop-panel: #1D1D1F;
-  --shop-card: #1D1D1F;
   --shop-text: #F2F2F7;
   --shop-dim: #B6A89C;
   --shop-grid: #3A2F27;
@@ -315,9 +284,6 @@ html.dark {
   --shop-toggle: #2A221C;
   --shop-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 
-  --budget-page: #121213;
-  --budget-panel: #1D1D1F;
-  --budget-card: #1D1D1F;
   --budget-text: #F2F2F7;
   --budget-dim: #B6A89C;
   --budget-label: #C9A582;
@@ -335,7 +301,7 @@ html.dark {
   --color-muted: var(--ds-text-secondary);
   --color-faint: var(--ds-text-tertiary);
   --color-accent: var(--ds-primary);
-  --color-paper: var(--ds-surface-elevated);
+  --color-paper: var(--ds-surface-chrome);
   --color-rule: var(--ds-border);
   --color-attention: var(--ds-attention);
   --radius-sm: var(--ds-radius-sm);

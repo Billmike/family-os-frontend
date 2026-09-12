@@ -76,7 +76,7 @@ export const MoneyChrome = ({
       className="budget-screen"
       style={{
         minHeight: '100%',
-        background: 'var(--budget-page)',
+        background: 'var(--ds-bg)',
       }}
     >
       <div
@@ -84,7 +84,7 @@ export const MoneyChrome = ({
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          background: 'var(--budget-panel)',
+          background: 'var(--ds-surface-chrome)',
           borderBottom: '1px solid var(--budget-grid)',
         }}
       >

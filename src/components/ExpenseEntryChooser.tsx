@@ -53,7 +53,7 @@ const actionStyle: CSSProperties = {
   padding: '14px 16px',
   borderRadius: 'var(--ds-radius-md)',
   border: '1px solid var(--ds-border)',
-  background: 'var(--ds-surface)',
+  background: 'var(--ds-surface-chrome)',
   cursor: 'pointer',
   fontFamily: 'var(--ds-font)',
 }

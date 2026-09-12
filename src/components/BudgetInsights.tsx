@@ -19,7 +19,7 @@ import {
 } from "../ui";
 
 const paperCard = {
-  background: "var(--budget-card)",
+  background: "var(--ds-surface-chrome)",
   border: "1px solid var(--budget-grid)",
   boxShadow: "var(--budget-card-shadow)",
   borderRadius: r.lg,

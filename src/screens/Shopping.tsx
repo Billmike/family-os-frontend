@@ -316,13 +316,13 @@ export default function ShoppingScreen({
       className="shopping-motion shopping-screen"
       style={{
         minHeight: '100%',
-        background: 'var(--shop-page)',
+        background: 'var(--ds-bg)',
       }}
     >
       <div style={{ maxWidth: 720, width: '100%', margin: '0 auto' }}>
         <div
           style={{
-            background: 'var(--shop-panel)',
+            background: 'var(--ds-surface-chrome)',
             borderBottom: '1px solid var(--shop-grid)',
             position: 'sticky',
             top: 0,
@@ -452,7 +452,7 @@ export default function ShoppingScreen({
           position: 'fixed',
           height: 52,
           borderRadius: r.xl,
-          background: 'var(--shop-panel)',
+          background: 'var(--ds-surface-chrome)',
           border: '1px solid var(--shop-grid)',
           boxShadow: 'var(--shop-card-shadow)',
           cursor: 'pointer',
@@ -598,7 +598,7 @@ function GroupByControl({
               padding: '4px 11px',
               borderRadius: 9999,
               border: 'none',
-              background: isActive ? 'var(--shop-panel)' : 'transparent',
+              background: isActive ? 'var(--ds-surface-chrome)' : 'transparent',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -636,7 +636,7 @@ function GroupFilter({
         padding: '10px 16px',
         overflowX: 'auto',
         scrollbarWidth: 'none',
-        background: 'var(--shop-panel)',
+        background: 'var(--ds-surface-chrome)',
       }}
     >
       <FilterChip
@@ -681,7 +681,7 @@ function FilterChip({
         padding: '5px 14px',
         borderRadius: 9999,
         border: `1.5px solid ${pressed ? 'var(--shop-text)' : 'var(--shop-grid)'}`,
-        background: pressed ? 'var(--shop-text)' : 'var(--shop-panel)',
+        background: pressed ? 'var(--shop-text)' : 'var(--ds-surface-chrome)',
         color: pressed ? 'var(--shop-on-selected)' : 'var(--shop-dim)',
         fontSize: 12,
         fontWeight: 600,
@@ -796,7 +796,7 @@ function TripReceiptCard({
   return (
     <article
       style={{
-        background: 'var(--shop-card)',
+        background: 'var(--ds-surface-chrome)',
         border: '1px solid var(--shop-grid)',
         borderRadius: r.lg,
         boxShadow: 'var(--shop-card-shadow)',
@@ -1100,7 +1100,7 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
         alignItems: 'center',
         gap: 12,
         padding: '0 16px',
-        background: 'var(--shop-card)',
+        background: 'var(--ds-surface-chrome)',
         borderRadius: r.lg,
         boxShadow: 'var(--shop-card-shadow)',
         border: '1px solid var(--shop-grid)',
@@ -1154,7 +1154,7 @@ function BasketPanel({
         className="bottom-sheet-panel"
         style={{
           position: 'relative',
-          background: 'var(--shop-panel)',
+          background: 'var(--ds-surface-chrome)',
           borderRadius: '12px 12px 0 0',
           boxShadow: 'var(--ds-shadow-high)',
           maxHeight: '80dvh',

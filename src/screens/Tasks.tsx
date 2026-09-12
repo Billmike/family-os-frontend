@@ -49,7 +49,7 @@ export default function TasksScreen({
       className="tasks-motion tasks-screen"
       style={{
         minHeight: "100%",
-        background: "var(--task-page)",
+        background: "var(--ds-bg)",
       }}
     >
       <div
@@ -61,7 +61,7 @@ export default function TasksScreen({
       >
         <div
           style={{
-            background: "var(--task-panel)",
+            background: "var(--ds-surface-chrome)",
             borderBottom: "1px solid var(--task-grid)",
           }}
         >
@@ -144,7 +144,7 @@ function MemberFilter({
         padding: "10px 16px",
         overflowX: "auto",
         scrollbarWidth: "none",
-        background: "var(--task-panel)",
+        background: "var(--ds-surface-chrome)",
       }}
     >
       <button
@@ -159,7 +159,7 @@ function MemberFilter({
           borderRadius: 9999,
           border: `1.5px solid ${selected === null ? "var(--task-text)" : "var(--task-grid)"}`,
           background:
-            selected === null ? "var(--task-text)" : "var(--task-panel)",
+            selected === null ? "var(--task-text)" : "var(--ds-surface-chrome)",
           color:
             selected === null ? "var(--task-on-selected)" : "var(--task-dim)",
           fontSize: 12,
@@ -193,7 +193,7 @@ function MemberFilter({
               justifyContent: "center",
               borderRadius: 9999,
               border: `1.5px solid ${isActive ? member.color : "var(--task-grid)"}`,
-              background: isActive ? member.color : "var(--task-panel)",
+              background: isActive ? member.color : "var(--ds-surface-chrome)",
               color: isActive ? "#fff" : member.color,
               fontSize: 12,
               fontWeight: 700,
@@ -286,7 +286,7 @@ function MemberSwimlane({
 
       <div
         style={{
-          background: "var(--task-card)",
+          background: "var(--ds-surface-chrome)",
           border: "1px solid var(--task-grid)",
           borderRadius: "var(--ds-radius-lg)",
           boxShadow: "var(--task-card-shadow)",
@@ -497,7 +497,7 @@ function DueChip({ label, emphasize }: { label: string; emphasize: boolean }) {
         padding: "2px 8px",
         borderRadius: 9999,
         border: "1px solid var(--task-grid)",
-        background: "var(--task-page)",
+        background: "var(--ds-bg)",
         color: emphasize ? "var(--task-text)" : "var(--task-dim)",
         fontSize: 11,
         fontWeight: 600,
@@ -520,7 +520,7 @@ function RecurringChip() {
         padding: "2px 8px",
         borderRadius: 9999,
         border: "1px solid var(--task-grid)",
-        background: "var(--task-page)",
+        background: "var(--ds-bg)",
         color: "var(--task-dim)",
         fontSize: 11,
         fontWeight: 600,

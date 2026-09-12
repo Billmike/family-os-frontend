@@ -69,7 +69,7 @@ export const MoneyScopeSwitch = ({
             style={{
               border: 'none',
               background: active
-                ? isPaper ? 'var(--budget-panel)' : t.surfaceElev
+                ? isPaper ? 'var(--ds-surface-chrome)' : t.surfaceElev
                 : 'transparent',
               color: active
                 ? isPaper ? 'var(--budget-text)' : t.text

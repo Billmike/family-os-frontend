@@ -33,7 +33,7 @@ const ACTIVITY_PREVIEW_LIMIT = 5
 const CHART_CYCLE_LIMIT = 12
 
 const paperCard = {
-  background: 'var(--budget-card)',
+  background: 'var(--ds-surface-chrome)',
   border: '1px solid var(--budget-grid)',
   boxShadow: 'var(--budget-card-shadow)',
   borderRadius: r.lg,

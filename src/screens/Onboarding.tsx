@@ -63,10 +63,6 @@ interface Props {
 // ─── Shared layout ────────────────────────────────────────────────────────────
 
 const onboardingTheme = {
-  '--ds-bg': 'var(--ob-bg)',
-  '--ds-surface': 'var(--ob-surface)',
-  '--ds-surface-elevated': 'var(--ob-surface)',
-  '--ds-surface-muted': 'color-mix(in srgb, var(--ob-surface) 86%, var(--ob-border))',
   '--ds-text-primary': 'var(--ob-text)',
   '--ds-text-secondary': 'var(--ob-text-secondary)',
   '--ds-text-tertiary': 'var(--ob-text-tertiary)',
@@ -88,7 +84,7 @@ const shell: CSSProperties = {
   ...onboardingTheme,
   minHeight: '100dvh', display: 'flex', flexDirection: 'column',
   alignItems: 'center', justifyContent: 'flex-start',
-  background: 'var(--ob-bg)', padding: '24px 20px 40px',
+  background: 'var(--ds-bg)', padding: '24px 20px 40px',
   overflowY: 'auto', boxSizing: 'border-box',
   fontFamily: 'var(--ds-font)',
 }
@@ -107,7 +103,7 @@ const inputStyle: CSSProperties = {
   width: '100%', height: 52, padding: '0 16px',
   borderRadius: 'var(--ds-radius-lg)',
   border: `1.5px solid var(--ob-border-strong)`,
-  background: 'var(--ob-surface)', fontSize: 16,
+  background: 'var(--ds-surface-chrome)', fontSize: 16,
   fontFamily: 'var(--ds-font)', color: 'var(--ob-text)',
   outline: 'none', boxSizing: 'border-box',
   transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -297,19 +293,19 @@ function errMessage(e: unknown): string {
 
 const WELCOME_SLIDES = [
   {
-    background: '#FFF5F0', darkBackground: '#2A1A15', accent: 'var(--ob-primary)', hero: '🏠',
+    accent: 'var(--ob-primary)', hero: '🏠',
     title: 'Welcome to\nFamilyOS',
     subtitle: "Your household's command centre, designed for the whole family.",
     decorations: [['⭐', '14%', '10%', 'onboardingSparkle'], ['✨', '22%', '78%', 'onboardingSpin'], ['💫', '72%', '12%', 'onboardingFloat'], ['🌟', '76%', '80%', 'onboardingSparkle']],
   },
   {
-    background: '#F5F2FF', darkBackground: '#201B31', accent: 'var(--ob-member-violet)', hero: '📅',
+    accent: 'var(--ob-member-violet)', hero: '📅',
     title: 'Stay in sync,\nalways',
     subtitle: 'Share calendars, events, and tasks with every family member.',
     decorations: [['✅', '16%', '12%', 'onboardingFloat'], ['🔔', '18%', '76%', 'onboardingSpin'], ['⭐', '70%', '8%', 'onboardingSparkle'], ['💬', '74%', '80%', 'onboardingFloat']],
   },
   {
-    background: '#F0FBF7', darkBackground: '#102720', accent: 'var(--ob-member-emerald)', hero: '👨‍👩‍👧',
+    accent: 'var(--ob-member-emerald)', hero: '👨‍👩‍👧',
     title: 'Manage life\ntogether',
     subtitle: 'Tasks, shopping, and household plans—everything your family needs in one place.',
     decorations: [['❤️', '16%', '8%', 'onboardingFloat'], ['⭐', '18%', '78%', 'onboardingSparkle'], ['🛒', '72%', '10%', 'onboardingSpin'], ['✨', '76%', '80%', 'onboardingFloat']],
@@ -322,10 +318,9 @@ function SplashSlide({ index, onNext, onSkip, onSignIn }: { index: number; onNex
   return (
     <div className="onboarding-motion" style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
-      background: `linear-gradient(var(--ob-splash-overlay, transparent), var(--ob-splash-overlay, transparent)), ${slide.background}`,
-      color: 'var(--ob-text)', fontFamily: 'var(--ds-font)', transition: 'background .45s ease',
+      background: 'var(--ds-bg)',
+      color: 'var(--ob-text)', fontFamily: 'var(--ds-font)',
     }}>
-      <style>{`html.dark { --ob-splash-overlay: color-mix(in srgb, ${slide.darkBackground} 100%, transparent); }`}</style>
       <div style={{ padding: '18px 22px 0', minHeight: 42, display: 'flex', justifyContent: 'flex-end' }}>
         {!isLast && <button type="button" onClick={onSkip} style={{ border: 0, background: 'transparent', color: 'var(--ob-text-tertiary)', fontFamily: 'var(--ds-font)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Skip</button>}
       </div>

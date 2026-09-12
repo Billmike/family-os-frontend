@@ -4,8 +4,8 @@ import type { CalendarEvent, Member, AppHandlers } from '../types'
 import { r, FAB, MemberAvatar, IconButton } from '../ui'
 import { getMember, formatTime } from '../data'
 
-const START_HOUR = 7
-const END_HOUR = 22
+const START_HOUR = 0
+const END_HOUR = 24
 const HOUR_H = 56
 const TIME_W = 52
 const MIN_EVENT_H = 44
@@ -97,40 +97,28 @@ function durationLabel(event: CalendarEvent): string | null {
   return minutes % 60 === 0 ? `${minutes / 60}h` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
+function nowTime(): string {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
+
 interface LaidOutEvent {
   event: CalendarEvent
   top: number
   height: number
   col: number
   cols: number
-  clippedStart: boolean
-  clippedEnd: boolean
 }
 
-function layoutDayEvents(events: CalendarEvent[]): { visible: LaidOutEvent[]; before: CalendarEvent[]; after: CalendarEvent[] } {
-  const before: CalendarEvent[] = []
-  const after: CalendarEvent[] = []
-  const inRange: { event: CalendarEvent; start: number; end: number }[] = []
-
-  events.forEach(event => {
-    const start = minutesFromTime(event.startTime)
-    const end = eventEndMinutes(event)
-    if (end <= VISIBLE_START) {
-      before.push(event)
-      return
-    }
-    if (start >= VISIBLE_END) {
-      after.push(event)
-      return
-    }
-    inRange.push({
+function layoutDayEvents(events: CalendarEvent[]): LaidOutEvent[] {
+  const inRange = events
+    .map(event => ({
       event,
-      start: Math.max(start, VISIBLE_START),
-      end: Math.min(end, VISIBLE_END),
-    })
-  })
-
-  inRange.sort((a, b) => a.start - b.start || a.end - b.end)
+      start: Math.max(minutesFromTime(event.startTime), VISIBLE_START),
+      end: Math.min(eventEndMinutes(event), VISIBLE_END),
+    }))
+    .filter(item => item.end > item.start)
+    .sort((a, b) => a.start - b.start || a.end - b.end)
 
   const clusters: typeof inRange[] = []
   let current: typeof inRange = []
@@ -159,21 +147,17 @@ function layoutDayEvents(events: CalendarEvent[]): { visible: LaidOutEvent[]; be
     })
     const cols = colEnd.length
     assigned.forEach(item => {
-      const rawStart = minutesFromTime(item.event.startTime)
-      const rawEnd = eventEndMinutes(item.event)
       visible.push({
         event: item.event,
         top: minutesToY(item.start) + 1,
         height: Math.max(((item.end - item.start) / 60) * HOUR_H - 2, MIN_EVENT_H),
         col: item.col,
         cols,
-        clippedStart: rawStart < VISIBLE_START,
-        clippedEnd: rawEnd > VISIBLE_END,
       })
     })
   })
 
-  return { visible, before, after }
+  return visible
 }
 
 function DayCircle({ day, isToday, isSelected, size = 32 }: {
@@ -296,19 +280,23 @@ function MemberFilter({ members, selected, onChange }: {
   onChange: (id: string | null) => void
 }) {
   return (
-    <div style={{
-      display: 'flex',
-      gap: 8,
-      padding: '10px 16px',
-      overflowX: 'auto',
-      scrollbarWidth: 'none',
-      background: 'var(--ds-surface-chrome)',
-      borderBottom: '1px solid var(--cal-grid)',
-      flexShrink: 0,
-    }}>
+    <div
+      aria-label="Filter by Member"
+      style={{
+        display: 'flex',
+        gap: 8,
+        padding: '10px 16px',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        background: 'var(--ds-surface-chrome)',
+        borderBottom: '1px solid var(--cal-grid)',
+        flexShrink: 0,
+      }}
+    >
       <button
         type="button"
         onClick={() => onChange(null)}
+        aria-label="All Members"
         aria-pressed={selected === null}
         style={{
           flexShrink: 0,
@@ -336,78 +324,30 @@ function MemberFilter({ members, selected, onChange }: {
             type="button"
             onClick={() => onChange(active ? null : member.id)}
             aria-pressed={active}
+            aria-label={member.name}
+            title={member.name}
             style={{
               flexShrink: 0,
+              width: 44,
+              height: 44,
+              minWidth: 44,
               minHeight: 44,
+              padding: 0,
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '5px 12px 5px 5px',
+              justifyContent: 'center',
               borderRadius: 9999,
               border: `1.5px solid ${active ? member.color : 'var(--cal-grid)'}`,
               background: active ? member.color : 'var(--ds-surface-chrome)',
-              color: active ? '#fff' : 'var(--cal-dim)',
+              color: active ? '#fff' : member.color,
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               fontFamily: 'var(--ds-font)',
               transition: 'all 0.15s',
             }}
           >
-            <span style={{
-              width: 20,
-              height: 20,
-              borderRadius: 9999,
-              background: active ? 'rgba(255,255,255,0.25)' : member.bg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 10,
-              fontWeight: 700,
-              color: active ? '#fff' : member.color,
-            }}>
-              {member.initials}
-            </span>
-            {member.name}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function OverflowRow({ events, onEventTap }: {
-  events: CalendarEvent[]
-  onEventTap: (id: string) => void
-}) {
-  if (events.length === 0) return null
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '8px 12px 8px 62px' }}>
-      {events.map(event => {
-        const member = getMember(event.memberId)
-        return (
-          <button
-            key={event.id}
-            type="button"
-            onClick={() => onEventTap(event.id)}
-            aria-label={`${event.title}, ${formatTime(event.startTime)}`}
-            style={{
-              minHeight: 44,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 10px',
-              borderRadius: r.md,
-              border: 'none',
-              borderLeft: `3px solid ${member.color}`,
-              background: member.bg,
-              cursor: 'pointer',
-              fontFamily: 'var(--ds-font)',
-              textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cal-event-text)' }}>{event.title}</span>
-            <span style={{ fontSize: 11, color: 'var(--cal-dim)' }}>{formatTime(event.startTime)}</span>
+            {member.initials}
           </button>
         )
       })}
@@ -424,29 +364,28 @@ function DayTimeline({ date, today, events, onEventTap }: {
   const dayEvents = events
     .filter(event => event.date === date)
     .sort((a, b) => a.startTime.localeCompare(b.startTime))
-  const { visible, before, after } = useMemo(() => layoutDayEvents(dayEvents), [dayEvents])
+  const visible = useMemo(() => layoutDayEvents(dayEvents), [dayEvents])
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, index) => START_HOUR + index)
   const containerH = hours.length * HOUR_H
   const scrollRef = useRef<HTMLDivElement>(null)
+  const nowY = timeToY(nowTime())
 
   useEffect(() => {
     if (!scrollRef.current) return
     const firstVisible = visible[0]
-    const target = firstVisible
-      ? Math.max(0, firstVisible.top - HOUR_H)
-      : date === today
-        ? Math.max(0, timeToY(`${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`) - HOUR_H)
+    const target = date === today
+      ? Math.max(0, timeToY(nowTime()) - HOUR_H)
+      : firstVisible
+        ? Math.max(0, firstVisible.top - HOUR_H)
         : 0
     scrollRef.current.scrollTop = target
   }, [date, today, visible])
 
-  const now = new Date()
-  const nowY = timeToY(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
   const showNow = date === today && nowY >= 0 && nowY <= containerH
+  const emptyTop = date === today ? Math.max(12, nowY) : 12
 
   return (
     <div ref={scrollRef} style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
-      <OverflowRow events={before} onEventTap={onEventTap} />
       <div style={{ position: 'relative', height: containerH }}>
         {hours.map(hour => (
           <div
@@ -542,7 +481,6 @@ function DayTimeline({ date, today, events, onEventTap }: {
                 gap: compact ? 8 : 3,
                 overflow: 'hidden',
                 boxShadow: `0 1px 4px color-mix(in srgb, ${member.color} 18%, transparent)`,
-                opacity: item.clippedStart || item.clippedEnd ? 0.92 : 1,
               }}
             >
               <div style={{
@@ -583,7 +521,7 @@ function DayTimeline({ date, today, events, onEventTap }: {
         {dayEvents.length === 0 && (
           <div style={{
             position: 'absolute',
-            top: 2 * HOUR_H + 12,
+            top: emptyTop,
             left: TIME_W + 10,
             right: 12,
             minHeight: 44,
@@ -602,7 +540,6 @@ function DayTimeline({ date, today, events, onEventTap }: {
           </div>
         )}
       </div>
-      <OverflowRow events={after} onEventTap={onEventTap} />
     </div>
   )
 }

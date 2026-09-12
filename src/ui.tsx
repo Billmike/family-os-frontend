@@ -78,13 +78,21 @@ export function MemberAvatar({ member, size = 32 }: { member: Member; size?: num
 
 // ─── TaskCheckbox ─────────────────────────────────────────────────────────────
 
-export function TaskCheckbox({ checked, onChange, size = 22 }: {
-  checked: boolean; onChange: () => void; size?: number
+export function TaskCheckbox({ checked, onChange, size = 22, priority, 'aria-label': ariaLabel }: {
+  checked: boolean
+  onChange: () => void
+  size?: number
+  priority?: TaskPriority
+  'aria-label'?: string
 }) {
+  const accent = priority ? priorityColor[priority] : t.success
+  const isRound = Boolean(priority)
+
   return (
     <button
+      type="button"
       onClick={e => { e.stopPropagation(); onChange() }}
-      aria-label={checked ? 'Mark incomplete' : 'Mark complete'}
+      aria-label={ariaLabel ?? (checked ? 'Mark incomplete' : 'Mark complete')}
       style={{
         width: 44, height: 44, borderRadius: 7, border: 'none', padding: 0,
         background: 'transparent',
@@ -93,9 +101,9 @@ export function TaskCheckbox({ checked, onChange, size = 22 }: {
       }}
     >
       <span style={{
-        width: size, height: size, borderRadius: 6,
-        background: checked ? t.success : 'transparent',
-        outline: `1.5px solid ${checked ? t.success : t.borderStrong}`,
+        width: size, height: size, borderRadius: isRound ? 9999 : 6,
+        background: checked ? accent : 'transparent',
+        outline: `1.5px solid ${checked || priority ? accent : t.borderStrong}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.15s',
       }}>

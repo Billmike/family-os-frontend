@@ -1,217 +1,534 @@
-import { useEffect, useRef, useState } from 'react'
-import { Plus, MoreHorizontal, Repeat, CheckSquare } from 'lucide-react'
-import type { Task, Member, AppHandlers } from '../types'
-import { t, r, MemberAvatar, TaskCheckbox, FAB, SegmentedControl, SectionLabel, EmptyState, PriorityIcon, CategoryIcon } from '../ui'
-import { getMember } from '../data'
+import { useState } from "react";
+import { ChevronDown, Plus, Repeat } from "lucide-react";
+import type { Task, Member, AppHandlers } from "../types";
+import { t, MemberAvatar, TaskCheckbox, FAB } from "../ui";
+import { formatDate } from "../data";
+import { addDays } from "../api/adapters";
 
 interface Props {
-  tasks: Task[]
-  members: Member[]
-  today: string
-  currentMemberId?: string
-  openSheet: AppHandlers['openSheet']
-  completeTask: AppHandlers['completeTask']
-  deleteTask: AppHandlers['deleteTask']
+  tasks: Task[];
+  members: Member[];
+  today: string;
+  currentMemberId?: string;
+  openSheet: AppHandlers["openSheet"];
+  completeTask: AppHandlers["completeTask"];
+  deleteTask: AppHandlers["deleteTask"];
 }
 
-type Filter = 'All' | 'Mine' | 'Completed'
+const statusSummary = (openTasks: Task[], currentMemberId?: string): string => {
+  if (openTasks.length === 0) return "All done — great work!";
+  const myOpenCount = openTasks.filter(
+    (task) => task.assigneeId === currentMemberId,
+  ).length;
+  if (myOpenCount > 0)
+    return `${myOpenCount} task(s) need your attention · ${openTasks.length} open total`;
+  return `${openTasks.length} open task(s) across the family`;
+};
 
-export default function TasksScreen({ tasks, openSheet, completeTask, deleteTask, today, currentMemberId }: Props) {
-  const [filter, setFilter] = useState<Filter>('All')
-  const [menuOpen, setMenuOpen] = useState<string | null>(null)
+export default function TasksScreen({
+  tasks,
+  members,
+  openSheet,
+  completeTask,
+  today,
+  currentMemberId,
+}: Props) {
+  const [memberFilter, setMemberFilter] = useState<string | null>(null);
 
-  const active = tasks.filter(tk => !tk.completed)
-  const completed = tasks.filter(tk => tk.completed)
-  const mineId = currentMemberId ?? ''
+  const openTasks = tasks.filter((task) => !task.completed);
+  const visibleMembers = memberFilter
+    ? members.filter((member) => member.id === memberFilter)
+    : members;
 
-  const filterTasks = () => {
-    if (filter === 'Completed') return completed
-    const pool = active
-    if (filter === 'Mine') return pool.filter(tk => tk.assigneeId === mineId)
-    return pool
-  }
-
-  const filtered = filterTasks()
-  const todayTasks = filtered.filter(tk => tk.dueDate === 'today' || tk.dueDate === today)
-  const upcomingTasks = filtered.filter(tk => tk.dueDate !== 'today' && tk.dueDate !== today && !tk.completed)
-  const completedShown = filter === 'Completed' ? filtered : []
-
-  const attention = active.filter(tk => tk.assigneeId === mineId).length
+  const handleOpenAdd = () => openSheet({ type: "addTask" });
+  const handleOpenTask = (taskId: string) =>
+    openSheet({ type: "taskDetail", taskId });
 
   return (
-    <div style={{ minHeight: '100%', paddingBottom: 100 }}>
-      <div style={{ padding: '16px 16px 4px' }}>
-        {attention > 0
-          ? <p style={{ fontSize: 13, color: t.textSec }}>{attention} task{attention !== 1 ? 's' : ''} need your attention</p>
-          : <p style={{ fontSize: 13, color: t.textSec }}>{"You're all caught up"}</p>
-        }
+    <div
+      className="tasks-motion tasks-screen"
+      style={{
+        minHeight: "100%",
+        background: "var(--task-page)",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 720,
+          width: "100%",
+          margin: "0 auto",
+        }}
+      >
+        <div
+          style={{
+            background: "var(--task-panel)",
+            borderBottom: "1px solid var(--task-grid)",
+          }}
+        >
+          <div style={{ padding: "16px 16px 4px" }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "var(--task-dim)",
+                fontFamily: "var(--ds-font)",
+              }}
+            >
+              {statusSummary(openTasks, currentMemberId)}
+            </p>
+          </div>
+
+          <MemberFilter
+            members={members}
+            selected={memberFilter}
+            onChange={setMemberFilter}
+          />
+        </div>
+
+        <div
+          key={memberFilter ?? "all"}
+          className="tasks-motion"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 20,
+            padding: 16,
+            animation: "tasksEnter 0.22s ease-out",
+          }}
+        >
+          {visibleMembers.map((member) => {
+            const laneOpenTasks = openTasks.filter(
+              (task) => task.assigneeId === member.id,
+            );
+            const laneCompletedTasks = tasks.filter(
+              (task) => task.completed && task.assigneeId === member.id,
+            );
+            return (
+              <MemberSwimlane
+                key={member.id}
+                member={member}
+                openTasks={laneOpenTasks}
+                completedTasks={laneCompletedTasks}
+                today={today}
+                onComplete={completeTask}
+                onOpenTask={handleOpenTask}
+              />
+            );
+          })}
+        </div>
       </div>
 
-      <div style={{ padding: '8px 16px 12px' }}>
-        <SegmentedControl options={['All', 'Mine', 'Completed']} value={filter} onChange={v => setFilter(v as Filter)} />
-      </div>
-
-      {filtered.length === 0 && (
-        <EmptyState
-          icon={CheckSquare}
-          title={filter === 'Completed' ? 'No completed tasks' : 'Nothing needs doing'}
-          body={filter === 'Completed' ? 'Completed tasks will appear here.' : 'Add a task to get started.'}
-          action={filter !== 'Completed' ? '+ Add task' : undefined}
-          onAction={() => openSheet({ type: 'addTask' })}
-        />
-      )}
-
-      {todayTasks.length > 0 && (
-        <div>
-          <SectionLabel>Today</SectionLabel>
-          <TaskList tasks={todayTasks} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} openSheet={openSheet} />
-        </div>
-      )}
-
-      {upcomingTasks.length > 0 && (
-        <div>
-          <SectionLabel>Upcoming</SectionLabel>
-          <TaskList tasks={upcomingTasks} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} openSheet={openSheet} />
-        </div>
-      )}
-
-      {completedShown.length > 0 && (
-        <div>
-          <SectionLabel>Completed</SectionLabel>
-          <TaskList tasks={completedShown} today={today} onComplete={completeTask} onDelete={deleteTask} menuOpen={menuOpen} onMenuOpen={setMenuOpen} openSheet={openSheet} />
-        </div>
-      )}
-
-      <FAB onClick={() => openSheet({ type: 'addTask' })}>
+      <FAB onClick={handleOpenAdd} aria-label="Add task">
         <Plus size={24} color={t.onPrimary} />
       </FAB>
     </div>
-  )
+  );
 }
 
-function TaskList({ tasks, today, onComplete, onDelete, menuOpen, onMenuOpen, openSheet }: {
-  tasks: Task[]
-  today: string
-  onComplete: (id: string) => void
-  onDelete: (id: string) => void
-  menuOpen: string | null
-  onMenuOpen: (id: string | null) => void
-  openSheet: AppHandlers['openSheet']
+function MemberFilter({
+  members,
+  selected,
+  onChange,
+}: {
+  members: Member[];
+  selected: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Filter by Member"
+      style={{
+        display: "flex",
+        gap: 8,
+        padding: "10px 16px",
+        overflowX: "auto",
+        scrollbarWidth: "none",
+        background: "var(--task-panel)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        aria-label="All Members"
+        aria-pressed={selected === null}
+        style={{
+          flexShrink: 0,
+          minHeight: 44,
+          padding: "5px 14px",
+          borderRadius: 9999,
+          border: `1.5px solid ${selected === null ? "var(--task-text)" : "var(--task-grid)"}`,
+          background:
+            selected === null ? "var(--task-text)" : "var(--task-panel)",
+          color:
+            selected === null ? "var(--task-on-selected)" : "var(--task-dim)",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          fontFamily: "var(--ds-font)",
+          transition: "all 0.15s",
+        }}
+      >
+        All
+      </button>
+
+      {members.map((member) => {
+        const isActive = selected === member.id;
+        return (
+          <button
+            key={member.id}
+            type="button"
+            onClick={() => onChange(isActive ? null : member.id)}
+            aria-pressed={isActive}
+            aria-label={member.name}
+            style={{
+              flexShrink: 0,
+              width: 44,
+              height: 44,
+              minWidth: 44,
+              minHeight: 44,
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 9999,
+              border: `1.5px solid ${isActive ? member.color : "var(--task-grid)"}`,
+              background: isActive ? member.color : "var(--task-panel)",
+              color: isActive ? "#fff" : member.color,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "var(--ds-font)",
+              transition: "all 0.15s",
+            }}
+          >
+            {member.initials}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MemberSwimlane({
+  member,
+  openTasks,
+  completedTasks,
+  today,
+  onComplete,
+  onOpenTask,
+}: {
+  member: Member;
+  openTasks: Task[];
+  completedTasks: Task[];
+  today: string;
+  onComplete: (id: string) => void;
+  onOpenTask: (id: string) => void;
+}) {
+  const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+  const completedPanelId = `${member.id}-completed-tasks`;
+
+  const handleToggleCompleted = () => {
+    setIsCompletedExpanded((current) => !current);
+  };
+
+  return (
+    <section aria-label={`${member.name}'s Tasks`}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "0 2px 10px",
+          borderBottom: `3px solid ${member.color}`,
+          marginBottom: 10,
+        }}
+      >
+        <MemberAvatar member={member} size={28} />
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: 15,
+            fontWeight: 700,
+            color: "var(--task-text)",
+            letterSpacing: "-0.02em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontFamily: "var(--ds-font)",
+          }}
+        >
+          {member.name}
+        </span>
+        {openTasks.length > 0 && (
+          <span
+            style={{
+              minWidth: 22,
+              height: 22,
+              padding: "0 6px",
+              borderRadius: 9999,
+              background: member.bg,
+              color: member.color,
+              fontSize: 11,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontVariantNumeric: "tabular-nums",
+              fontFamily: "var(--ds-font)",
+            }}
+          >
+            {openTasks.length}
+          </span>
+        )}
+      </div>
+
+      <div
+        style={{
+          background: "var(--task-card)",
+          border: "1px solid var(--task-grid)",
+          borderRadius: "var(--ds-radius-lg)",
+          boxShadow: "var(--task-card-shadow)",
+          overflow: "hidden",
+        }}
+      >
+        {openTasks.length === 0 ? (
+          <p
+            style={{
+              margin: 0,
+              padding: "18px 16px",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "var(--task-dim)",
+              fontFamily: "var(--ds-font)",
+            }}
+          >
+            All done!
+          </p>
+        ) : (
+          <TaskList
+            tasks={openTasks}
+            today={today}
+            onComplete={onComplete}
+            onOpenTask={onOpenTask}
+          />
+        )}
+        {completedTasks.length > 0 && (
+          <>
+            <button
+              type="button"
+              aria-expanded={isCompletedExpanded}
+              aria-controls={completedPanelId}
+              aria-label={
+                isCompletedExpanded
+                  ? `Hide ${completedTasks.length} completed Tasks for ${member.name}`
+                  : `Show ${completedTasks.length} completed Tasks for ${member.name}`
+              }
+              onClick={handleToggleCompleted}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                width: "100%",
+                minHeight: 44,
+                padding: "10px 16px",
+                border: "none",
+                borderTop: "1px solid var(--task-grid)",
+                background: "transparent",
+                color: "var(--task-dim)",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "var(--ds-font)",
+              }}
+            >
+              <span style={{ flex: 1, textAlign: "left" }}>
+                Completed ({completedTasks.length})
+              </span>
+              <ChevronDown
+                size={16}
+                aria-hidden
+                style={{
+                  transform: isCompletedExpanded ? "rotate(180deg)" : "none",
+                  transition: "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
+                }}
+              />
+            </button>
+            <div
+              id={completedPanelId}
+              hidden={!isCompletedExpanded}
+              style={{
+                borderTop: "1px solid var(--task-grid)",
+                animation: isCompletedExpanded
+                  ? "tasksEnter 0.22s ease-out"
+                  : "none",
+              }}
+            >
+              <TaskList
+                tasks={completedTasks}
+                today={today}
+                onComplete={onComplete}
+                onOpenTask={onOpenTask}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TaskList({
+  tasks,
+  today,
+  onComplete,
+  onOpenTask,
+}: {
+  tasks: Task[];
+  today: string;
+  onComplete: (id: string) => void;
+  onOpenTask: (id: string) => void;
 }) {
   return (
     <div>
-      {tasks.map((task, i) => (
+      {tasks.map((task, index) => (
         <TaskRow
           key={task.id}
           task={task}
           today={today}
-          divider={i > 0}
+          divider={index > 0}
           onComplete={onComplete}
-          onDelete={onDelete}
-          menuOpen={menuOpen === task.id}
-          onMenuOpen={open => onMenuOpen(open ? task.id : null)}
-          onOpen={() => openSheet({ type: 'taskDetail', taskId: task.id })}
+          onOpen={() => onOpenTask(task.id)}
         />
       ))}
     </div>
-  )
+  );
 }
 
-function TaskRow({ task, today, divider, onComplete, onDelete, menuOpen, onMenuOpen, onOpen }: {
-  task: Task
-  today: string
-  divider: boolean
-  onComplete: (id: string) => void
-  onDelete: (id: string) => void
-  menuOpen: boolean
-  onMenuOpen: (open: boolean) => void
-  onOpen: () => void
+function TaskRow({
+  task,
+  today,
+  divider,
+  onComplete,
+  onOpen,
+}: {
+  task: Task;
+  today: string;
+  divider: boolean;
+  onComplete: (id: string) => void;
+  onOpen: () => void;
 }) {
-  const member = getMember(task.assigneeId)
-  const isToday = task.dueDate === 'today' || task.dueDate === today
-  const rowRef = useRef<HTMLDivElement>(null)
-  const [menuUp, setMenuUp] = useState(false)
-
-  useEffect(() => {
-    if (!menuOpen || !rowRef.current) return
-    const rect = rowRef.current.getBoundingClientRect()
-    const spaceBelow = window.innerHeight - rect.bottom
-    setMenuUp(spaceBelow < 120)
-  }, [menuOpen])
+  const dueLabel = formatDate(task.dueDate, today, addDays(today, 1));
+  const isDueToday = dueLabel === "Today";
 
   return (
-    <div ref={rowRef} style={{
-      position: 'relative',
-      padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12,
-      borderTop: divider ? `1px solid ${t.border}` : 'none',
-      opacity: task.completed ? 0.55 : 1,
-      transition: 'opacity 0.2s',
-      background: t.surface,
-    }}>
-      <TaskCheckbox checked={task.completed} onChange={() => onComplete(task.id)} />
+    <div
+      style={{
+        position: "relative",
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 12,
+        borderTop: divider ? "1px solid var(--task-grid)" : "none",
+        opacity: task.completed ? 0.55 : 1,
+        background: "transparent",
+      }}
+    >
+      <TaskCheckbox
+        checked={task.completed}
+        priority={task.priority}
+        onChange={() => onComplete(task.id)}
+        aria-label={
+          task.completed ? `Reopen ${task.title}` : `Complete ${task.title}`
+        }
+      />
       <button
+        type="button"
         onClick={onOpen}
         style={{
-          flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'none',
-          cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--ds-font)',
+          flex: 1,
+          minWidth: 0,
+          padding: 0,
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          textAlign: "left",
+          fontFamily: "var(--ds-font)",
         }}
       >
-        <p style={{ fontSize: 15, color: t.text, textDecoration: task.completed ? 'line-through' : 'none', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <MemberAvatar member={member} size={16} />
-          <span style={{ fontSize: 12, color: t.textTer }}>{member.name}</span>
-          {task.category && (
-            <CategoryIcon category={task.category} size={14} />
-          )}
-          {!task.completed && (
-            <span style={{ fontSize: 12, color: isToday ? t.textSec : t.textTer }}>
-              {isToday ? 'Today' : task.dueDate === 'tomorrow' ? 'Tomorrow' : task.dueDate}
-            </span>
-          )}
-          {task.recurring && <Repeat size={11} color={t.textTer} />}
+        <p
+          style={{
+            margin: 0,
+            marginBottom: 6,
+            fontSize: 15,
+            color: "var(--task-text)",
+            textDecoration: task.completed ? "line-through" : "none",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {task.title}
+        </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flexWrap: "wrap",
+          }}
+        >
+          <DueChip label={dueLabel} emphasize={isDueToday} />
+          {task.recurring && <RecurringChip />}
         </div>
       </button>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <PriorityIcon priority={task.priority} size={14} />
-        <button
-          onClick={e => { e.stopPropagation(); onMenuOpen(!menuOpen) }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
-        >
-          <MoreHorizontal size={16} color={t.textTer} />
-        </button>
-      </div>
-
-      {menuOpen && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-            onClick={() => onMenuOpen(false)}
-          />
-          <div
-            style={{
-              position: 'absolute', right: 12, zIndex: 50,
-              ...(menuUp ? { bottom: 36 } : { top: 36 }),
-              background: t.surface, borderRadius: r.lg, border: `1px solid ${t.border}`,
-              boxShadow: 'var(--ds-shadow-md)', overflow: 'hidden', minWidth: 140,
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => { onComplete(task.id); onMenuOpen(false) }}
-              style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', textAlign: 'left', fontSize: 14, color: t.text, cursor: 'pointer', fontFamily: 'var(--ds-font)' }}
-            >
-              {task.completed ? 'Mark incomplete' : 'Mark complete'}
-            </button>
-            <div style={{ height: 1, background: t.border }} />
-            <button
-              onClick={() => { onDelete(task.id); onMenuOpen(false) }}
-              style={{ display: 'block', width: '100%', padding: '11px 16px', border: 'none', background: 'none', textAlign: 'left', fontSize: 14, color: 'var(--ds-error)', cursor: 'pointer', fontFamily: 'var(--ds-font)' }}
-            >
-              Delete task
-            </button>
-          </div>
-        </>
-      )}
     </div>
-  )
+  );
+}
+
+function DueChip({ label, emphasize }: { label: string; emphasize: boolean }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        minHeight: 22,
+        padding: "2px 8px",
+        borderRadius: 9999,
+        border: "1px solid var(--task-grid)",
+        background: "var(--task-page)",
+        color: emphasize ? "var(--task-text)" : "var(--task-dim)",
+        fontSize: 11,
+        fontWeight: 600,
+        fontFamily: "var(--ds-font)",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function RecurringChip() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        minHeight: 22,
+        padding: "2px 8px",
+        borderRadius: 9999,
+        border: "1px solid var(--task-grid)",
+        background: "var(--task-page)",
+        color: "var(--task-dim)",
+        fontSize: 11,
+        fontWeight: 600,
+        fontFamily: "var(--ds-font)",
+      }}
+    >
+      <Repeat size={11} aria-hidden />
+      Recurring
+    </span>
+  );
 }

@@ -13,12 +13,11 @@ export const FamilyMark = ({ size = 28 }: { size?: number }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: fonts.display,
+        fontFamily: fonts.ui,
         fontSize: size * 0.52,
         fontWeight: 600,
         lineHeight: 1,
         flexShrink: 0,
-        fontStyle: 'italic',
       }}
     >
       F

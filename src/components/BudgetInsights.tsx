@@ -773,7 +773,7 @@ const SnapshotStat = ({
         fontWeight: 500,
         letterSpacing: "-0.03em",
         color: valueColor,
-        fontFamily: fonts.display,
+        fontFamily: fonts.ui,
         lineHeight: 1.1,
       }}
     >

@@ -205,7 +205,7 @@ export default function ExpensesScreen({
               letterSpacing: '-0.03em',
               lineHeight: 1.1,
               margin: 0,
-              fontFamily: 'var(--ds-font-display)',
+              fontFamily: 'var(--ds-font)',
             }}>
               <RollingNumber
                 value={used}

@@ -58,7 +58,7 @@ export const DesktopSidebar = ({
             fontSize: 18,
             fontWeight: 500,
             color: t.text,
-            fontFamily: fonts.display,
+            fontFamily: fonts.ui,
           }}
         >
           FamilyOS

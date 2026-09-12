@@ -236,7 +236,7 @@ export default function PersonalExpensesScreen({
                 color: t.text,
                 letterSpacing: "-0.03em",
                 margin: 0,
-                fontFamily: "var(--ds-font-display)",
+                fontFamily: "var(--ds-font)",
               }}
             >
               <RollingNumber

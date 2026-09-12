@@ -90,7 +90,7 @@ const shell: CSSProperties = {
   alignItems: 'center', justifyContent: 'flex-start',
   background: 'var(--ob-bg)', padding: '24px 20px 40px',
   overflowY: 'auto', boxSizing: 'border-box',
-  fontFamily: 'var(--ob-font)',
+  fontFamily: 'var(--ds-font)',
 }
 
 const card: CSSProperties = {
@@ -108,7 +108,7 @@ const inputStyle: CSSProperties = {
   borderRadius: 'var(--ds-radius-lg)',
   border: `1.5px solid var(--ob-border-strong)`,
   background: 'var(--ob-surface)', fontSize: 16,
-  fontFamily: 'var(--ob-font)', color: 'var(--ob-text)',
+  fontFamily: 'var(--ds-font)', color: 'var(--ob-text)',
   outline: 'none', boxSizing: 'border-box',
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
@@ -212,7 +212,7 @@ function PrimaryBtn({ onClick, disabled, children, type = 'button' }: {
       background: disabled ? 'var(--ds-disabled-bg)' : 'var(--ob-primary-gradient)',
       color: disabled ? 'var(--ds-disabled-text)' : 'var(--ob-on-primary)',
       fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
-      fontFamily: 'var(--ob-font)', display: 'flex', alignItems: 'center',
+      fontFamily: 'var(--ds-font)', display: 'flex', alignItems: 'center',
       justifyContent: 'center', gap: 8, transition: 'background 0.15s',
       boxShadow: disabled ? 'none' : 'var(--ob-shadow)',
     }}>
@@ -227,7 +227,7 @@ function GhostBtn({ onClick, children }: { onClick: () => void; children: React.
       width: '100%', maxWidth: 420, alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', padding: '14px', borderRadius: r.pill,
       border: '1.5px solid var(--ob-border)', background: 'transparent',
       fontSize: 15, fontWeight: 500, cursor: 'pointer', color: 'var(--ob-text-secondary)',
-      fontFamily: 'var(--ob-font)',
+      fontFamily: 'var(--ds-font)',
     }}>
       {children}
     </button>
@@ -240,7 +240,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
       alignSelf: 'flex-start',
       background: 'none', border: 'none', cursor: 'pointer',
       display: 'flex', alignItems: 'center', gap: 4,
-      color: 'var(--ob-text-secondary)', fontFamily: 'var(--ob-font)', fontSize: 14,
+      color: 'var(--ob-text-secondary)', fontFamily: 'var(--ds-font)', fontSize: 14,
       padding: '0 0 16px', margin: 0,
     }}>
       <ChevronLeft size={18} /> Back
@@ -270,7 +270,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--ob-text)', letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 8, fontFamily: 'var(--ob-font)' }}>{children}</h1>
+  return <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--ob-text)', letterSpacing: '-0.03em', lineHeight: 1.2, marginBottom: 8, fontFamily: 'var(--ds-font)' }}>{children}</h1>
 }
 
 function Sub({ children }: { children: React.ReactNode }) {
@@ -316,11 +316,11 @@ function SplashSlide({ index, onNext, onSkip, onSignIn }: { index: number; onNex
     <div className="onboarding-motion" style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
       background: `linear-gradient(var(--ob-splash-overlay, transparent), var(--ob-splash-overlay, transparent)), ${slide.background}`,
-      color: 'var(--ob-text)', fontFamily: 'var(--ob-font)', transition: 'background .45s ease',
+      color: 'var(--ob-text)', fontFamily: 'var(--ds-font)', transition: 'background .45s ease',
     }}>
       <style>{`html.dark { --ob-splash-overlay: color-mix(in srgb, ${slide.darkBackground} 100%, transparent); }`}</style>
       <div style={{ padding: '18px 22px 0', minHeight: 42, display: 'flex', justifyContent: 'flex-end' }}>
-        {!isLast && <button type="button" onClick={onSkip} style={{ border: 0, background: 'transparent', color: 'var(--ob-text-tertiary)', fontFamily: 'var(--ob-font)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Skip</button>}
+        {!isLast && <button type="button" onClick={onSkip} style={{ border: 0, background: 'transparent', color: 'var(--ob-text-tertiary)', fontFamily: 'var(--ds-font)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Skip</button>}
       </div>
       <div style={{ flex: 1, minHeight: 270, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'absolute', width: 260, height: 260, background: `color-mix(in srgb, ${slide.accent} 12%, transparent)`, animation: 'onboardingBlob 8s ease-in-out infinite' }} />
@@ -335,7 +335,7 @@ function SplashSlide({ index, onNext, onSkip, onSignIn }: { index: number; onNex
         <h1 style={{ whiteSpace: 'pre-line', fontSize: 36, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.14, marginBottom: 12 }}>{slide.title}</h1>
         <p style={{ maxWidth: 320, margin: '0 auto 32px', color: 'var(--ob-text-secondary)', fontSize: 16, lineHeight: 1.62 }}>{slide.subtitle}</p>
         <PrimaryBtn onClick={onNext}>{isLast ? 'Get started' : 'Next'} <ArrowRight size={18} /></PrimaryBtn>
-        {index === 0 && <button type="button" onClick={onSignIn} style={{ display: 'block', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '15px auto 0', padding: '14px', border: '1.5px solid var(--ob-border)', borderRadius: r.pill, background: 'transparent', color: 'var(--ob-text-secondary)', fontFamily: 'var(--ob-font)', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>I already have an account</button>}
+        {index === 0 && <button type="button" onClick={onSignIn} style={{ display: 'block', width: '100%', maxWidth: 420, boxSizing: 'border-box', margin: '15px auto 0', padding: '14px', border: '1.5px solid var(--ob-border)', borderRadius: r.pill, background: 'transparent', color: 'var(--ob-text-secondary)', fontFamily: 'var(--ds-font)', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>I already have an account</button>}
       </div>
     </div>
   )
@@ -605,7 +605,7 @@ export default function Onboarding({ handlers }: Props) {
             style={{ width: 64, height: 64, borderRadius: 20, boxShadow: sh.md }}
           />
         </div>
-        <h1 style={{ fontSize: 36, fontWeight: 500, color: t.text, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: 10, fontFamily: 'var(--ds-font-display)' }}>
+        <h1 style={{ fontSize: 36, fontWeight: 500, color: t.text, letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: 10, fontFamily: 'var(--ds-font)' }}>
           {hasPendingInvite ? <>You&apos;re invited</> : <>Welcome to<br />FamilyOS</>}
         </h1>
         <p style={{ fontSize: 15, color: t.textSec, lineHeight: 1.65, marginBottom: 32, maxWidth: 320, margin: '0 auto 32px' }}>

@@ -722,7 +722,7 @@ function ShopEmptyState({
           fontSize: 18,
           fontWeight: 500,
           color: 'var(--shop-text)',
-          fontFamily: 'var(--ds-font-display)',
+          fontFamily: 'var(--ds-font)',
           margin: '4px 0 0',
         }}
       >
@@ -828,7 +828,7 @@ function TripReceiptCard({
                 fontSize: 16,
                 fontWeight: 500,
                 color: 'var(--shop-text)',
-                fontFamily: 'var(--ds-font-display)',
+                fontFamily: 'var(--ds-font)',
               }}
             >
               {dateLabel}
@@ -1168,7 +1168,7 @@ function BasketPanel({
           <div style={{ width: 36, height: 4, borderRadius: 9999, background: 'var(--shop-grid)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px' }}>
-          <span style={{ fontSize: 20, fontWeight: 500, fontFamily: 'var(--ds-font-display)', color: 'var(--shop-text)' }}>
+          <span style={{ fontSize: 20, fontWeight: 500, fontFamily: 'var(--ds-font)', color: 'var(--shop-text)' }}>
             Basket
           </span>
           <span style={{ fontSize: 13, color: 'var(--shop-dim)' }}>{items.length} item{items.length !== 1 ? 's' : ''}</span>

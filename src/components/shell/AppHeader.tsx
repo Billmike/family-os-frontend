@@ -125,7 +125,7 @@ export const AppHeader = ({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            fontFamily: fonts.display,
+            fontFamily: fonts.ui,
           }}
         >
           {title}

@@ -214,7 +214,7 @@ export default function FamilyScreen({
                 textAlign: "center",
                 letterSpacing: "-0.02em",
                 overflow: "hidden",
-                fontFamily: "var(--ds-font-display)",
+                fontFamily: "var(--ds-font)",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 maxWidth: "100%",

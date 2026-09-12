@@ -44,7 +44,6 @@ export const t = {
 
 export const fonts = {
   ui: 'var(--ds-font)',
-  display: 'var(--ds-font-display)',
 } as const
 
 export const r = {
@@ -290,7 +289,7 @@ export function EmptyState({ icon: Icon, title, body, action, onAction }: {
   return (
     <div style={{ padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
       <Icon size={22} color={t.textTer} strokeWidth={1.5} />
-      <p style={{ fontSize: 18, fontWeight: 500, color: t.text, fontFamily: fonts.display, marginTop: 8 }}>{title}</p>
+      <p style={{ fontSize: 18, fontWeight: 500, color: t.text, fontFamily: fonts.ui, marginTop: 8 }}>{title}</p>
       <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, maxWidth: 260 }}>{body}</p>
       {action && onAction && (
         <button onClick={onAction} style={{
@@ -364,7 +363,7 @@ export function BottomSheet({ title, onClose, children, zIndex = 200, header, fo
         )}
         {header ?? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
-            <span style={{ fontSize: 20, fontWeight: 500, color: t.text, fontFamily: fonts.display }}>{title}</span>
+            <span style={{ fontSize: 20, fontWeight: 500, color: t.text, fontFamily: fonts.ui }}>{title}</span>
             <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 10, display: 'flex', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
               <X size={20} color={t.textSec} />
             </button>

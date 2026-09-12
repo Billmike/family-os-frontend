@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, ImagePlus, Loader2, AlertTriangle } from 'lucide-react'
 import type { BudgetSubcategoryGroup, Receipt, ReceiptConfirmDraft, ReceiptItemDraft } from '../types'
-import { BottomSheet, FormField, Input, PrimaryButton, t } from '../ui'
+import { BottomSheet, FormField, Input, PrimaryButton, GhostButton, t } from '../ui'
 import { dateInputFromIso, dateInputToIso, formatMoney, toReceipt } from '../api/adapters'
 import * as receiptsApi from '../api/receipts'
 import { ApiError } from '../api/client'
@@ -360,24 +360,13 @@ export default function ReceiptScanSheet({
           >
             Try again
           </PrimaryButton>
-          <button
-            type="button"
+          <GhostButton
             onClick={onEnterManually}
+            fullWidth
             aria-label="Enter expense manually"
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: 'none',
-              background: 'transparent',
-              color: t.primary,
-              fontSize: 15,
-              fontWeight: 500,
-              fontFamily: 'var(--ds-font)',
-              cursor: 'pointer',
-            }}
           >
             Enter manually instead
-          </button>
+          </GhostButton>
         </div>
       )}
 

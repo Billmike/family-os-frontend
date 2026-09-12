@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Check, ChevronLeft, Copy, Bell, Download, Plus, CheckSquare, ShoppingCart, ArrowRight, Eye, EyeOff } from 'lucide-react'
-import { t, r, sh } from '../ui'
+import { t, r, sh, PrimaryButton, GhostButton, IconButton } from '../ui'
 import { ApiError } from '../api/client'
 import * as familiesApi from '../api/families'
 import type { FamilyOut } from '../api/types'
@@ -170,8 +170,7 @@ function PasswordInput({ placeholder, value, onChange, name, autoComplete, id }:
         autoCorrect="off"
         style={{ paddingRight: 48 }}
       />
-      <button
-        type="button"
+      <IconButton
         onClick={handleToggleVisibility}
         aria-label={isVisible ? 'Hide password' : 'Show password'}
         aria-pressed={isVisible}
@@ -181,24 +180,13 @@ function PasswordInput({ placeholder, value, onChange, name, autoComplete, id }:
           right: 2,
           top: '50%',
           transform: 'translateY(-50%)',
-          width: 44,
-          height: 44,
-          background: 'none',
-          border: 'none',
           borderRadius: 'var(--ds-radius-sm)',
-          cursor: 'pointer',
-          padding: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
         }}
-        onFocus={e => { e.currentTarget.style.boxShadow = '0 0 0 3px var(--ds-focus)' }}
-        onBlur={e => { e.currentTarget.style.boxShadow = 'none' }}
       >
         {isVisible
-          ? <EyeOff size={18} color={t.textTer} aria-hidden />
-          : <Eye size={18} color={t.textTer} aria-hidden />}
-      </button>
+          ? <EyeOff size={18} aria-hidden />
+          : <Eye size={18} aria-hidden />}
+      </IconButton>
     </div>
   )
 }
@@ -207,44 +195,63 @@ function PrimaryBtn({ onClick, disabled, children, type = 'button' }: {
   onClick?: () => void; disabled?: boolean; children: React.ReactNode; type?: 'button' | 'submit'
 }) {
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={{
-      width: '100%', maxWidth: 420, alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', padding: '16px', borderRadius: r.pill, border: 'none',
-      background: disabled ? 'var(--ds-disabled-bg)' : 'var(--ob-primary-gradient)',
-      color: disabled ? 'var(--ds-disabled-text)' : 'var(--ob-on-primary)',
-      fontSize: 16, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
-      fontFamily: 'var(--ds-font)', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', gap: 8, transition: 'background 0.15s',
-      boxShadow: disabled ? 'none' : 'var(--ob-shadow)',
-    }}>
+    <PrimaryButton
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      fullWidth
+      style={{
+        maxWidth: 420,
+        alignSelf: 'center',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        padding: 16,
+        borderRadius: r.pill,
+        fontSize: 16,
+        fontWeight: 700,
+      }}
+    >
       {children}
-    </button>
+    </PrimaryButton>
   )
 }
 
 function GhostBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} style={{
-      width: '100%', maxWidth: 420, alignSelf: 'center', marginLeft: 'auto', marginRight: 'auto', padding: '14px', borderRadius: r.pill,
-      border: '1.5px solid var(--ob-border)', background: 'transparent',
-      fontSize: 15, fontWeight: 500, cursor: 'pointer', color: 'var(--ob-text-secondary)',
-      fontFamily: 'var(--ds-font)',
-    }}>
+    <GhostButton
+      onClick={onClick}
+      bordered
+      fullWidth
+      style={{
+        maxWidth: 420,
+        alignSelf: 'center',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        padding: 14,
+        borderRadius: r.pill,
+      }}
+    >
       {children}
-    </button>
+    </GhostButton>
   )
 }
 
 function BackBtn({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} style={{
-      alignSelf: 'flex-start',
-      background: 'none', border: 'none', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', gap: 4,
-      color: 'var(--ob-text-secondary)', fontFamily: 'var(--ds-font)', fontSize: 14,
-      padding: '0 0 16px', margin: 0,
-    }}>
-      <ChevronLeft size={18} /> Back
-    </button>
+    <GhostButton
+      onClick={onClick}
+      style={{
+        alignSelf: 'flex-start',
+        justifyContent: 'flex-start',
+        gap: 4,
+        padding: '0 0 16px',
+        minHeight: 0,
+        fontSize: 14,
+        fontWeight: 400,
+      }}
+    >
+      <ChevronLeft size={18} aria-hidden /> Back
+    </GhostButton>
   )
 }
 

@@ -31,6 +31,8 @@ import {
   TaskCheckbox,
   t,
   r,
+  IconButton,
+  GhostButton,
 } from "../ui";
 import TaskDateSheet from "./TaskDateSheet";
 
@@ -192,33 +194,16 @@ export default function TaskDetailSheet({
         padding: "8px 20px 12px",
       }}
     >
-      <button
-        onClick={onClose}
-        aria-label="Close"
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 4,
-          display: "flex",
-        }}
-      >
-        <X size={20} color={t.textSec} />
-      </button>
+      <IconButton onClick={onClose} aria-label="Close">
+        <X size={20} aria-hidden />
+      </IconButton>
       <div style={{ position: "relative" }}>
-        <button
+        <IconButton
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="More actions"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 4,
-            display: "flex",
-          }}
         >
-          <MoreHorizontal size={20} color={t.textSec} />
-        </button>
+          <MoreHorizontal size={20} aria-hidden />
+        </IconButton>
         {menuOpen && (
           <>
             <div
@@ -426,38 +411,20 @@ export default function TaskDetailSheet({
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button
+          <GhostButton
+            bordered
             onClick={() => setShowCategoryPicker((v) => !v)}
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              borderRadius: r.md,
-              border: `1px solid ${t.border}`,
-              background: t.surfaceMuted,
-              cursor: "pointer",
-              fontFamily: "var(--ds-font)",
-              fontSize: 13,
-              color: t.textSec,
-            }}
+            style={{ flex: 1, padding: "10px 12px", fontSize: 13, background: t.surfaceMuted }}
           >
             Change category
-          </button>
-          <button
+          </GhostButton>
+          <GhostButton
+            bordered
             onClick={() => setShowAssigneePicker((v) => !v)}
-            style={{
-              flex: 1,
-              padding: "10px 12px",
-              borderRadius: r.md,
-              border: `1px solid ${t.border}`,
-              background: t.surfaceMuted,
-              cursor: "pointer",
-              fontFamily: "var(--ds-font)",
-              fontSize: 13,
-              color: t.textSec,
-            }}
+            style={{ flex: 1, padding: "10px 12px", fontSize: 13, background: t.surfaceMuted }}
           >
             Change assignee
-          </button>
+          </GhostButton>
         </div>
       </BottomSheet>
 

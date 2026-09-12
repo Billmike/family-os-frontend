@@ -7,7 +7,7 @@ import {
   formatMoney,
   formatYearMonthTitle,
 } from '../api/adapters'
-import { BottomSheet, t, r } from '../ui'
+import { BottomSheet, t, r, DangerButton, GhostButton, IconButton } from '../ui'
 
 interface Props {
   periods: BudgetPeriod[]
@@ -66,25 +66,22 @@ export default function CycleListSheet({
           ? Planned amounts for this cycle will be removed. Recorded spending stays in the ledger.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button
-            type="button"
+          <DangerButton
             onClick={() => void handleDelete()}
             disabled={deleting}
+            fullWidth
             aria-label="Confirm delete cycle"
-            style={{
-              ...dangerBtn,
-              opacity: deleting ? 0.6 : 1,
-            }}
           >
             {deleting ? 'Deleting…' : 'Delete cycle'}
-          </button>
-          <button
-            type="button"
+          </DangerButton>
+          <GhostButton
             onClick={() => setConfirmDelete(null)}
-            style={ghostFullBtn}
+            bordered
+            fullWidth
+            style={{ background: t.surface }}
           >
             Cancel
-          </button>
+          </GhostButton>
         </div>
       </BottomSheet>
     )
@@ -262,23 +259,12 @@ function CycleSection({
                   </div>
                 )}
               </button>
-              <button
-                type="button"
+              <IconButton
                 onClick={() => onOpenMenu(period)}
                 aria-label={`More actions for ${formatCycleDateRange(period.startDate, period.endDate)}`}
-                style={{
-                  width: 44,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
               >
-                <MoreHorizontal size={18} color={t.textTer} />
-              </button>
+                <MoreHorizontal size={18} aria-hidden />
+              </IconButton>
             </div>
           )
         })}
@@ -301,28 +287,3 @@ const rowBtn: React.CSSProperties = {
   fontFamily: 'var(--ds-font)',
 }
 
-const dangerBtn: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 16px',
-  border: 'none',
-  borderRadius: r.md,
-  background: t.error,
-  color: t.onPrimary,
-  fontSize: 15,
-  fontWeight: 600,
-  cursor: 'pointer',
-  fontFamily: 'var(--ds-font)',
-}
-
-const ghostFullBtn: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 16px',
-  border: `1px solid ${t.border}`,
-  borderRadius: r.md,
-  background: t.surface,
-  color: t.text,
-  fontSize: 15,
-  fontWeight: 600,
-  cursor: 'pointer',
-  fontFamily: 'var(--ds-font)',
-}

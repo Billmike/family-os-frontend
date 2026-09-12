@@ -349,7 +349,7 @@ export default function PersonalExpensesScreen({
         onClick={handleAdd}
         aria-label={selected ? "Add expense" : "Create account"}
       >
-        <Plus size={24} color={t.onPrimary} />
+        <Plus size={24} aria-hidden />
       </FAB>
     </MoneyChrome>
   );

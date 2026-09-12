@@ -1,6 +1,6 @@
 import type { FormEvent, KeyboardEvent } from 'react'
 import { Send } from 'lucide-react'
-import { fonts, r, t } from '../../ui'
+import { fonts, r, t, PrimaryButton } from '../../ui'
 
 interface Props {
   draft: string
@@ -88,7 +88,7 @@ export const AssistantComposer = ({
           touchAction: 'manipulation',
         }}
       />
-      <button
+      <PrimaryButton
         type="submit"
         aria-label="Send message"
         disabled={!canSend}
@@ -96,20 +96,13 @@ export const AssistantComposer = ({
           width: 44,
           height: 44,
           minWidth: 44,
-          minHeight: 44,
-          border: 'none',
+          padding: 0,
           borderRadius: 9999,
-          background: canSend ? t.primary : t.surfaceMuted,
-          color: canSend ? t.onPrimary : t.textTer,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: canSend ? 'pointer' : 'default',
           flexShrink: 0,
         }}
       >
         <Send size={16} aria-hidden="true" />
-      </button>
+      </PrimaryButton>
     </form>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { BudgetSubcategoryGroup, Expense, ExpenseDraft, Receipt } from '../types'
-import { BottomSheet, FormField, Input, PrimaryButton, t } from '../ui'
+import { BottomSheet, FormField, Input, PrimaryButton, GhostButton, DangerButton, t } from '../ui'
 import { dateInputFromIso, dateInputToIso, formatMoney, toReceipt } from '../api/adapters'
 import * as receiptsApi from '../api/receipts'
 
@@ -189,48 +189,25 @@ export default function ExpenseSheet({
         {isEdit ? 'Save' : 'Add entry'}
       </PrimaryButton>
       {isEdit && expense && onDelete && (
-        <button
-          type="button"
+        <DangerButton
+          quiet
+          fullWidth
           onClick={() => onDelete(expense.id)}
           aria-label="Delete expense"
-          style={{
-            width: '100%',
-            marginTop: 12,
-            padding: '12px',
-            background: 'var(--ds-error-subtle)',
-            color: 'var(--ds-error)',
-            border: 'none',
-            borderRadius: 'var(--ds-radius-md)',
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'var(--ds-font)',
-          }}
+          style={{ marginTop: 12 }}
         >
           Delete entry
-        </button>
+        </DangerButton>
       )}
       {!isEdit && onScanReceipt && (
-        <button
-          type="button"
+        <GhostButton
           onClick={onScanReceipt}
+          fullWidth
           aria-label="Scan a receipt instead"
-          style={{
-            width: '100%',
-            marginTop: 12,
-            padding: '12px',
-            background: 'transparent',
-            color: t.primary,
-            border: 'none',
-            borderRadius: 'var(--ds-radius-md)',
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'var(--ds-font)',
-          }}
+          style={{ marginTop: 12 }}
         >
           Scan a receipt instead
-        </button>
+        </GhostButton>
       )}
       {!isEdit && !onScanReceipt && (
         <p style={{ fontSize: 12, color: t.textTer, textAlign: 'center', marginTop: 10 }}>

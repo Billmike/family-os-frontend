@@ -3,7 +3,7 @@ import { Repeat } from 'lucide-react'
 import type { AssistantTaskSubmit, TaskProposal } from '../../api/assistant'
 import type { Member } from '../../types'
 import { TASK_CATEGORIES } from '../../types'
-import { fonts, r, t } from '../../ui'
+import { fonts, t, PrimaryButton, GhostButton } from '../../ui'
 import { ProposalField, proposalFieldInputStyle } from './ProposalField'
 
 interface Props {
@@ -277,46 +277,23 @@ export const TaskProposalCard = ({
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <button
-          type="button"
+        <PrimaryButton
           onClick={handleAdd}
           disabled={!canAdd}
           aria-label="Add task"
-          style={{
-            flex: 1,
-            minHeight: 44,
-            border: 'none',
-            borderRadius: r.md,
-            background: canAdd ? t.primary : 'var(--ds-disabled-bg)',
-            color: canAdd ? t.onPrimary : 'var(--ds-disabled-text)',
-            fontSize: 14,
-            fontWeight: 500,
-            fontFamily: fonts.ui,
-            cursor: canAdd ? 'pointer' : 'not-allowed',
-          }}
+          style={{ flex: 1, fontSize: 14 }}
         >
           {isSaving ? 'Adding…' : 'Add task'}
-        </button>
-        <button
-          type="button"
+        </PrimaryButton>
+        <GhostButton
           onClick={handleCancel}
           disabled={isSaving}
+          bordered
           aria-label="Cancel task proposal"
-          style={{
-            minHeight: 44,
-            padding: '0 14px',
-            border: `1px solid ${t.borderStrong}`,
-            borderRadius: r.md,
-            background: t.surfaceChrome,
-            color: t.text,
-            fontSize: 14,
-            fontWeight: 500,
-            fontFamily: fonts.ui,
-            cursor: isSaving ? 'not-allowed' : 'pointer',
-          }}
+          style={{ padding: '0 14px', fontSize: 14, background: t.surfaceChrome }}
         >
           Cancel
-        </button>
+        </GhostButton>
       </div>
     </div>
   )

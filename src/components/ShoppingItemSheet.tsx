@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ShoppingItemDraft, ShoppingLocation } from '../types'
-import { BottomSheet, FormField, Input, PrimaryButton, QuantityStepper, Select, t } from '../ui'
+import { BottomSheet, FormField, Input, PrimaryButton, GhostButton, DangerButton, QuantityStepper, Select, t } from '../ui'
 import { CATEGORY_ORDER } from '../data'
 
 const NO_STORE = ''
@@ -190,48 +190,25 @@ export default function ShoppingItemSheet({
         {isEdit ? 'Save changes' : 'Add Item'}
       </PrimaryButton>
       {mode === 'basket' && onReturnToList && (
-        <button
-          type="button"
+        <GhostButton
           onClick={onReturnToList}
+          fullWidth
           aria-label={`Return ${item?.name ?? 'item'} to the shopping list`}
-          style={{
-            width: '100%',
-            marginTop: 12,
-            padding: '12px',
-            background: 'transparent',
-            color: t.primary,
-            border: 'none',
-            borderRadius: 'var(--ds-radius-md)',
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'var(--ds-font)',
-          }}
+          style={{ marginTop: 12 }}
         >
           Return to list
-        </button>
+        </GhostButton>
       )}
       {mode === 'list' && onDelete && (
-        <button
-          type="button"
+        <DangerButton
+          quiet
+          fullWidth
           onClick={onDelete}
           aria-label={`Delete ${item?.name ?? 'item'}`}
-          style={{
-            width: '100%',
-            marginTop: 12,
-            padding: '12px',
-            background: 'var(--ds-error-subtle)',
-            color: 'var(--ds-error)',
-            border: 'none',
-            borderRadius: 'var(--ds-radius-md)',
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'var(--ds-font)',
-          }}
+          style={{ marginTop: 12 }}
         >
           Delete item
-        </button>
+        </DangerButton>
       )}
       {!isEdit && (
         <p style={{ fontSize: 12, color: t.textTer, textAlign: 'center', marginTop: 10 }}>

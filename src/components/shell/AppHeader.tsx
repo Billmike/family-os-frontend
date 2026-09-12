@@ -1,6 +1,6 @@
 import { ArrowLeft, Bell } from 'lucide-react'
 import type { Member, Screen } from '../../types'
-import { t, fonts, MemberAvatar } from '../../ui'
+import { t, fonts, MemberAvatar, GhostButton, IconButton } from '../../ui'
 import { AskAssistantPill } from '../assistant/AskAssistantPill'
 import { FamilyMark } from './FamilyMark'
 import { SCREEN_TITLES } from './nav'
@@ -67,27 +67,19 @@ export const AppHeader = ({
       }}
     >
       {isNested ? (
-        <button
-          type="button"
+        <GhostButton
           onClick={onBack}
           aria-label="Back"
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
             gap: 4,
-            color: t.text,
             padding: '4px 0',
-            fontFamily: fonts.ui,
             flexShrink: 0,
-            minHeight: 44,
+            fontWeight: 400,
           }}
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} aria-hidden />
           <span style={{ fontSize: 15 }}>Back</span>
-        </button>
+        </GhostButton>
       ) : isDashboard ? (
         <div
           style={{
@@ -141,25 +133,12 @@ export const AppHeader = ({
         {assistantEnabled && onOpenAssistant && (
           <AskAssistantPill onOpen={onOpenAssistant} compact />
         )}
-        <button
-          type="button"
+        <IconButton
           onClick={() => onNavigate('notifications')}
           aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
-          style={{
-            position: 'relative',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 6,
-            display: 'flex',
-            flexShrink: 0,
-            minWidth: 44,
-            minHeight: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={{ position: 'relative' }}
         >
-          <Bell size={20} color={t.textSec} strokeWidth={1.75} />
+          <Bell size={20} strokeWidth={1.75} aria-hidden />
           {unreadCount > 0 && (
             <span
               style={{
@@ -183,7 +162,7 @@ export const AppHeader = ({
               {unreadCount}
             </span>
           )}
-        </button>
+        </IconButton>
         <button
           type="button"
           onClick={() => onNavigate('family')}

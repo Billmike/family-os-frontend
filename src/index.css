@@ -48,6 +48,8 @@
   --ds-warning-subtle: #F3E4D8;
   --ds-warning-text:   #8A3D22;
   --ds-error:          #A33B32;
+  --ds-error-hover:    #822F28;
+  --ds-error-pressed:  #682620;
   --ds-error-subtle:   #F4E4DE;
   --ds-error-text:     #7A241C;
   --ds-info:           #4A5C5A;
@@ -214,6 +216,8 @@ html.dark {
   --ds-warning-subtle: #2E1C16;
   --ds-warning-text:   #E8B09A;
   --ds-error:          #D4786A;
+  --ds-error-hover:    #E4897A;
+  --ds-error-pressed:  #C4685A;
   --ds-error-subtle:   #2E1816;
   --ds-error-text:     #E8A89A;
   --ds-info:           #8A9A96;
@@ -389,6 +393,136 @@ html.assistant-phone-open .app-toast {
 :focus-visible {
   outline: 2px solid var(--ds-focus-ring);
   outline-offset: 2px;
+}
+
+/* Interactive roles — hover only on fine pointers. See docs/adr/0006-one-interactive-face.md */
+.ds-btn {
+  font-family: var(--ds-font);
+  cursor: pointer;
+}
+
+.ds-btn:disabled {
+  cursor: not-allowed;
+}
+
+.ds-btn-primary {
+  background: var(--ds-primary);
+  color: var(--ds-on-primary);
+  border: none;
+}
+
+.ds-btn-ghost {
+  background: transparent;
+  color: var(--ds-text-secondary);
+  border: none;
+}
+
+.ds-btn-ghost.ds-btn-bordered {
+  border: 1px solid var(--ds-border);
+}
+
+.ds-btn-danger {
+  background: var(--ds-error);
+  color: var(--ds-on-primary);
+  border: none;
+}
+
+.ds-btn-danger-quiet {
+  background: var(--ds-error-subtle);
+  color: var(--ds-error);
+  border: none;
+}
+
+.ds-btn-danger-quiet.ds-btn-bordered {
+  border: 1px solid var(--ds-error);
+}
+
+.ds-btn-icon {
+  background: transparent;
+  color: var(--ds-text-secondary);
+  border: none;
+}
+
+.ds-btn-icon.ds-btn-selected {
+  color: var(--ds-primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ds-btn-primary:hover:not(:disabled) {
+    background: var(--ds-primary-hover);
+  }
+
+  .ds-btn-ghost:hover:not(:disabled) {
+    color: var(--ds-text-primary);
+  }
+
+  .ds-btn-ghost.ds-btn-bordered:hover:not(:disabled) {
+    border-color: var(--ds-border-strong);
+  }
+
+  .ds-btn-danger:hover:not(:disabled) {
+    background: var(--ds-error-hover);
+  }
+
+  .ds-btn-danger-quiet:hover:not(:disabled) {
+    color: var(--ds-error-text);
+  }
+
+  .ds-btn-icon:hover:not(:disabled):not(.ds-btn-selected) {
+    color: var(--ds-text-primary);
+  }
+}
+
+.ds-btn-primary:active:not(:disabled) {
+  background: var(--ds-primary-pressed);
+}
+
+.ds-btn-ghost:active:not(:disabled) {
+  color: var(--ds-text-primary);
+}
+
+.ds-btn-ghost.ds-btn-bordered:active:not(:disabled) {
+  border-color: var(--ds-border-strong);
+}
+
+.ds-btn-danger:active:not(:disabled) {
+  background: var(--ds-error-pressed);
+}
+
+.ds-btn-danger-quiet:active:not(:disabled) {
+  color: var(--ds-error-text);
+}
+
+.ds-btn-icon:active:not(:disabled):not(.ds-btn-selected) {
+  color: var(--ds-text-primary);
+}
+
+.ds-btn-primary:disabled {
+  background: var(--ds-disabled-bg);
+  color: var(--ds-disabled-text);
+}
+
+.ds-btn-ghost:disabled {
+  color: var(--ds-disabled-text);
+}
+
+.ds-btn-ghost.ds-btn-bordered:disabled {
+  border-color: var(--ds-disabled-border);
+}
+
+.ds-btn-danger:disabled {
+  background: var(--ds-disabled-bg);
+  color: var(--ds-disabled-text);
+}
+
+.ds-btn-danger-quiet:disabled {
+  background: transparent;
+  color: var(--ds-disabled-text);
+  border-color: var(--ds-disabled-border);
+}
+
+.ds-btn-icon:disabled {
+  color: var(--ds-disabled-text);
 }
 
 /* App animations — quieter, more physical */

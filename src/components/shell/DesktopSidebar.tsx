@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react'
 import type { Member, Screen } from '../../types'
 import { isBudgetSection } from '../../routing'
-import { t, fonts, MemberAvatar } from '../../ui'
+import { t, fonts, MemberAvatar, IconButton } from '../../ui'
 import { AssistantMark } from '../assistant/AssistantMark'
 import { FamilyMark } from './FamilyMark'
 import { DESKTOP_NAV } from './nav'
@@ -73,22 +73,22 @@ export const DesktopSidebar = ({
           <button
             key={item.screen}
             type="button"
+            className={active ? 'ds-btn ds-btn-icon ds-btn-selected' : 'ds-btn ds-btn-icon'}
             onClick={() => onNavigate(item.screen)}
+            aria-current={active ? 'page' : undefined}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 10,
               padding: '10px 20px',
               minHeight: 44,
-              border: 'none',
-              background: 'transparent',
-              color: active ? t.primary : t.textSec,
               fontSize: 14,
               fontWeight: active ? 500 : 400,
-              cursor: 'pointer',
               textAlign: 'left',
               fontFamily: fonts.ui,
               borderLeft: active ? `2px solid ${t.primary}` : '2px solid transparent',
+              width: '100%',
+              justifyContent: 'flex-start',
             }}
           >
             <Icon size={18} strokeWidth={active ? 2 : 1.75} />
@@ -120,6 +120,7 @@ export const DesktopSidebar = ({
       {assistantEnabled && onOpenAssistant && (
         <button
           type="button"
+          className={assistantOpen ? 'ds-btn ds-btn-icon ds-btn-selected' : 'ds-btn ds-btn-icon'}
           onClick={onOpenAssistant}
           aria-label="Ask Heimdall"
           tabIndex={0}
@@ -129,15 +130,13 @@ export const DesktopSidebar = ({
             gap: 10,
             padding: '10px 20px',
             minHeight: 44,
-            border: 'none',
-            background: 'transparent',
-            color: assistantOpen ? t.primary : t.textSec,
             fontSize: 14,
             fontWeight: assistantOpen ? 500 : 400,
-            cursor: 'pointer',
             textAlign: 'left',
             fontFamily: fonts.ui,
             borderLeft: assistantOpen ? `2px solid ${t.primary}` : '2px solid transparent',
+            width: '100%',
+            justifyContent: 'flex-start',
           }}
         >
           <AssistantMark size={22} />
@@ -174,24 +173,12 @@ export const DesktopSidebar = ({
             {familyName}
           </p>
         </div>
-        <button
-          type="button"
+        <IconButton
           onClick={() => onNavigate('settings')}
           aria-label="Settings"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            padding: 10,
-            minWidth: 44,
-            minHeight: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
         >
-          <Settings size={16} color={t.textTer} />
-        </button>
+          <Settings size={16} aria-hidden />
+        </IconButton>
       </div>
     </aside>
   )

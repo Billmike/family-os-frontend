@@ -30,6 +30,7 @@ export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
           <button
             key={item.screen}
             type="button"
+            className={active ? 'ds-btn ds-btn-icon ds-btn-selected' : 'ds-btn ds-btn-icon'}
             onClick={() => onNavigate(item.screen)}
             aria-label={item.label}
             aria-current={active ? 'page' : undefined}
@@ -40,10 +41,6 @@ export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
               alignItems: 'center',
               padding: '8px 0',
               minHeight: 52,
-              border: 'none',
-              background: 'none',
-              color: active ? t.primary : t.textTer,
-              cursor: 'pointer',
               gap: 3,
               fontFamily: fonts.ui,
             }}
@@ -51,7 +48,6 @@ export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
             <Icon
               size={22}
               strokeWidth={active ? 2 : 1.75}
-              color={active ? t.primary : t.textTer}
             />
             <span style={{ fontSize: 10, fontWeight: active ? 500 : 400 }}>
               {item.label}

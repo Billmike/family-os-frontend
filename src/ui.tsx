@@ -162,25 +162,21 @@ export function QuantityStepper({
     onChange(value + 1)
   }
 
-  const controlStyle = (blocked: boolean): CSSProperties => ({
+  const controlStyle: CSSProperties = {
     width: s.control,
     height: s.control,
     borderRadius: s.radius,
     border: `1px solid ${t.border}`,
     background: t.surface,
-    color: blocked ? t.textTer : t.textSec,
-    opacity: blocked ? 0.45 : 1,
-    cursor: blocked ? 'not-allowed' : 'pointer',
+    color: 'inherit',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxSizing: 'border-box',
     flexShrink: 0,
-  })
+  }
 
   const hitAreaStyle: CSSProperties = {
-    background: 'none',
-    border: 'none',
     padding: s.hitPad,
     display: 'flex',
     alignItems: 'center',
@@ -192,6 +188,7 @@ export function QuantityStepper({
     <div style={{ display: 'flex', alignItems: 'center', width: fullWidth ? '100%' : undefined }}>
       <button
         type="button"
+        className="ds-btn ds-btn-icon"
         onClick={e => { e.stopPropagation(); handleDecrement() }}
         disabled={decrementBlocked}
         aria-label={
@@ -199,9 +196,9 @@ export function QuantityStepper({
             ? atMinAction.label
             : `Decrease quantity of ${label}`
         }
-        style={{ ...hitAreaStyle, cursor: decrementBlocked ? 'not-allowed' : 'pointer' }}
+        style={hitAreaStyle}
       >
-        <span style={controlStyle(decrementBlocked)}>
+        <span style={controlStyle}>
           <Minus size={s.icon} aria-hidden />
         </span>
       </button>
@@ -220,12 +217,13 @@ export function QuantityStepper({
       </span>
       <button
         type="button"
+        className="ds-btn ds-btn-icon"
         onClick={e => { e.stopPropagation(); handleIncrement() }}
         disabled={disabled}
         aria-label={`Increase quantity of ${label}`}
-        style={{ ...hitAreaStyle, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        style={hitAreaStyle}
       >
-        <span style={controlStyle(!!disabled)}>
+        <span style={controlStyle}>
           <Plus size={s.icon} aria-hidden />
         </span>
       </button>
@@ -292,12 +290,9 @@ export function EmptyState({ icon: Icon, title, body, action, onAction }: {
       <p style={{ fontSize: 18, fontWeight: 500, color: t.text, fontFamily: fonts.ui, marginTop: 8 }}>{title}</p>
       <p style={{ fontSize: 14, color: t.textSec, lineHeight: 1.6, maxWidth: 260 }}>{body}</p>
       {action && onAction && (
-        <button onClick={onAction} style={{
-          marginTop: 12, padding: '11px 20px', minHeight: 44,
-          background: t.primary, color: t.onPrimary, border: 'none',
-          borderRadius: r.md, fontSize: 14, fontWeight: 500,
-          cursor: 'pointer', fontFamily: fonts.ui,
-        }}>{action}</button>
+        <PrimaryButton onClick={onAction} style={{ marginTop: 12, padding: '11px 20px', fontSize: 14 }}>
+          {action}
+        </PrimaryButton>
       )}
     </div>
   )
@@ -364,9 +359,9 @@ export function BottomSheet({ title, onClose, children, zIndex = 200, header, fo
         {header ?? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 16px' }}>
             <span style={{ fontSize: 20, fontWeight: 500, color: t.text, fontFamily: fonts.ui }}>{title}</span>
-            <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 10, display: 'flex', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
-              <X size={20} color={t.textSec} />
-            </button>
+            <IconButton onClick={onClose} aria-label="Close">
+              <X size={20} aria-hidden />
+            </IconButton>
           </div>
         )}
         <div style={{ flex: 1, overflowY: 'auto', padding: footer ? '0 20px 16px' : '0 20px 24px' }}>
@@ -408,20 +403,207 @@ export function Toast({ message, type = 'success', onClose }: {
   )
 }
 
-// ─── PrimaryButton ────────────────────────────────────────────────────────────
+// ─── Interactive roles ────────────────────────────────────────────────────────
 
-export function PrimaryButton({ onClick, children, fullWidth, disabled }: {
-  onClick?: () => void; children: ReactNode; fullWidth?: boolean; disabled?: boolean
+const cx = (...parts: Array<string | false | undefined>) => parts.filter(Boolean).join(' ')
+
+type ButtonType = 'button' | 'submit'
+
+export function PrimaryButton({
+  onClick,
+  children,
+  fullWidth,
+  disabled,
+  type = 'button',
+  className,
+  style,
+  'aria-label': ariaLabel,
+}: {
+  onClick?: () => void
+  children: ReactNode
+  fullWidth?: boolean
+  disabled?: boolean
+  type?: ButtonType
+  className?: string
+  style?: CSSProperties
+  'aria-label'?: string
 }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-      padding: '12px 20px', minHeight: 44, background: disabled ? 'var(--ds-disabled-bg)' : t.primary,
-      color: disabled ? 'var(--ds-disabled-text)' : t.onPrimary,
-      border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
-      cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: fonts.ui,
-      width: fullWidth ? '100%' : undefined,
-    }}>
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={cx('ds-btn', 'ds-btn-primary', className)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: '12px 20px',
+        minHeight: 44,
+        borderRadius: r.md,
+        fontSize: 15,
+        fontWeight: 500,
+        width: fullWidth ? '100%' : undefined,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function GhostButton({
+  onClick,
+  children,
+  fullWidth,
+  disabled,
+  bordered,
+  type = 'button',
+  className,
+  style,
+  'aria-label': ariaLabel,
+}: {
+  onClick?: () => void
+  children: ReactNode
+  fullWidth?: boolean
+  disabled?: boolean
+  bordered?: boolean
+  type?: ButtonType
+  className?: string
+  style?: CSSProperties
+  'aria-label'?: string
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={cx('ds-btn', 'ds-btn-ghost', bordered && 'ds-btn-bordered', className)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: '12px 20px',
+        minHeight: 44,
+        borderRadius: r.md,
+        fontSize: 15,
+        fontWeight: 500,
+        width: fullWidth ? '100%' : undefined,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function DangerButton({
+  onClick,
+  children,
+  fullWidth,
+  disabled,
+  quiet,
+  bordered,
+  type = 'button',
+  className,
+  style,
+  'aria-label': ariaLabel,
+}: {
+  onClick?: () => void
+  children: ReactNode
+  fullWidth?: boolean
+  disabled?: boolean
+  quiet?: boolean
+  bordered?: boolean
+  type?: ButtonType
+  className?: string
+  style?: CSSProperties
+  'aria-label'?: string
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={cx(
+        'ds-btn',
+        quiet ? 'ds-btn-danger-quiet' : 'ds-btn-danger',
+        bordered && 'ds-btn-bordered',
+        className,
+      )}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: '12px 20px',
+        minHeight: 44,
+        borderRadius: r.md,
+        fontSize: 15,
+        fontWeight: 500,
+        width: fullWidth ? '100%' : undefined,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function IconButton({
+  onClick,
+  children,
+  disabled,
+  selected,
+  size = 44,
+  type = 'button',
+  className,
+  style,
+  'aria-label': ariaLabel,
+  'aria-pressed': ariaPressed,
+  'aria-controls': ariaControls,
+}: {
+  onClick?: () => void
+  children: ReactNode
+  disabled?: boolean
+  selected?: boolean
+  size?: number
+  type?: ButtonType
+  className?: string
+  style?: CSSProperties
+  'aria-label'?: string
+  'aria-pressed'?: boolean
+  'aria-controls'?: string
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      aria-controls={ariaControls}
+      aria-current={selected ? 'page' : undefined}
+      className={cx('ds-btn', 'ds-btn-icon', selected && 'ds-btn-selected', className)}
+      style={{
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
+        padding: 0,
+        borderRadius: r.md,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        ...style,
+      }}
+    >
       {children}
     </button>
   )
@@ -509,16 +691,25 @@ export function FAB({ onClick, children, 'aria-label': ariaLabel }: {
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className="fab"
+      className="ds-btn ds-btn-primary fab"
       style={{
-      position: 'fixed', right: 20,
-      width: 56, height: 56, borderRadius: 9999,
-      background: t.primary, border: 'none',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxShadow: sh.md, cursor: 'pointer', zIndex: 10, minWidth: 56, minHeight: 56,
-    }}>
+        position: 'fixed',
+        right: 20,
+        width: 56,
+        height: 56,
+        minWidth: 56,
+        minHeight: 56,
+        borderRadius: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: sh.md,
+        zIndex: 10,
+      }}
+    >
       {children}
     </button>
   )

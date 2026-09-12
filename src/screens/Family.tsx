@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { UserPlus, MoreHorizontal } from "lucide-react";
 import type { Member, AppHandlers } from "../types";
 import {
@@ -9,6 +9,9 @@ import {
   BottomSheet,
   Input,
   FormField,
+  DangerButton,
+  GhostButton,
+  IconButton,
 } from "../ui";
 
 interface Props {
@@ -304,26 +307,12 @@ export default function FamilyScreen({
                 </span>
               </div>
               {canManage && (
-                <button
+                <IconButton
                   onClick={() => setConfirm({ type: "memberMenu", member: m })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setConfirm({ type: "memberMenu", member: m });
-                    }
-                  }}
-                  tabIndex={0}
                   aria-label={`Manage ${m.name}`}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 6,
-                    display: "flex",
-                  }}
                 >
-                  <MoreHorizontal size={18} color={t.textTer} />
-                </button>
+                  <MoreHorizontal size={18} aria-hidden />
+                </IconButton>
               )}
             </div>
           );
@@ -474,26 +463,18 @@ export default function FamilyScreen({
             {confirm.member.userId ? "Active member" : "Profile only"} ·{" "}
             {ROLE_LABELS[confirm.member.role] ?? confirm.member.role}
           </p>
-          <button
+          <DangerButton
+            quiet
+            bordered
+            fullWidth
             onClick={() =>
               setConfirm({ type: "remove", member: confirm.member })
             }
-            style={{
-              width: "100%",
-              padding: "14px 16px",
-              borderRadius: r.md,
-              border: `1px solid var(--ds-error)`,
-              background: "var(--ds-error-subtle)",
-              color: "var(--ds-error)",
-              fontSize: 15,
-              fontWeight: 500,
-              fontFamily: "var(--ds-font)",
-              cursor: "pointer",
-            }}
             aria-label={`Remove ${confirm.member.name}`}
+            style={{ padding: "14px 16px" }}
           >
             Remove from family
-          </button>
+          </DangerButton>
         </BottomSheet>
       )}
 
@@ -516,25 +497,13 @@ export default function FamilyScreen({
             <DangerButton
               onClick={() => void handleConfirmRemove()}
               disabled={busy}
+              fullWidth
             >
               {busy ? "Removing…" : "Remove member"}
             </DangerButton>
-            <button
-              onClick={handleCloseConfirm}
-              disabled={busy}
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                border: "none",
-                background: "none",
-                color: t.textSec,
-                fontSize: 15,
-                fontFamily: "var(--ds-font)",
-                cursor: busy ? "default" : "pointer",
-              }}
-            >
+            <GhostButton onClick={handleCloseConfirm} disabled={busy} fullWidth>
               Cancel
-            </button>
+            </GhostButton>
           </div>
         </BottomSheet>
       )}
@@ -557,25 +526,13 @@ export default function FamilyScreen({
             <DangerButton
               onClick={() => void handleConfirmLeave()}
               disabled={busy}
+              fullWidth
             >
               {busy ? "Leaving…" : "Leave family"}
             </DangerButton>
-            <button
-              onClick={handleCloseConfirm}
-              disabled={busy}
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                border: "none",
-                background: "none",
-                color: t.textSec,
-                fontSize: 15,
-                fontFamily: "var(--ds-font)",
-                cursor: busy ? "default" : "pointer",
-              }}
-            >
+            <GhostButton onClick={handleCloseConfirm} disabled={busy} fullWidth>
               Cancel
-            </button>
+            </GhostButton>
           </div>
         </BottomSheet>
       )}
@@ -613,25 +570,13 @@ export default function FamilyScreen({
             <DangerButton
               onClick={() => void handleConfirmDelete()}
               disabled={busy || deleteName.trim() !== familyName}
+              fullWidth
             >
               {busy ? "Deleting…" : "Delete family"}
             </DangerButton>
-            <button
-              onClick={handleCloseConfirm}
-              disabled={busy}
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                border: "none",
-                background: "none",
-                color: t.textSec,
-                fontSize: 15,
-                fontFamily: "var(--ds-font)",
-                cursor: busy ? "default" : "pointer",
-              }}
-            >
+            <GhostButton onClick={handleCloseConfirm} disabled={busy} fullWidth>
               Cancel
-            </button>
+            </GhostButton>
           </div>
         </BottomSheet>
       )}
@@ -639,36 +584,3 @@ export default function FamilyScreen({
   );
 }
 
-function DangerButton({
-  onClick,
-  children,
-  disabled,
-}: {
-  onClick?: () => void;
-  children: ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        padding: "12px 20px",
-        background: disabled ? "var(--ds-disabled-bg)" : "var(--ds-error)",
-        color: disabled ? "var(--ds-disabled-text)" : t.onPrimary,
-        border: "none",
-        borderRadius: r.md,
-        fontSize: 15,
-        fontWeight: 500,
-        cursor: disabled ? "not-allowed" : "pointer",
-        fontFamily: "var(--ds-font)",
-      }}
-    >
-      {children}
-    </button>
-  );
-}

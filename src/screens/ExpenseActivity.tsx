@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Pencil, Plus, Receipt, Wallet } from 'lucide-react'
 import type { BudgetPeriod, Expense, AppHandlers } from '../types'
-import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS, fonts } from '../ui'
+import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, BUDGET_GROUP_COLORS, fonts, IconButton } from '../ui'
 import { CycleExpensesLoadError } from '../components/ErrorBoundary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { MoneyChrome } from '../components/MoneyChrome'
@@ -150,7 +150,7 @@ export default function ExpenseActivityScreen({
           />
         </div>
         <FAB onClick={handleAdd} aria-label="Add expense">
-          <Plus size={24} color={t.onPrimary} />
+          <Plus size={24} aria-hidden />
         </FAB>
       </MoneyChrome>
     )
@@ -382,28 +382,14 @@ export default function ExpenseActivityScreen({
           justifyContent: 'center',
           gap: 16,
         }}>
-          <button
-            type="button"
+          <IconButton
             aria-label="Previous page"
             onClick={() => setPage(p => p - 1)}
             disabled={!canPagePrev}
-            style={{
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid var(--budget-grid)',
-              background: canPagePrev ? 'var(--budget-card)' : 'transparent',
-              borderRadius: r.md,
-              cursor: canPagePrev ? 'pointer' : 'default',
-              color: canPagePrev ? 'var(--budget-text)' : 'var(--budget-dim)',
-              opacity: canPagePrev ? 1 : 0.4,
-              fontFamily: fonts.ui,
-            }}
+            size={36}
           >
-            <ChevronLeft size={18} strokeWidth={1.75} />
-          </button>
+            <ChevronLeft size={18} strokeWidth={1.75} aria-hidden />
+          </IconButton>
           <span style={{
             fontSize: 13,
             color: 'var(--budget-dim)',
@@ -412,34 +398,20 @@ export default function ExpenseActivityScreen({
           }}>
             {page + 1} of {totalPages}
           </span>
-          <button
-            type="button"
+          <IconButton
             aria-label="Next page"
             onClick={() => setPage(p => p + 1)}
             disabled={!canPageNext}
-            style={{
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid var(--budget-grid)',
-              background: canPageNext ? 'var(--budget-card)' : 'transparent',
-              borderRadius: r.md,
-              cursor: canPageNext ? 'pointer' : 'default',
-              color: canPageNext ? 'var(--budget-text)' : 'var(--budget-dim)',
-              opacity: canPageNext ? 1 : 0.4,
-              fontFamily: fonts.ui,
-            }}
+            size={36}
           >
-            <ChevronRight size={18} strokeWidth={1.75} />
-          </button>
+            <ChevronRight size={18} strokeWidth={1.75} aria-hidden />
+          </IconButton>
         </div>
       )}
       </div>
 
       <FAB onClick={handleAdd} aria-label="Add expense">
-        <Plus size={24} color={t.onPrimary} />
+        <Plus size={24} aria-hidden />
       </FAB>
     </MoneyChrome>
   )

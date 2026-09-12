@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Check, ChevronDown, Copy, Plus, Wallet, X } from 'lucide-react'
 import type {
   AppHandlers,
@@ -26,6 +26,8 @@ import {
   t,
   r,
   fonts,
+  GhostButton,
+  PrimaryButton,
 } from '../ui'
 import BudgetInsights from '../components/BudgetInsights'
 import ExpensesScreen from './Expenses'
@@ -199,31 +201,29 @@ export default function BudgetScreen({
                 onAction={onCreateCycle}
               />
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: -8 }}>
-                <button
-                  type="button"
+                <GhostButton
+                  bordered
                   onClick={onCopyCycle}
                   style={{
-                    ...ghostBtn,
                     padding: '10px 14px',
                     fontSize: 13,
-                    fontWeight: 500,
-                    color: 'var(--budget-text)',
+                    background: 'var(--budget-card)',
                   }}
                 >
                   <Copy size={14} aria-hidden />
                   Copy from last cycle
-                </button>
+                </GhostButton>
               </div>
             </>
           ) : period ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button type="button" onClick={onEditDates} aria-label="Edit cycle dates" style={ghostBtn}>
+                <GhostButton bordered onClick={onEditDates} aria-label="Edit cycle dates" style={ghostToolbarStyle}>
                   Dates
-                </button>
-                <button type="button" onClick={onCopyCycle} aria-label="Copy from this cycle" style={ghostBtn}>
+                </GhostButton>
+                <GhostButton bordered onClick={onCopyCycle} aria-label="Copy from this cycle" style={ghostToolbarStyle}>
                   <Copy size={14} aria-hidden />
-                </button>
+                </GhostButton>
               </div>
 
               {showGapBanner && (
@@ -237,12 +237,12 @@ export default function BudgetScreen({
                     This cycle ended {formatCycleDay(period.endDate)}. Nothing is planned for today.
                   </p>
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <button type="button" onClick={onCreateCycle} style={ghostBtn}>
+                    <GhostButton bordered onClick={onCreateCycle} style={ghostToolbarStyle}>
                       Start next
-                    </button>
-                    <button type="button" onClick={onCopyCycle} style={ghostBtn}>
+                    </GhostButton>
+                    <GhostButton bordered onClick={onCopyCycle} style={ghostToolbarStyle}>
                       Copy from this cycle
-                    </button>
+                    </GhostButton>
                   </div>
                 </div>
               )}
@@ -285,19 +285,11 @@ export default function BudgetScreen({
   )
 }
 
-const ghostBtn: React.CSSProperties = {
-  border: '1px solid var(--budget-grid)',
-  background: 'var(--budget-card)',
-  borderRadius: r.md,
+const ghostToolbarStyle: CSSProperties = {
   padding: '8px 10px',
   fontSize: 12,
   fontWeight: 600,
-  cursor: 'pointer',
-  color: 'var(--budget-text)',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  fontFamily: fonts.ui,
+  background: 'var(--budget-card)',
 }
 
 function CollapsibleHeader({
@@ -652,20 +644,13 @@ function GroupCard({
               placeholder="€0.00"
               aria-label="Amount"
             />
-            <button
-              type="button"
+            <PrimaryButton
               disabled={adding || !draftName.trim()}
               onClick={() => void handleAdd()}
-              style={{
-                ...ghostBtn,
-                justifyContent: 'center',
-                color: t.primary,
-                borderColor: t.primary,
-                opacity: adding || !draftName.trim() ? 0.5 : 1,
-              }}
+              style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600 }}
             >
               Add
-            </button>
+            </PrimaryButton>
           </div>
 
           <div

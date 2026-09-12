@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { fonts, t } from "../../ui";
+import { fonts, t, IconButton } from "../../ui";
 import { AssistantMark } from "./AssistantMark";
 
 interface Props {
@@ -70,25 +70,13 @@ export const AssistantHeader = ({ isTurnInFlight, onClose }: Props) => {
             {isTurnInFlight ? "Thinking…" : "Ready to help"}
           </p>
         </div>
-        <button
-          type="button"
+        <IconButton
           onClick={handleClose}
           aria-label="Close Heimdall"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 10,
-            display: "flex",
-            minWidth: 44,
-            minHeight: 44,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 9999,
-          }}
+          style={{ borderRadius: 9999 }}
         >
-          <X size={18} color={t.textSec} aria-hidden="true" />
-        </button>
+          <X size={18} aria-hidden="true" />
+        </IconButton>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Wallet } from 'lucide-react'
 import type { AppHandlers, PersonalAccountSummary, PersonalExpense } from '../types'
-import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS } from '../ui'
+import { t, r, EmptyState, Skeleton, FAB, ExpenseCategoryIcon, EXPENSE_CATEGORY_COLORS, GhostButton } from '../ui'
 import { CycleExpensesLoadError } from '../components/ErrorBoundary'
 import { MonthSwitcher } from '../components/MonthSwitcher'
 import { MoneyChrome } from '../components/MoneyChrome'
@@ -292,46 +292,30 @@ export default function PersonalActivityScreen({
           gap: 16,
           padding: '16px',
         }}>
-          <button
-            type="button"
+          <GhostButton
             onClick={() => setPage(p => Math.max(0, p - 1))}
             disabled={page === 0}
             aria-label="Previous page"
-            style={{
-              border: 'none',
-              background: 'none',
-              color: page === 0 ? t.textTer : t.primary,
-              cursor: page === 0 ? 'default' : 'pointer',
-              fontSize: 14,
-              fontFamily: 'var(--ds-font)',
-            }}
+            style={{ padding: 0, minHeight: 0, fontSize: 14, fontWeight: 400 }}
           >
             Previous
-          </button>
+          </GhostButton>
           <span style={{ fontSize: 13, color: t.textSec }}>
             {page + 1} / {totalPages}
           </span>
-          <button
-            type="button"
+          <GhostButton
             onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
             aria-label="Next page"
-            style={{
-              border: 'none',
-              background: 'none',
-              color: page >= totalPages - 1 ? t.textTer : t.primary,
-              cursor: page >= totalPages - 1 ? 'default' : 'pointer',
-              fontSize: 14,
-              fontFamily: 'var(--ds-font)',
-            }}
+            style={{ padding: 0, minHeight: 0, fontSize: 14, fontWeight: 400 }}
           >
             Next
-          </button>
+          </GhostButton>
         </div>
       )}
 
       <FAB onClick={handleAdd} aria-label="Add expense">
-        <Plus size={24} color={t.onPrimary} />
+        <Plus size={24} aria-hidden />
       </FAB>
     </MoneyChrome>
   )

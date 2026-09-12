@@ -33,6 +33,8 @@ import {
   Input,
   Select,
   PrimaryButton,
+  GhostButton,
+  DangerButton,
   SegmentedControl,
   CategorySelect,
 } from "./ui";
@@ -2823,23 +2825,9 @@ function EventDetailSheet({
         <DetailRow icon="👤" label={member.name} />
         {event.location && <DetailRow icon="📍" label={event.location} />}
       </div>
-      <button
-        onClick={() => onDelete(event.id)}
-        style={{
-          width: "100%",
-          padding: "12px",
-          background: "var(--ds-error-subtle)",
-          color: "var(--ds-error)",
-          border: "none",
-          borderRadius: "var(--ds-radius-md)",
-          fontSize: 15,
-          fontWeight: 500,
-          cursor: "pointer",
-          fontFamily: "var(--ds-font)",
-        }}
-      >
+      <DangerButton quiet fullWidth onClick={() => onDelete(event.id)}>
         Delete Event
-      </button>
+      </DangerButton>
     </BottomSheet>
   );
 }
@@ -2919,7 +2907,8 @@ function InviteMemberSheet({
               {busy && !link ? "Generating…" : link || "—"}
             </span>
           </div>
-          <button
+          <GhostButton
+            bordered
             onClick={() => {
               if (!link) return;
               navigator.clipboard?.writeText(link);
@@ -2929,19 +2918,13 @@ function InviteMemberSheet({
             style={{
               padding: "0 16px",
               height: 44,
-              borderRadius: "var(--ds-radius-md)",
-              border: `1px solid ${t.borderStrong}`,
-              background: t.surface,
               fontSize: 13,
-              fontWeight: 500,
-              color: t.text,
-              cursor: "pointer",
-              fontFamily: "var(--ds-font)",
+              background: t.surface,
               flexShrink: 0,
             }}
           >
             {copied ? "Copied" : "Copy"}
-          </button>
+          </GhostButton>
         </div>
       </FormField>
       <div

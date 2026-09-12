@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Plus, Repeat } from "lucide-react";
 import type { Task, Member, AppHandlers } from "../types";
-import { t, MemberAvatar, TaskCheckbox, FAB } from "../ui";
+import { MemberAvatar, TaskCheckbox, FAB } from "../ui";
 import { formatDate } from "../data";
 import { addDays } from "../api/adapters";
 
@@ -119,7 +119,7 @@ export default function TasksScreen({
       </div>
 
       <FAB onClick={handleOpenAdd} aria-label="Add task">
-        <Plus size={24} color={t.onPrimary} />
+        <Plus size={24} aria-hidden />
       </FAB>
     </div>
   );

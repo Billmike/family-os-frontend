@@ -501,7 +501,7 @@ export default function ShoppingScreen({
       )}
 
       <FAB onClick={handleOpenAdd} aria-label="Add item">
-        <Plus size={24} color={t.onPrimary} />
+        <Plus size={24} aria-hidden />
       </FAB>
 
       {flyers.map(flyer => (

@@ -3,7 +3,7 @@ import type { AppHandlers, Member } from '../types'
 import type { UserOut } from '../api/types'
 import * as notificationsApi from '../api/notifications'
 import { ApiError } from '../api/client'
-import { t, r, Toggle, MemberAvatar, BottomSheet, SegmentedControl, FormField, Input } from '../ui'
+import { t, r, Toggle, MemberAvatar, BottomSheet, SegmentedControl, FormField, Input, DangerButton, GhostButton } from '../ui'
 import { useTheme } from '../lib/theme/ThemeProvider'
 import type { ThemePreference } from '../lib/theme/theme'
 import { InstallStepsList } from '../lib/pwa/InstallStepsList'
@@ -389,30 +389,17 @@ export default function SettingsScreen({
               ? 'If you are the last adult, this family and all its data will be deleted. Otherwise another parent becomes the admin.'
               : 'You will lose access to this family\u2019s tasks, events, and shopping.'}
           </p>
-          <button
+          <DangerButton
             onClick={() => void handleConfirmLeave()}
             disabled={familyActionBusy}
-            style={{
-              width: '100%', padding: '12px 20px', marginBottom: 10,
-              background: familyActionBusy ? 'var(--ds-disabled-bg)' : 'var(--ds-error)',
-              color: familyActionBusy ? 'var(--ds-disabled-text)' : t.onPrimary,
-              border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
-              cursor: familyActionBusy ? 'not-allowed' : 'pointer', fontFamily: 'var(--ds-font)',
-            }}
+            fullWidth
+            style={{ marginBottom: 10 }}
           >
             {familyActionBusy ? 'Leaving\u2026' : 'Leave family'}
-          </button>
-          <button
-            onClick={handleCloseConfirm}
-            disabled={familyActionBusy}
-            style={{
-              width: '100%', padding: '12px 20px', border: 'none', background: 'none',
-              color: t.textSec, fontSize: 15, fontFamily: 'var(--ds-font)',
-              cursor: familyActionBusy ? 'default' : 'pointer',
-            }}
-          >
+          </DangerButton>
+          <GhostButton onClick={handleCloseConfirm} disabled={familyActionBusy} fullWidth>
             Cancel
-          </button>
+          </GhostButton>
         </BottomSheet>
       )}
 
@@ -430,38 +417,17 @@ export default function SettingsScreen({
               autoFocus
             />
           </FormField>
-          <button
+          <DangerButton
             onClick={() => void handleConfirmDelete()}
             disabled={familyActionBusy || deleteName.trim() !== familyName}
-            style={{
-              width: '100%', padding: '12px 20px', marginBottom: 10, marginTop: 8,
-              background:
-                familyActionBusy || deleteName.trim() !== familyName
-                  ? 'var(--ds-disabled-bg)'
-                  : 'var(--ds-error)',
-              color:
-                familyActionBusy || deleteName.trim() !== familyName
-                  ? 'var(--ds-disabled-text)'
-                  : t.onPrimary,
-              border: 'none', borderRadius: r.md, fontSize: 15, fontWeight: 500,
-              cursor:
-                familyActionBusy || deleteName.trim() !== familyName ? 'not-allowed' : 'pointer',
-              fontFamily: 'var(--ds-font)',
-            }}
+            fullWidth
+            style={{ marginBottom: 10, marginTop: 8 }}
           >
             {familyActionBusy ? 'Deleting\u2026' : 'Delete family'}
-          </button>
-          <button
-            onClick={handleCloseConfirm}
-            disabled={familyActionBusy}
-            style={{
-              width: '100%', padding: '12px 20px', border: 'none', background: 'none',
-              color: t.textSec, fontSize: 15, fontFamily: 'var(--ds-font)',
-              cursor: familyActionBusy ? 'default' : 'pointer',
-            }}
-          >
+          </DangerButton>
+          <GhostButton onClick={handleCloseConfirm} disabled={familyActionBusy} fullWidth>
             Cancel
-          </button>
+          </GhostButton>
         </BottomSheet>
       )}
     </div>

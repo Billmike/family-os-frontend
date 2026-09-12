@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { PersonalExpense, PersonalExpenseDraft } from '../types'
 import { PERSONAL_EXPENSE_CATEGORIES } from '../types'
-import { BottomSheet, FormField, Input, PrimaryButton, t } from '../ui'
+import { BottomSheet, FormField, Input, PrimaryButton, DangerButton, t } from '../ui'
 import { dateInputFromIso, dateInputToIso } from '../api/adapters'
 
 interface Props {
@@ -92,26 +92,15 @@ export default function PersonalExpenseSheet({
         {isEdit ? 'Save' : 'Add expense'}
       </PrimaryButton>
       {isEdit && expense && onDelete && (
-        <button
-          type="button"
+        <DangerButton
+          quiet
+          fullWidth
           onClick={handleDelete}
           aria-label="Delete expense"
-          style={{
-            width: '100%',
-            marginTop: 12,
-            padding: '12px',
-            background: 'var(--ds-error-subtle)',
-            color: 'var(--ds-error)',
-            border: 'none',
-            borderRadius: 'var(--ds-radius-md)',
-            fontSize: 15,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'var(--ds-font)',
-          }}
+          style={{ marginTop: 12 }}
         >
           Delete expense
-        </button>
+        </DangerButton>
       )}
     </BottomSheet>
   )

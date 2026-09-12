@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { CalendarEvent, Member, AppHandlers } from '../types'
-import { r, FAB, MemberAvatar } from '../ui'
+import { r, FAB, MemberAvatar, IconButton } from '../ui'
 import { getMember, formatTime } from '../data'
 
 const START_HOUR = 7
@@ -95,22 +95,6 @@ function durationLabel(event: CalendarEvent): string | null {
   if (minutes <= 0) return null
   if (minutes < 60) return `${minutes}m`
   return minutes % 60 === 0 ? `${minutes / 60}h` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-}
-
-function iconButtonStyle(): React.CSSProperties {
-  return {
-    width: 44,
-    height: 44,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'none',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    color: 'var(--cal-text)',
-    padding: 0,
-  }
 }
 
 interface LaidOutEvent {
@@ -794,9 +778,9 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
           zIndex: 10,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px 6px' }}>
-            <button type="button" onClick={handleGoPrev} aria-label={viewMode === 'week' ? 'Previous week' : 'Previous month'} style={iconButtonStyle()}>
-              <ChevronLeft size={18} strokeWidth={2} />
-            </button>
+            <IconButton onClick={handleGoPrev} aria-label={viewMode === 'week' ? 'Previous week' : 'Previous month'}>
+              <ChevronLeft size={18} strokeWidth={2} aria-hidden />
+            </IconButton>
 
             <span style={{
               flex: 1,
@@ -810,9 +794,9 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
               {fmtMonthYear(viewMode === 'week' ? selectedDate : anchorDate)}
             </span>
 
-            <button type="button" onClick={handleGoNext} aria-label={viewMode === 'week' ? 'Next week' : 'Next month'} style={iconButtonStyle()}>
-              <ChevronRight size={18} strokeWidth={2} />
-            </button>
+            <IconButton onClick={handleGoNext} aria-label={viewMode === 'week' ? 'Next week' : 'Next month'}>
+              <ChevronRight size={18} strokeWidth={2} aria-hidden />
+            </IconButton>
 
             <div role="tablist" aria-label="Calendar view" style={{
               display: 'flex',
@@ -900,7 +884,7 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
       </div>
 
       <FAB onClick={() => openSheet({ type: 'addEvent' })} aria-label="Add event">
-        <Plus size={24} color="var(--ds-on-primary)" />
+        <Plus size={24} aria-hidden />
       </FAB>
     </div>
   )

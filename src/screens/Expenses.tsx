@@ -162,7 +162,7 @@ export default function ExpensesScreen({
           onAction={onCreateCycle}
         />
         <FAB onClick={handleAdd} aria-label="Add expense">
-          <Plus size={24} color={t.onPrimary} />
+          <Plus size={24} aria-hidden />
         </FAB>
       </div>
     )
@@ -420,7 +420,7 @@ export default function ExpensesScreen({
       </div>
 
       <FAB onClick={handleAdd} aria-label="Add expense">
-        <Plus size={24} color={t.onPrimary} />
+        <Plus size={24} aria-hidden />
       </FAB>
     </div>
   )

@@ -3,7 +3,7 @@ import type { AssistantChangeOutcome, AssistantExpenseChangeSubmit, ExpenseChang
 import { dateInputToIso, formatMoney } from '../../api/adapters'
 import type { BudgetSubcategoryGroup } from '../../types'
 import { PERSONAL_EXPENSE_CATEGORIES } from '../../types'
-import { fonts, r, t } from '../../ui'
+import { fonts, t, PrimaryButton, GhostButton, DangerButton } from '../../ui'
 import { titleCaseMerchant } from './titleCaseMerchant'
 import { ProposalField, proposalFieldInputStyle } from './ProposalField'
 import { familyProposalComplete, personalProposalComplete } from './FamilyExpenseProposalCard'
@@ -243,66 +243,33 @@ export const ExpenseChangeProposalCard = ({
         />
       </ProposalField>
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <button
-          type="button"
+        <PrimaryButton
           onClick={handleSave}
           disabled={!canSave}
           aria-label="Save expense"
-          style={{
-            flex: 1,
-            minHeight: 44,
-            border: 'none',
-            borderRadius: r.md,
-            background: canSave ? t.primary : 'var(--ds-disabled-bg)',
-            color: canSave ? t.onPrimary : 'var(--ds-disabled-text)',
-            fontSize: 14,
-            fontWeight: 500,
-            fontFamily: fonts.ui,
-            cursor: canSave ? 'pointer' : 'not-allowed',
-          }}
+          style={{ flex: 1, fontSize: 14 }}
         >
           {isSaving ? 'Saving…' : 'Save'}
-        </button>
-        <button
-          type="button"
+        </PrimaryButton>
+        <GhostButton
           onClick={handleCancel}
           disabled={isSaving}
+          bordered
           aria-label="Cancel expense change"
-          style={{
-            minHeight: 44,
-            padding: '0 14px',
-            border: `1px solid ${t.borderStrong}`,
-            borderRadius: r.md,
-            background: t.surfaceChrome,
-            color: t.text,
-            fontSize: 14,
-            fontWeight: 500,
-            fontFamily: fonts.ui,
-            cursor: isSaving ? 'not-allowed' : 'pointer',
-          }}
+          style={{ padding: '0 14px', fontSize: 14, background: t.surfaceChrome }}
         >
           Cancel
-        </button>
+        </GhostButton>
       </div>
-      <button
-        type="button"
+      <DangerButton
+        quiet
         onClick={handleDelete}
         disabled={isSaving}
         aria-label="Delete expense"
-        style={{
-          minHeight: 44,
-          border: 'none',
-          borderRadius: r.md,
-          background: t.errorSub,
-          color: t.error,
-          fontSize: 14,
-          fontWeight: 500,
-          fontFamily: fonts.ui,
-          cursor: isSaving ? 'not-allowed' : 'pointer',
-        }}
+        style={{ fontSize: 14 }}
       >
         Delete
-      </button>
+      </DangerButton>
     </div>
   )
 }

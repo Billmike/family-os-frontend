@@ -141,6 +141,20 @@
   --dash-rail: #E8D9CC;
   --dash-border: #EDE0D4;
   --dash-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+
+  /* Calendar is the next screen adopting the refreshed visual direction. */
+  --cal-page: #FAFAF9;
+  --cal-panel: #FFFFFF;
+  --cal-text: #1C1C1E;
+  --cal-muted: #C4A98A;
+  --cal-dim: #9A8878;
+  --cal-grid: #EDE0D4;
+  --cal-accent: #E8622A;
+  --cal-accent-subtle: #FEF0E8;
+  --cal-on-accent: #FFFFFF;
+  --cal-on-selected: #FFFFFF;
+  --cal-toggle: #F5EDE4;
+  --cal-event-text: #1C1C1E;
 }
 
 html.dark {
@@ -239,6 +253,19 @@ html.dark {
   --dash-rail: #4A3A2E;
   --dash-border: #3A2F27;
   --dash-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+
+  --cal-page: #121213;
+  --cal-panel: #1D1D1F;
+  --cal-text: #F2F2F7;
+  --cal-muted: #C9A582;
+  --cal-dim: #B6A89C;
+  --cal-grid: #3A2F27;
+  --cal-accent: #FF8C5A;
+  --cal-accent-subtle: #3D2218;
+  --cal-on-accent: #16140F;
+  --cal-on-selected: #121213;
+  --cal-toggle: #2A221C;
+  --cal-event-text: #F2F2F7;
 }
 
 @theme {
@@ -335,10 +362,12 @@ html.assistant-phone-open .app-toast {
 @keyframes onboardingEnter { from { opacity: 0; transform: translateY(18px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes onboardingPop { 0% { opacity: 0; transform: scale(.7) } 75% { transform: scale(1.06) } 100% { opacity: 1; transform: scale(1) } }
 @keyframes dashboardEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes calendarEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 
 @media (prefers-reduced-motion: reduce) {
   .onboarding-motion, .onboarding-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
   .dashboard-motion, .dashboard-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+  .calendar-motion, .calendar-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
 }
 
 .basket-target {

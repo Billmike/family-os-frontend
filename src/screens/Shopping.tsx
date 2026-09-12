@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Plus, ShoppingCart, ArrowLeft, Check, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, ShoppingCart, Check, Trash2, RefreshCw, ChevronDown, Receipt } from 'lucide-react'
 import type {
   ShoppingItem,
   ShoppingLocation,
@@ -8,7 +8,7 @@ import type {
   Member,
   AppHandlers,
 } from '../types'
-import { t, r, ShoppingCheckbox, FAB, SectionLabel, EmptyState, SegmentedControl, PrimaryButton, QuantityStepper } from '../ui'
+import { t, r, FAB, EmptyState, PrimaryButton, QuantityStepper } from '../ui'
 import { CATEGORY_ORDER } from '../data'
 import { formatSessionCost, formatSessionDate } from '../api/adapters'
 import { prefersReducedMotion } from '../lib/motion'
@@ -20,7 +20,14 @@ const CART_ICON_PX = 18
 /** Final chip width — visibly smaller than the cart icon so it reads as entering the basket */
 const FLY_TARGET_WIDTH_RATIO = 0.5
 
-type ShoppingView = 'list' | 'basket' | 'session-detail'
+const SHOPPING_TABS = {
+  'To buy': { tabId: 'shopping-tab-to-buy', panelId: 'shopping-panel-to-buy' },
+  Trips: { tabId: 'shopping-tab-trips', panelId: 'shopping-panel-trips' },
+} as const
+
+type ShoppingTab = 'To buy' | 'Trips'
+type ShoppingView = 'list' | 'basket'
+type GroupBy = 'Category' | 'Store'
 
 interface Flyer {
   key: string
@@ -47,6 +54,58 @@ interface Props {
   updateBasketItem: AppHandlers['updateBasketItem']
 }
 
+const toBuyStatus = (toBuyCount: number, basketCount: number): string => {
+  if (toBuyCount === 0) return 'List is clear'
+  if (basketCount === 0) return `${toBuyCount} to buy`
+  return `${toBuyCount} to buy · ${basketCount} in Basket`
+}
+
+const tripsStatus = (tripCount: number): string => {
+  if (tripCount === 0) return 'No trips yet'
+  return `${tripCount} shopping trip${tripCount === 1 ? '' : 's'}`
+}
+
+const toBuyEmpty = (basketCount: number, tripCount: number) => {
+  if (basketCount === 0 && tripCount === 0) {
+    return {
+      title: 'Nothing to buy',
+      body: 'Add something your family needs.',
+    }
+  }
+  if (basketCount > 0) {
+    return {
+      title: 'List is clear',
+      body: 'Items in the Basket are being bought. You can add more.',
+    }
+  }
+  return {
+    title: 'List is clear',
+    body: 'Add something your family needs.',
+  }
+}
+
+const tripsEmpty = {
+  title: 'No trips yet',
+  body: 'Complete a Basket to save a Shopping trip.',
+}
+
+const hasTripItems = (session: ShoppingSession): boolean =>
+  (session.items?.length ?? 0) > 0
+
+const storeNamesForTrip = (
+  session: ShoppingSession,
+  storeNameFor: (item: { locationId?: string | null; locationName?: string | null }) => string,
+): string[] => {
+  const names: string[] = []
+  for (const item of session.items ?? []) {
+    if (!item.locationId && !item.locationName) continue
+    const name = storeNameFor(item)
+    if (name === UNASSIGNED || names.includes(name)) continue
+    names.push(name)
+  }
+  return names
+}
+
 export default function ShoppingScreen({
   shopping,
   locations,
@@ -61,11 +120,14 @@ export default function ShoppingScreen({
   updateShoppingItem,
   updateBasketItem,
 }: Props) {
+  const [tab, setTab] = useState<ShoppingTab>('To buy')
   const [view, setView] = useState<ShoppingView>('list')
-  const [groupBy, setGroupBy] = useState<'Category' | 'Store'>('Category')
-  const [selectedSession, setSelectedSession] = useState<ShoppingSession | null>(null)
-  const [loadingDetail, setLoadingDetail] = useState(false)
-  const [reordering, setReordering] = useState(false)
+  const [groupBy, setGroupBy] = useState<GroupBy>('Category')
+  const [groupFilter, setGroupFilter] = useState<string | null>(null)
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null)
+  const [tripDetails, setTripDetails] = useState<Record<string, ShoppingSession>>({})
+  const [reorderingTripId, setReorderingTripId] = useState<string | null>(null)
+  const requestedTripIds = useRef(new Set<string>())
   const [departing, setDeparting] = useState<ShoppingItem[]>([])
   const [flyers, setFlyers] = useState<Flyer[]>([])
   const [displayCount, setDisplayCount] = useState(activeSession?.itemCount ?? 0)
@@ -89,26 +151,93 @@ export default function ShoppingScreen({
       ? (locationNameById.get(item.locationId) ?? item.locationName ?? UNASSIGNED)
       : (item.locationName ?? UNASSIGNED)
 
-  const handleOpenSession = async (session: ShoppingSession) => {
-    setLoadingDetail(true)
-    const detail = await loadSessionDetail(session.id)
-    setLoadingDetail(false)
-    if (detail) {
-      setSelectedSession(detail)
-      setView('session-detail')
-    }
+  const departingVisible = departing.filter(d => !active.some(a => a.id === d.id))
+  const listItems = [...active, ...departingVisible]
+
+  const groups: Record<string, ShoppingItem[]> = {}
+  listItems.forEach(item => {
+    const key = groupBy === 'Category' ? item.category : storeNameFor(item)
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
+  })
+
+  const occupiedKeys =
+    groupBy === 'Category'
+      ? [
+          ...CATEGORY_ORDER.filter(c => groups[c]),
+          ...Object.keys(groups).filter(c => !CATEGORY_ORDER.includes(c)),
+        ]
+      : [
+          ...locations.map(l => l.name).filter(name => groups[name]),
+          ...(groups[UNASSIGNED] ? [UNASSIGNED] : []),
+          ...Object.keys(groups).filter(
+            name => name !== UNASSIGNED && !locations.some(l => l.name === name),
+          ),
+        ]
+
+  const occupiedKeySet = occupiedKeys.join('\0')
+
+  useEffect(() => {
+    if (groupFilter == null) return
+    const keys = occupiedKeySet.length === 0 ? [] : occupiedKeySet.split('\0')
+    if (!keys.includes(groupFilter)) setGroupFilter(null)
+  }, [groupFilter, occupiedKeySet])
+
+  const visibleKeys =
+    groupFilter && occupiedKeys.includes(groupFilter) ? [groupFilter] : occupiedKeys
+
+  const resolveTrip = (session: ShoppingSession): ShoppingSession => {
+    if (hasTripItems(session)) return session
+    return tripDetails[session.id] ?? session
   }
 
-  const handleReorder = async () => {
-    if (!selectedSession || reordering) return
-    setReordering(true)
-    const session = await reorderSession(selectedSession.id)
-    setReordering(false)
-    if (session) {
-      setSelectedSession(null)
-      setView('basket')
-    }
+  const ensureTripDetail = (session: ShoppingSession) => {
+    if (hasTripItems(session) || session.itemCount === 0) return
+    if (requestedTripIds.current.has(session.id)) return
+    requestedTripIds.current.add(session.id)
+    void loadSessionDetail(session.id).then(detail => {
+      if (detail) setTripDetails(prev => ({ ...prev, [session.id]: detail }))
+      else requestedTripIds.current.delete(session.id)
+    })
   }
+
+  useEffect(() => {
+    if (tab !== 'Trips') return
+    sessionHistory.forEach(session => ensureTripDetail(session))
+  }, [sessionHistory, tab])
+
+  const handleToggleTrip = (session: ShoppingSession) => {
+    if (expandedTripId === session.id) {
+      setExpandedTripId(null)
+      return
+    }
+    setExpandedTripId(session.id)
+    ensureTripDetail(session)
+  }
+
+  const handleShopAgain = async (sessionId: string) => {
+    if (reorderingTripId || (activeSession && activeSession.itemCount > 0)) return
+    setReorderingTripId(sessionId)
+    const session = await reorderSession(sessionId)
+    setReorderingTripId(null)
+    if (session) setView('basket')
+  }
+
+  const handleSwitchTab = (next: ShoppingTab) => {
+    setTab(next)
+  }
+
+  const handleSwitchGroupBy = (next: GroupBy) => {
+    setGroupBy(next)
+    setGroupFilter(null)
+  }
+
+  const handleSelectGroup = (key: string | null) => {
+    setGroupFilter(prev => (key != null && prev === key ? null : key))
+  }
+
+  const handleOpenAdd = () => openSheet({ type: 'addShoppingItem' })
+  const handleOpenBasket = () => setView('basket')
 
   const pulseCart = () => {
     setCartPulse(false)
@@ -173,201 +302,159 @@ export default function ShoppingScreen({
     }, FLY_MS)
   }
 
-  if (view === 'session-detail' && selectedSession) {
-    const items = selectedSession.items ?? []
-    const dateLabel = formatSessionDate(selectedSession.completedAt ?? selectedSession.startedAt)
-    const costLabel = formatSessionCost(selectedSession)
-    const hasNonEmptyActiveSession = !!activeSession && activeSession.itemCount > 0
-    return (
-      <div style={{ minHeight: '100%', paddingBottom: 80 }}>
-        <div style={{ padding: '16px 16px 4px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            onClick={() => setView('list')}
-            aria-label="Back to shopping list"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
-          >
-            <ArrowLeft size={20} color={t.text} />
-          </button>
-          <div>
-            <h2 style={{ fontSize: 22, fontWeight: 500, color: t.text, marginBottom: 2, fontFamily: 'var(--ds-font-display)' }}>{dateLabel}</h2>
-            <p style={{ fontSize: 13, color: t.textSec }}>
-              {items.length} item{items.length !== 1 ? 's' : ''}
-              {costLabel ? ` · ${costLabel}` : ''}
+  const totalActive = active.length
+  const departingIds = new Set(departing.map(d => d.id))
+  const tripCount = sessionHistory.length
+  const statusCopy = tab === 'To buy' ? toBuyStatus(totalActive, basketCount) : tripsStatus(tripCount)
+  const emptyCopy = toBuyEmpty(basketCount, tripCount)
+  const showToBuyEmpty = tab === 'To buy' && totalActive === 0 && departing.length === 0
+  const showTripsEmpty = tab === 'Trips' && tripCount === 0
+  const hasNonEmptyActiveSession = !!activeSession && activeSession.itemCount > 0
+
+  return (
+    <div
+      className="shopping-motion shopping-screen"
+      style={{
+        minHeight: '100%',
+        background: 'var(--shop-page)',
+      }}
+    >
+      <div style={{ maxWidth: 720, width: '100%', margin: '0 auto' }}>
+        <div
+          style={{
+            background: 'var(--shop-panel)',
+            borderBottom: '1px solid var(--shop-grid)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 5,
+          }}
+        >
+          <div style={{ padding: '16px 16px 4px' }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: 'var(--shop-dim)',
+                fontFamily: 'var(--ds-font)',
+              }}
+            >
+              {statusCopy}
             </p>
           </div>
+
+          <ShoppingTabs value={tab} onChange={handleSwitchTab} />
+
+          {tab === 'To buy' && !showToBuyEmpty && (
+            <>
+              <div style={{ padding: '8px 16px 4px' }}>
+                <GroupByControl value={groupBy} onChange={handleSwitchGroupBy} />
+              </div>
+              <GroupFilter
+                groups={occupiedKeys}
+                selected={groupFilter}
+                groupBy={groupBy}
+                onChange={handleSelectGroup}
+              />
+            </>
+          )}
         </div>
-        <div style={{ margin: '8px 16px' }}>
-          {items.map((item, i) => (
-            <BasketRow
-              key={item.id}
-              item={item}
-              divider={i > 0}
-              secondary={storeNameFor(item)}
-            />
-          ))}
-        </div>
-        <div style={{ padding: '16px' }}>
-          <PrimaryButton
-            onClick={() => { void handleReorder() }}
-            disabled={reordering || hasNonEmptyActiveSession}
-            fullWidth
-          >
-            <RefreshCw size={16} style={{ marginRight: 8 }} />
-            {reordering ? 'Setting up basket…' : 'Shop again'}
-          </PrimaryButton>
-          {hasNonEmptyActiveSession && (
-            <p style={{ fontSize: 12, color: t.textTer, textAlign: 'center', marginTop: 8 }}>
-              You have an{' '}
-              <button
-                onClick={() => setView('basket')}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: t.primary, textDecoration: 'underline' }}
-              >
-                active basket
-              </button>
-              {' '}— complete it before starting a new trip
-            </p>
+
+        <div
+          key={tab}
+          className="shopping-motion"
+          role="tabpanel"
+          id={SHOPPING_TABS[tab].panelId}
+          aria-labelledby={SHOPPING_TABS[tab].tabId}
+          style={{ animation: 'shoppingEnter 0.22s ease-out' }}
+        >
+          {tab === 'To buy' && (
+            <>
+              {showToBuyEmpty && (
+                <ShopEmptyState
+                  title={emptyCopy.title}
+                  body={emptyCopy.body}
+                  onAdd={handleOpenAdd}
+                />
+              )}
+
+              {visibleKeys.map(key => (
+                <div key={key}>
+                  <ShopSectionLabel>{key}</ShopSectionLabel>
+                  <div>
+                    {groups[key].map((item, i) => (
+                      <ShoppingRow
+                        key={item.id}
+                        item={item}
+                        divider={i > 0}
+                        departing={departingIds.has(item.id)}
+                        onAddToBasket={() => handleAddToBasket(item)}
+                        onEdit={() => openSheet({ type: 'editShoppingItem', itemId: item.id })}
+                        onQuantityChange={(quantity) => updateShoppingItem(item.id, { quantity })}
+                        onRemove={() => deleteShoppingItem(item.id)}
+                        rowRef={el => {
+                          if (el) rowRefs.current.set(item.id, el)
+                          else rowRefs.current.delete(item.id)
+                        }}
+                        secondary={groupBy === 'Category' ? storeNameFor(item) : item.category}
+                        hideSecondary={groupBy === 'Category' && !item.locationId}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {tab === 'Trips' && (
+            <>
+              {showTripsEmpty && (
+                <ShopEmptyState
+                  icon={Receipt}
+                  title={tripsEmpty.title}
+                  body={tripsEmpty.body}
+                />
+              )}
+              {!showTripsEmpty && (
+                <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {sessionHistory.map(session => {
+                    const trip = resolveTrip(session)
+                    return (
+                      <TripReceiptCard
+                        key={session.id}
+                        session={trip}
+                        expanded={expandedTripId === session.id}
+                        loadingItems={expandedTripId === session.id && !hasTripItems(trip)}
+                        reordering={reorderingTripId === session.id}
+                        shopAgainDisabled={reorderingTripId != null || hasNonEmptyActiveSession}
+                        storeNames={storeNamesForTrip(trip, storeNameFor)}
+                        onToggle={() => { void handleToggleTrip(session) }}
+                        onShopAgain={() => { void handleShopAgain(session.id) }}
+                        onOpenBasket={handleOpenBasket}
+                        showActiveBasketHelper={hasNonEmptyActiveSession}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
-    )
-  }
-
-  const departingVisible = departing.filter(d => !active.some(a => a.id === d.id))
-  const listItems = [...active, ...departingVisible]
-
-  const groups: Record<string, ShoppingItem[]> = {}
-  listItems.forEach(item => {
-    const key = groupBy === 'Category' ? item.category : storeNameFor(item)
-    ;(groups[key] ??= []).push(item)
-  })
-
-  const orderedKeys =
-    groupBy === 'Category'
-      ? [
-          ...CATEGORY_ORDER.filter(c => groups[c]),
-          ...Object.keys(groups).filter(c => !CATEGORY_ORDER.includes(c)),
-        ]
-      : [
-          ...locations.map(l => l.name).filter(name => groups[name]),
-          ...(groups[UNASSIGNED] ? [UNASSIGNED] : []),
-          ...Object.keys(groups).filter(
-            name => name !== UNASSIGNED && !locations.some(l => l.name === name),
-          ),
-        ]
-
-  const totalActive = active.length
-  const departingIds = new Set(departing.map(d => d.id))
-
-  return (
-    <div style={{ minHeight: '100%', paddingBottom: 140 }}>
-      <div style={{ padding: '16px 16px 4px' }}>
-        <p style={{ fontSize: 13, color: t.textSec, margin: 0 }}>
-          {totalActive} item{totalActive !== 1 ? 's' : ''} remaining
-        </p>
-      </div>
-
-      <div style={{ padding: '8px 16px 4px' }}>
-        <SegmentedControl
-          options={['Category', 'Store']}
-          value={groupBy}
-          onChange={v => setGroupBy(v as 'Category' | 'Store')}
-        />
-      </div>
-
-      {totalActive === 0 && departing.length === 0 && basketCount === 0 && sessionHistory.length === 0 && (
-        <EmptyState
-          icon={ShoppingCart}
-          title="Nothing to buy"
-          body="Add something your family needs."
-          action="+ Add item"
-          onAction={() => openSheet({ type: 'addShoppingItem' })}
-        />
-      )}
-
-      {orderedKeys.map(key => (
-        <div key={key}>
-          <SectionLabel>{key}</SectionLabel>
-          <div>
-            {groups[key].map((item, i) => (
-              <ShoppingRow
-                key={item.id}
-                item={item}
-                divider={i > 0}
-                departing={departingIds.has(item.id)}
-                onToggle={() => handleAddToBasket(item)}
-                onEdit={() => openSheet({ type: 'editShoppingItem', itemId: item.id })}
-                onQuantityChange={(quantity) => updateShoppingItem(item.id, { quantity })}
-                onRemove={() => deleteShoppingItem(item.id)}
-                rowRef={el => {
-                  if (el) rowRefs.current.set(item.id, el)
-                  else rowRefs.current.delete(item.id)
-                }}
-                secondary={groupBy === 'Category' ? storeNameFor(item) : item.category}
-                hideSecondary={groupBy === 'Category' && !item.locationId}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {sessionHistory.length > 0 && (
-        <div>
-          <SectionLabel>Past trips</SectionLabel>
-          <div>
-            {sessionHistory.map((session, i) => {
-              const dateLabel = formatSessionDate(session.completedAt ?? session.startedAt)
-              const costLabel = formatSessionCost(session)
-              return (
-                <button
-                  key={session.id}
-                  onClick={() => { void handleOpenSession(session) }}
-                  disabled={loadingDetail}
-                  style={{
-                    width: '100%',
-                    padding: '14px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    border: 'none',
-                    borderTop: i > 0 ? `1px solid ${t.border}` : 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontFamily: 'var(--ds-font)',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 15, color: t.text, fontWeight: 500 }}>{dateLabel}</div>
-                    <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>
-                      {session.itemCount} item{session.itemCount !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  {costLabel && (
-                    <span style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{costLabel}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       <button
         ref={cartRef}
         type="button"
-        onClick={() => setView('basket')}
-        aria-label={displayCount > 0 ? `Open basket with ${displayCount} items` : 'Open basket'}
-        className={`basket-target${cartPulse ? ' is-pulsing' : ''} fab`}
+        onClick={handleOpenBasket}
+        aria-label={displayCount === 1 ? 'Open Basket, 1 item' : `Open Basket, ${displayCount} items`}
+        className={`shopping-basket-bar basket-target${cartPulse ? ' is-pulsing' : ''} fab`}
         onAnimationEnd={() => setCartPulse(false)}
         style={{
           position: 'fixed',
-          left: 20,
-          right: 88,
           height: 52,
           borderRadius: r.xl,
-          background: t.surfaceElev,
-          border: `1px solid ${t.border}`,
-          boxShadow: 'var(--ds-shadow-md)',
+          background: 'var(--shop-panel)',
+          border: '1px solid var(--shop-grid)',
+          boxShadow: 'var(--shop-card-shadow)',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -377,11 +464,26 @@ export default function ShoppingScreen({
           fontFamily: 'var(--ds-font)',
         }}
       >
-        <ShoppingCart size={18} color={t.primary} />
-        <span style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 500, color: t.text }}>
+        <ShoppingCart size={18} color="var(--shop-coral)" />
+        <span style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 500, color: 'var(--shop-text)' }}>
           Basket
         </span>
-        <span aria-live="polite" style={{ fontSize: 14, fontWeight: 600, color: t.primary }}>
+        <span
+          aria-live="polite"
+          style={{
+            minWidth: 24,
+            height: 24,
+            padding: '0 8px',
+            borderRadius: 9999,
+            background: 'var(--shop-coral)',
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           {displayCount}
         </span>
       </button>
@@ -398,7 +500,7 @@ export default function ShoppingScreen({
         />
       )}
 
-      <FAB onClick={() => openSheet({ type: 'addShoppingItem' })} aria-label="Add item">
+      <FAB onClick={handleOpenAdd} aria-label="Add item">
         <Plus size={24} color={t.onPrimary} />
       </FAB>
 
@@ -406,6 +508,498 @@ export default function ShoppingScreen({
         <FlyingChip key={flyer.key} flyer={flyer} />
       ))}
     </div>
+  )
+}
+
+function ShoppingTabs({
+  value,
+  onChange,
+}: {
+  value: ShoppingTab
+  onChange: (tab: ShoppingTab) => void
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Shopping views"
+      style={{
+        display: 'flex',
+        width: '100%',
+        boxSizing: 'border-box',
+        borderBottom: '1px solid var(--shop-grid)',
+      }}
+    >
+      {(['To buy', 'Trips'] as const).map(option => {
+        const isActive = option === value
+        const ids = SHOPPING_TABS[option]
+        return (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            id={ids.tabId}
+            aria-controls={ids.panelId}
+            aria-selected={isActive}
+            onClick={() => onChange(option)}
+            style={{
+              flex: 1,
+              padding: '10px 10px 12px',
+              minHeight: 44,
+              border: 'none',
+              borderRadius: 0,
+              background: 'transparent',
+              color: isActive ? 'var(--shop-text)' : 'var(--shop-dim)',
+              fontSize: 14,
+              fontWeight: isActive ? 600 : 400,
+              cursor: 'pointer',
+              fontFamily: 'var(--ds-font)',
+              borderBottom: isActive ? '2px solid var(--shop-text)' : '2px solid transparent',
+              marginBottom: -1,
+            }}
+          >
+            {option}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function GroupByControl({
+  value,
+  onChange,
+}: {
+  value: GroupBy
+  onChange: (value: GroupBy) => void
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Group by Category or Store"
+      style={{
+        display: 'flex',
+        background: 'var(--shop-toggle)',
+        borderRadius: 9999,
+        padding: 3,
+      }}
+    >
+      {(['Category', 'Store'] as const).map(option => {
+        const isActive = option === value
+        return (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(option)}
+            style={{
+              flex: 1,
+              minHeight: 32,
+              padding: '4px 11px',
+              borderRadius: 9999,
+              border: 'none',
+              background: isActive ? 'var(--shop-panel)' : 'transparent',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              color: isActive ? 'var(--shop-text)' : 'var(--shop-dim)',
+              fontFamily: 'var(--ds-font)',
+              boxShadow: isActive ? 'var(--shop-card-shadow)' : 'none',
+            }}
+          >
+            {option}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function GroupFilter({
+  groups,
+  selected,
+  groupBy,
+  onChange,
+}: {
+  groups: string[]
+  selected: string | null
+  groupBy: GroupBy
+  onChange: (key: string | null) => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={groupBy === 'Category' ? 'Filter by Shopping category' : 'Filter by Store'}
+      style={{
+        display: 'flex',
+        gap: 8,
+        padding: '10px 16px',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        background: 'var(--shop-panel)',
+      }}
+    >
+      <FilterChip
+        label="All"
+        accessibleName={groupBy === 'Category' ? 'All Shopping categories' : 'All Stores'}
+        pressed={selected === null}
+        onClick={() => onChange(null)}
+      />
+      {groups.map(group => (
+        <FilterChip
+          key={group}
+          label={group}
+          accessibleName={groupBy === 'Category' ? `${group} Shopping category` : `${group} Store`}
+          pressed={selected === group}
+          onClick={() => onChange(group)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function FilterChip({
+  label,
+  accessibleName,
+  pressed,
+  onClick,
+}: {
+  label: string
+  accessibleName: string
+  pressed: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
+      aria-label={accessibleName}
+      style={{
+        flexShrink: 0,
+        minHeight: 44,
+        padding: '5px 14px',
+        borderRadius: 9999,
+        border: `1.5px solid ${pressed ? 'var(--shop-text)' : 'var(--shop-grid)'}`,
+        background: pressed ? 'var(--shop-text)' : 'var(--shop-panel)',
+        color: pressed ? 'var(--shop-on-selected)' : 'var(--shop-dim)',
+        fontSize: 12,
+        fontWeight: 600,
+        cursor: 'pointer',
+        fontFamily: 'var(--ds-font)',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+function ShopEmptyState({
+  title,
+  body,
+  onAdd,
+  icon: Icon = ShoppingCart,
+}: {
+  title: string
+  body: string
+  onAdd?: () => void
+  icon?: typeof ShoppingCart
+}) {
+  return (
+    <div
+      style={{
+        padding: '20px 24px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        textAlign: 'center',
+      }}
+    >
+      <Icon size={22} color="var(--shop-dim)" strokeWidth={1.5} aria-hidden />
+      <p
+        style={{
+          fontSize: 18,
+          fontWeight: 500,
+          color: 'var(--shop-text)',
+          fontFamily: 'var(--ds-font-display)',
+          margin: '4px 0 0',
+        }}
+      >
+        {title}
+      </p>
+      <p
+        style={{
+          fontSize: 14,
+          color: 'var(--shop-dim)',
+          lineHeight: 1.45,
+          maxWidth: 280,
+          margin: 0,
+        }}
+      >
+        {body}
+      </p>
+      {onAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          style={{
+            marginTop: 4,
+            padding: '11px 20px',
+            minHeight: 44,
+            background: t.primary,
+            color: t.onPrimary,
+            border: 'none',
+            borderRadius: r.md,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'var(--ds-font)',
+          }}
+        >
+          + Add item
+        </button>
+      )}
+    </div>
+  )
+}
+
+function TripReceiptCard({
+  session,
+  expanded,
+  loadingItems,
+  reordering,
+  shopAgainDisabled,
+  storeNames,
+  onToggle,
+  onShopAgain,
+  onOpenBasket,
+  showActiveBasketHelper,
+}: {
+  session: ShoppingSession
+  expanded: boolean
+  loadingItems: boolean
+  reordering: boolean
+  shopAgainDisabled: boolean
+  storeNames: string[]
+  onToggle: () => void
+  onShopAgain: () => void
+  onOpenBasket: () => void
+  showActiveBasketHelper: boolean
+}) {
+  const dateLabel = formatSessionDate(session.completedAt ?? session.startedAt)
+  const costLabel = formatSessionCost(session)
+  const itemCount = session.itemCount
+  const items = session.items ?? []
+  const panelId = `trip-items-${session.id}`
+
+  return (
+    <article
+      style={{
+        background: 'var(--shop-card)',
+        border: '1px solid var(--shop-grid)',
+        borderRadius: r.lg,
+        boxShadow: 'var(--shop-card-shadow)',
+        overflow: 'hidden',
+        fontFamily: 'var(--ds-font)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${dateLabel} shopping trip, ${itemCount === 1 ? '1 item' : `${itemCount} items`}`}
+        style={{
+          width: '100%',
+          display: 'block',
+          textAlign: 'left',
+          padding: '14px 16px 12px',
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          fontFamily: 'var(--ds-font)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 500,
+                color: 'var(--shop-text)',
+                fontFamily: 'var(--ds-font-display)',
+              }}
+            >
+              {dateLabel}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--shop-dim)', marginTop: 2 }}>
+              {itemCount === 1 ? '1 item' : `${itemCount} items`}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {costLabel ? (
+              <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--shop-text)' }}>
+                {costLabel}
+              </span>
+            ) : null}
+            <ChevronDown
+              size={18}
+              color="var(--shop-dim)"
+              aria-hidden
+              style={{
+                transform: expanded ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            />
+          </div>
+        </div>
+        {storeNames.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+              marginTop: 10,
+            }}
+          >
+            {storeNames.map(name => (
+              <span
+                key={name}
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: 9999,
+                  border: '1px solid var(--shop-grid)',
+                  background: 'var(--shop-toggle)',
+                  color: 'var(--shop-text)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
+      </button>
+
+      <div style={{ padding: '0 16px 14px' }}>
+        <button
+          type="button"
+          onClick={onShopAgain}
+          disabled={shopAgainDisabled}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            width: '100%',
+            minHeight: 44,
+            padding: '10px 16px',
+            border: 'none',
+            borderRadius: r.md,
+            background: shopAgainDisabled ? 'var(--shop-toggle)' : 'var(--shop-coral)',
+            color: shopAgainDisabled ? 'var(--shop-dim)' : '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: shopAgainDisabled ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--ds-font)',
+          }}
+        >
+          <RefreshCw size={16} aria-hidden />
+          {reordering ? 'Setting up basket…' : 'Shop again'}
+        </button>
+        {showActiveBasketHelper && (
+          <p style={{ fontSize: 12, color: 'var(--shop-dim)', textAlign: 'center', margin: '8px 0 0' }}>
+            You have an{' '}
+            <button
+              type="button"
+              onClick={onOpenBasket}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                fontSize: 12,
+                color: 'var(--shop-coral)',
+                textDecoration: 'underline',
+                fontFamily: 'var(--ds-font)',
+              }}
+            >
+              active basket
+            </button>
+            {' '}— complete it before starting a new trip
+          </p>
+        )}
+      </div>
+
+      <div
+        id={panelId}
+        hidden={!expanded}
+        role="region"
+        aria-label={`${dateLabel} items`}
+      >
+        <div
+          style={{
+            padding: '0 16px 8px',
+            borderTop: '1px solid var(--shop-grid)',
+          }}
+        >
+          {loadingItems && (
+            <p style={{ fontSize: 13, color: 'var(--shop-dim)', margin: '12px 0' }}>
+              Loading items…
+            </p>
+          )}
+          {!loadingItems && items.map((item, i) => (
+            <div
+              key={item.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '10px 0',
+                borderTop: i > 0 ? '1px solid var(--shop-grid)' : 'none',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 14,
+                  color: 'var(--shop-text)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
+                }}
+              >
+                {item.name}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--shop-dim)', flexShrink: 0 }}>
+                ×{item.quantity}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ShopSectionLabel({ children }: { children: string }) {
+  return (
+    <p
+      style={{
+        fontSize: 12,
+        fontWeight: 500,
+        color: 'var(--shop-dim)',
+        letterSpacing: '0.01em',
+        padding: '12px 16px 6px',
+        fontFamily: 'var(--ds-font)',
+        margin: 0,
+      }}
+    >
+      {children}
+    </p>
   )
 }
 
@@ -506,10 +1100,10 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
         alignItems: 'center',
         gap: 12,
         padding: '0 16px',
-        background: t.surface,
+        background: 'var(--shop-card)',
         borderRadius: r.lg,
-        boxShadow: 'var(--ds-shadow-md)',
-        border: `1px solid ${t.border}`,
+        boxShadow: 'var(--shop-card-shadow)',
+        border: '1px solid var(--shop-grid)',
         overflow: 'hidden',
         transform: `translate(${flyer.from.left}px, ${flyer.from.top}px)`,
         fontFamily: 'var(--ds-font)',
@@ -517,13 +1111,13 @@ function FlyingChip({ flyer }: { flyer: Flyer }) {
     >
       <div style={{
         width: 22, height: 22, borderRadius: 9999, flexShrink: 0,
-        background: t.success, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--shop-coral)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Check size={13} color={t.onPrimary} strokeWidth={2.5} />
+        <Check size={13} color="#fff" strokeWidth={2.5} />
       </div>
       <span
         ref={labelRef}
-        style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
+        style={{ fontSize: 15, color: 'var(--shop-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
       >
         {flyer.name}
       </span>
@@ -560,7 +1154,7 @@ function BasketPanel({
         className="bottom-sheet-panel"
         style={{
           position: 'relative',
-          background: t.surfaceElev,
+          background: 'var(--shop-panel)',
           borderRadius: '12px 12px 0 0',
           boxShadow: 'var(--ds-shadow-high)',
           maxHeight: '80dvh',
@@ -571,20 +1165,20 @@ function BasketPanel({
         }}
       >
         <div className="bottom-sheet-handle" style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 9999, background: t.border }} />
+          <div style={{ width: 36, height: 4, borderRadius: 9999, background: 'var(--shop-grid)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px' }}>
-          <span style={{ fontSize: 20, fontWeight: 500, fontFamily: 'var(--ds-font-display)', color: t.text }}>
+          <span style={{ fontSize: 20, fontWeight: 500, fontFamily: 'var(--ds-font-display)', color: 'var(--shop-text)' }}>
             Basket
           </span>
-          <span style={{ fontSize: 13, color: t.textSec }}>{items.length} item{items.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: 13, color: 'var(--shop-dim)' }}>{items.length} item{items.length !== 1 ? 's' : ''}</span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 16px' }}>
           {items.length === 0 ? (
             <EmptyState
               icon={ShoppingCart}
               title="Basket is empty"
-              body="Tick items on the list to add them here."
+              body="Add items from the list to put them here."
               action="Close"
               onAction={onClose}
             />
@@ -614,11 +1208,11 @@ function BasketPanel({
   )
 }
 
-function ShoppingRow({ item, divider, departing, onToggle, onEdit, onQuantityChange, onRemove, rowRef, secondary, hideSecondary }: {
+function ShoppingRow({ item, divider, departing, onAddToBasket, onEdit, onQuantityChange, onRemove, rowRef, secondary, hideSecondary }: {
   item: ShoppingItem
   divider: boolean
   departing: boolean
-  onToggle: () => void
+  onAddToBasket: () => void
   onEdit: () => void
   onQuantityChange: (quantity: number) => void
   onRemove: () => void
@@ -639,12 +1233,12 @@ function ShoppingRow({ item, divider, departing, onToggle, onEdit, onQuantityCha
           ref={rowRef}
           style={{
             padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
-            borderTop: divider ? `1px solid ${t.border}` : 'none',
+            borderTop: divider ? '1px solid var(--shop-grid)' : 'none',
             opacity: departing ? 0 : 1,
             transition: 'opacity 0.16s ease',
           }}
         >
-          <ShoppingCheckbox checked={departing} onChange={onToggle} />
+          <CartControl departing={departing} onAdd={onAddToBasket} name={item.name} />
           <button
             type="button"
             onClick={onEdit}
@@ -655,11 +1249,11 @@ function ShoppingRow({ item, divider, departing, onToggle, onEdit, onQuantityCha
               cursor: 'pointer', fontFamily: 'var(--ds-font)',
             }}
           >
-            <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 15, color: 'var(--shop-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {item.name}
             </div>
             {secondary && !hideSecondary && (
-              <div style={{ fontSize: 12, color: t.textTer, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, color: 'var(--shop-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {secondary}
               </div>
             )}
@@ -680,13 +1274,53 @@ function ShoppingRow({ item, divider, departing, onToggle, onEdit, onQuantityCha
                 aria-label={`Remove ${item.name} from list`}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
               >
-                <Trash2 size={18} color={t.textTer} />
+                <Trash2 size={18} color="var(--shop-dim)" />
               </button>
             </>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+function CartControl({
+  departing,
+  onAdd,
+  name,
+}: {
+  departing: boolean
+  onAdd: () => void
+  name: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={e => {
+        e.stopPropagation()
+        if (!departing) onAdd()
+      }}
+      aria-label={departing ? `Adding ${name} to Basket` : `Add ${name} to Basket`}
+      disabled={departing}
+      style={{
+        width: 44,
+        height: 44,
+        minWidth: 44,
+        minHeight: 44,
+        borderRadius: 9999,
+        border: 'none',
+        padding: 0,
+        background: departing ? 'var(--shop-coral)' : 'var(--shop-coral-subtle)',
+        color: departing ? '#fff' : 'var(--shop-coral)',
+        cursor: departing ? 'default' : 'pointer',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <ShoppingCart size={18} strokeWidth={2} aria-hidden />
+    </button>
   )
 }
 
@@ -700,11 +1334,11 @@ function BasketRow({ item, divider, secondary, onEdit, onUndo, onQuantityChange 
 }) {
   const label = (
     <>
-      <div style={{ fontSize: 15, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: 15, color: 'var(--shop-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {item.name}
       </div>
       {secondary && (
-        <div style={{ fontSize: 12, color: t.textTer, marginTop: 2 }}>{secondary}</div>
+        <div style={{ fontSize: 12, color: 'var(--shop-dim)', marginTop: 2 }}>{secondary}</div>
       )}
     </>
   )
@@ -712,7 +1346,7 @@ function BasketRow({ item, divider, secondary, onEdit, onUndo, onQuantityChange 
   return (
     <div style={{
       padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
-      borderTop: divider ? `1px solid ${t.border}` : 'none',
+      borderTop: divider ? '1px solid var(--shop-grid)' : 'none',
     }}>
       {onEdit ? (
         <button
@@ -744,10 +1378,10 @@ function BasketRow({ item, divider, secondary, onEdit, onUndo, onQuantityChange 
       ) : (
         item.quantity > 1 && (
           <div style={{
-            minWidth: 28, height: 22, borderRadius: r.pill, border: `1px solid ${t.border}`,
+            minWidth: 28, height: 22, borderRadius: r.pill, border: '1px solid var(--shop-grid)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px',
           }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: t.textSec }}>×{item.quantity}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--shop-dim)' }}>×{item.quantity}</span>
           </div>
         )
       )}

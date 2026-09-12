@@ -113,27 +113,6 @@ export function TaskCheckbox({ checked, onChange, size = 22, priority, 'aria-lab
   )
 }
 
-// ─── ShoppingCheckbox ─────────────────────────────────────────────────────────
-
-export function ShoppingCheckbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onChange() }}
-      aria-label={checked ? 'Return to list' : 'Add to basket'}
-      style={{
-        width: 22, height: 22, minWidth: 22, minHeight: 22, borderRadius: 9999, border: 'none', padding: 0,
-        background: checked ? t.success : 'transparent',
-        outline: `1.5px solid ${checked ? t.success : t.borderStrong}`,
-        cursor: 'pointer', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
-      }}
-    >
-      {checked && <Check size={13} color={t.onPrimary} strokeWidth={2.5} />}
-    </button>
-  )
-}
-
 // ─── QuantityStepper ──────────────────────────────────────────────────────────
 
 /** `sm` keeps a 28px control inside a ~40px hit area; `lg` fills a form row. */

@@ -165,6 +165,19 @@
   --task-grid: #EDE0D4;
   --task-on-selected: #FFFFFF;
   --task-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+
+  /* Shopping inherits Calendar/Home/Tasks paper language. */
+  --shop-page: #FAFAF9;
+  --shop-panel: #FFFFFF;
+  --shop-card: #FFFFFF;
+  --shop-text: #1C1C1E;
+  --shop-dim: #9A8878;
+  --shop-grid: #EDE0D4;
+  --shop-on-selected: #FFFFFF;
+  --shop-coral: #E8622A;
+  --shop-coral-subtle: #FEF0E8;
+  --shop-toggle: #F5EDE4;
+  --shop-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 html.dark {
@@ -285,6 +298,18 @@ html.dark {
   --task-grid: #3A2F27;
   --task-on-selected: #121213;
   --task-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+
+  --shop-page: #121213;
+  --shop-panel: #1D1D1F;
+  --shop-card: #1D1D1F;
+  --shop-text: #F2F2F7;
+  --shop-dim: #B6A89C;
+  --shop-grid: #3A2F27;
+  --shop-on-selected: #121213;
+  --shop-coral: #FF8C5A;
+  --shop-coral-subtle: #3D2218;
+  --shop-toggle: #2A221C;
+  --shop-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 @theme {
@@ -383,12 +408,14 @@ html.assistant-phone-open .app-toast {
 @keyframes dashboardEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes calendarEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes tasksEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes shoppingEnter { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 
 @media (prefers-reduced-motion: reduce) {
   .onboarding-motion, .onboarding-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
   .dashboard-motion, .dashboard-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
   .calendar-motion, .calendar-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
   .tasks-motion, .tasks-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
+  .shopping-motion, .shopping-motion * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 1ms !important; }
 }
 
 .basket-target {
@@ -573,6 +600,29 @@ html.assistant-phone-open .app-toast {
 @media (min-width: 768px) {
   .tasks-screen {
     padding-bottom: calc(24px + 56px + 28px);
+  }
+}
+
+/* Shopping scroll clears the Basket bar and FAB. */
+.shopping-screen {
+  padding-bottom: calc(72px + 56px + 52px + 28px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .shopping-screen {
+    padding-bottom: calc(24px + 56px + 52px + 28px);
+  }
+}
+
+/* Basket bar sits in the main column. On large screens it tracks the 720px Shopping column. */
+.shopping-basket-bar {
+  left: 20px;
+  right: 88px;
+}
+@media (min-width: 768px) {
+  .shopping-basket-bar {
+    left: max(248px, calc(228px + (100vw - 228px - 720px) / 2));
+    width: min(720px, calc(100vw - 228px - 108px));
+    right: auto;
   }
 }
 

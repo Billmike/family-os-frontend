@@ -106,6 +106,7 @@ import {
 import {
   LOGIN_PATH,
   isLoginPath,
+  isPublicPath,
   legacyGoRedirectPath,
   legacyPathRedirect,
   isBudgetSection,
@@ -256,11 +257,7 @@ function AppRoot() {
     session.status === "needs_family" ||
     setupPending;
 
-  if (
-    session.status === "unauthenticated" &&
-    !isLoginPath(location.pathname) &&
-    location.pathname !== "/"
-  ) {
+  if (session.status === "unauthenticated" && !isPublicPath(location.pathname)) {
     return <Navigate to={LOGIN_PATH} replace />;
   }
 

@@ -104,6 +104,13 @@ export function normalizePathname(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
 }
 
+/** Signup/onboarding steps stay in the client; they are not URL-public. */
+const PUBLIC_PATHS = new Set<string>([LOGIN_PATH])
+
+export function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.has(normalizePathname(pathname))
+}
+
 /** Map pathname to a Screen; unknown paths return null. */
 export function pathToScreen(pathname: string): Screen | null {
   return PATH_TO_SCREEN[normalizePathname(pathname)] ?? null

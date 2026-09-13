@@ -351,10 +351,9 @@ export default function Onboarding({ handlers }: Props) {
   const pendingAtStart = getPendingInviteToken()
   const [step, setStep] = useState<Step>(() => {
     if (pendingAtStart && handlers.needsFamily) return 'join'
-    if (pendingAtStart) return 'welcome'
     if (handlers.needsFamily) return 'family'
-    if (isLoginPath(location.pathname)) return 'login'
-    return 'splash'
+    if (isLoginPath(location.pathname) || !pendingAtStart) return 'login'
+    return 'welcome'
   })
   const [slideIdx, setSlideIdx] = useState(0)
   const [familyName, setFamilyName] = useState('')
@@ -378,20 +377,15 @@ export default function Onboarding({ handlers }: Props) {
 
   const go = (s: Step) => {
     setError(null)
-    if (!handlers.needsFamily) {
-      if (s === 'login' && !isLoginPath(location.pathname)) navigate(LOGIN_PATH)
-      if ((s === 'welcome' || s === 'splash') && isLoginPath(location.pathname)) navigate('/')
+    if (!handlers.needsFamily && s === 'login' && !isLoginPath(location.pathname)) {
+      navigate(LOGIN_PATH)
     }
     setStep(s)
   }
 
   useEffect(() => {
     if (handlers.needsFamily) return
-    if (isLoginPath(location.pathname)) {
-      if (step !== 'login' && step !== 'splash') setStep('login')
-      return
-    }
-    if (step === 'login') setStep('welcome')
+    if (isLoginPath(location.pathname) && step !== 'login') setStep('login')
   }, [handlers.needsFamily, location.pathname, step])
 
   const acceptInviteToken = async (raw: string) => {
@@ -647,7 +641,6 @@ export default function Onboarding({ handlers }: Props) {
           void doLogin()
         }}
       >
-        <BackBtn onClick={() => go(hasPendingInvite ? 'welcome' : 'splash')} />
         <Eyebrow>Sign in</Eyebrow>
         <Heading>Welcome back</Heading>
         <Sub>

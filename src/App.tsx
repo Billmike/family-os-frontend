@@ -2237,6 +2237,9 @@ function MainApp() {
           members={members}
           today={today}
           defaultMemberId={currentUser?.id ?? ""}
+          date={sheet.date}
+          startTime={sheet.startTime}
+          endTime={sheet.endTime}
         />
       )}
       {sheet?.type === "addTask" && (
@@ -2518,17 +2521,23 @@ function AddEventSheet({
   members,
   today,
   defaultMemberId,
+  date: presetDate,
+  startTime: presetStartTime,
+  endTime: presetEndTime,
 }: {
   onClose: () => void;
   onAdd: (e: Omit<CalendarEvent, "id">) => void;
   members: Member[];
   today: string;
   defaultMemberId: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
 }) {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(today);
-  const [startTime, setStart] = useState("09:00");
-  const [endTime, setEnd] = useState("10:00");
+  const [date, setDate] = useState(presetDate ?? today);
+  const [startTime, setStart] = useState(presetStartTime ?? "09:00");
+  const [endTime, setEnd] = useState(presetEndTime ?? "10:00");
   const [memberId, setMember] = useState(defaultMemberId);
   const [location, setLocation] = useState("");
 

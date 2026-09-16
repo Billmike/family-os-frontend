@@ -346,7 +346,7 @@ export interface Notification {
 }
 
 export type BottomSheetType =
-  | { type: 'addEvent' }
+  | { type: 'addEvent'; date?: string; startTime?: string; endTime?: string }
   | { type: 'addTask' }
   | { type: 'addShoppingItem' }
   | { type: 'editShoppingItem'; itemId: string }

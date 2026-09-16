@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import type { CalendarEvent, Member, AppHandlers } from '../types'
 import { r, FAB, MemberAvatar, IconButton } from '../ui'
@@ -9,6 +9,10 @@ const END_HOUR = 24
 const HOUR_H = 56
 const TIME_W = 52
 const MIN_EVENT_H = 44
+const SNAP_MINUTES = 15
+const TAP_MOVE_THRESHOLD_PX = 10
+const LAST_START_MINUTES = 23 * 60 + 45
+const LAST_END_MINUTES = 23 * 60 + 59
 const VISIBLE_START = START_HOUR * 60
 const VISIBLE_END = END_HOUR * 60
 
@@ -49,6 +53,23 @@ function addMonths(date: string, n: number): string {
 function minutesFromTime(time: string): number {
   const [hours, minutes] = time.split(':').map(Number)
   return hours * 60 + minutes
+}
+
+function timeFromMinutes(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function eventTimesFromGridY(y: number): { startTime: string; endTime: string } {
+  const rawMinutes = (y / HOUR_H) * 60
+  const snapped = Math.floor(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES
+  const startMinutes = Math.min(Math.max(snapped, 0), LAST_START_MINUTES)
+  const endMinutes = Math.min(startMinutes + 60, LAST_END_MINUTES)
+  return {
+    startTime: timeFromMinutes(startMinutes),
+    endTime: timeFromMinutes(endMinutes),
+  }
 }
 
 function timeToY(time: string): number {
@@ -355,11 +376,12 @@ function MemberFilter({ members, selected, onChange }: {
   )
 }
 
-function DayTimeline({ date, today, events, onEventTap }: {
+function DayTimeline({ date, today, events, onEventTap, onEmptyGridTap }: {
   date: string
   today: string
   events: CalendarEvent[]
   onEventTap: (id: string) => void
+  onEmptyGridTap: (times: { startTime: string; endTime: string }) => void
 }) {
   const dayEvents = events
     .filter(event => event.date === date)
@@ -368,7 +390,28 @@ function DayTimeline({ date, today, events, onEventTap }: {
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, index) => START_HOUR + index)
   const containerH = hours.length * HOUR_H
   const scrollRef = useRef<HTMLDivElement>(null)
+  const gridPointerStart = useRef<{ x: number; y: number } | null>(null)
   const nowY = timeToY(nowTime())
+
+  const handleGridPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    gridPointerStart.current = { x: event.clientX, y: event.clientY }
+  }
+
+  const handleGridPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const start = gridPointerStart.current
+    gridPointerStart.current = null
+    if (!start || event.button !== 0) return
+    const dx = event.clientX - start.x
+    const dy = event.clientY - start.y
+    if (Math.hypot(dx, dy) > TAP_MOVE_THRESHOLD_PX) return
+    const y = event.clientY - event.currentTarget.getBoundingClientRect().top
+    onEmptyGridTap(eventTimesFromGridY(y))
+  }
+
+  const handleGridPointerCancel = () => {
+    gridPointerStart.current = null
+  }
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -418,6 +461,22 @@ function DayTimeline({ date, today, events, onEventTap }: {
             <div style={{ flex: 1, height: 1, background: 'var(--cal-grid)' }} />
           </div>
         ))}
+
+        <div
+          aria-hidden
+          onPointerDown={handleGridPointerDown}
+          onPointerUp={handleGridPointerUp}
+          onPointerCancel={handleGridPointerCancel}
+          style={{
+            position: 'absolute',
+            left: TIME_W,
+            right: 0,
+            top: 0,
+            height: containerH,
+            zIndex: 1,
+            cursor: 'pointer',
+          }}
+        />
 
         {showNow && (
           <div
@@ -532,6 +591,7 @@ function DayTimeline({ date, today, events, onEventTap }: {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
+            zIndex: 2,
           }}>
             <span aria-hidden style={{ fontSize: 22 }}>✨</span>
             <p style={{ fontSize: 14, color: 'var(--cal-dim)', fontWeight: 500, fontFamily: 'var(--ds-font)', margin: 0 }}>
@@ -807,6 +867,12 @@ export default function CalendarScreen({ events, members, today, openSheet }: Pr
               today={today}
               events={filteredEvents}
               onEventTap={id => openSheet({ type: 'eventDetail', eventId: id })}
+              onEmptyGridTap={({ startTime, endTime }) => openSheet({
+                type: 'addEvent',
+                date: selectedDate,
+                startTime,
+                endTime,
+              })}
             />
           ) : (
             <MonthGrid

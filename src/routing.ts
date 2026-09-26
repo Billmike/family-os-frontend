@@ -2,6 +2,8 @@ import type { Screen } from './types'
 
 export const LOGIN_PATH = '/login'
 
+const RESET_PATH = /^\/reset\/([^/]+)$/
+
 const YEAR_MONTH = /^\d{4}-\d{2}$/
 
 /** Canonical path for each main app screen. */
@@ -105,10 +107,20 @@ export function normalizePathname(pathname: string): string {
 }
 
 /** Signup/onboarding steps stay in the client; they are not URL-public. */
-const PUBLIC_PATHS = new Set<string>([LOGIN_PATH])
+export function parseResetToken(pathname: string): string | null {
+  const match = normalizePathname(pathname).match(RESET_PATH)
+  if (!match) return null
+  const token = decodeURIComponent(match[1]).trim()
+  return token || null
+}
+
+export function isResetPath(pathname: string): boolean {
+  return parseResetToken(pathname) != null
+}
 
 export function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.has(normalizePathname(pathname))
+  const path = normalizePathname(pathname)
+  return path === LOGIN_PATH || isResetPath(path)
 }
 
 /** Map pathname to a Screen; unknown paths return null. */

@@ -107,6 +107,7 @@ import {
   LOGIN_PATH,
   isLoginPath,
   isPublicPath,
+  isResetPath,
   legacyGoRedirectPath,
   legacyPathRedirect,
   isBudgetSection,
@@ -255,7 +256,8 @@ function AppRoot() {
   const showOnboarding =
     session.status === "unauthenticated" ||
     session.status === "needs_family" ||
-    setupPending;
+    setupPending ||
+    isResetPath(location.pathname);
 
   if (session.status === "unauthenticated" && !isPublicPath(location.pathname)) {
     return <Navigate to={LOGIN_PATH} replace />;
@@ -284,6 +286,10 @@ function AppRoot() {
           login: async (email, password) => {
             await session.login(email, password);
             setSetupPending(false);
+          },
+          resetPassword: async (token, password) => {
+            setSetupPending(false);
+            await session.resetPassword(token, password);
           },
           needsFamily: session.status === "needs_family" || setupPending,
           userName: session.user?.name,
@@ -2958,7 +2964,7 @@ function InviteMemberSheet({
           optional
         </span>
       </div>
-      <FormField label="Email (optional — delivery not enabled yet)">
+      <FormField label="Email (optional)">
         <Input
           placeholder="name@email.com"
           value={email}
@@ -2975,8 +2981,8 @@ function InviteMemberSheet({
           lineHeight: 1.5,
         }}
       >
-        Saving an email stores it for later. Share the invite link above for
-        now.
+        Saving an email also sends the invite there. Keep sharing the link
+        above.
       </p>
       <PrimaryButton
         onClick={() => {

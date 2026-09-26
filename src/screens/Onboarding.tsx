@@ -13,7 +13,8 @@ import {
   getPendingInviteToken,
   normalizeInviteTokenInput,
 } from '../invite/pendingInvite'
-import { LOGIN_PATH, isLoginPath } from '../routing'
+import { LOGIN_PATH, isLoginPath, parseResetToken } from '../routing'
+import * as authApi from '../api/auth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,9 @@ type Step =
   | 'splash'
   | 'welcome'
   | 'login'
+  | 'forgot'
+  | 'forgot-sent'
+  | 'reset'
   | 'register'
   | 'join'
   | 'family'
@@ -46,6 +50,7 @@ interface Child { name: string; id: string }
 export interface OnboardingHandlers {
   register: (email: string, password: string, name: string) => Promise<void>
   login: (email: string, password: string) => Promise<void>
+  resetPassword: (token: string, password: string) => Promise<void>
   /** After create family — session becomes ready */
   onFamilyCreated: (family: FamilyOut) => Promise<void>
   /** After accepting invite */
@@ -350,8 +355,12 @@ export default function Onboarding({ handlers }: Props) {
   const navigate = useNavigate()
   const pendingAtStart = getPendingInviteToken()
   const [step, setStep] = useState<Step>(() => {
+    if (parseResetToken(location.pathname)) return 'reset'
     if (pendingAtStart && handlers.needsFamily) return 'join'
     if (handlers.needsFamily) return 'family'
+    if (isLoginPath(location.pathname) && new URLSearchParams(location.search).has('forgot')) {
+      return 'forgot'
+    }
     if (isLoginPath(location.pathname) || !pendingAtStart) return 'login'
     return 'welcome'
   })
@@ -377,16 +386,28 @@ export default function Onboarding({ handlers }: Props) {
 
   const go = (s: Step) => {
     setError(null)
-    if (!handlers.needsFamily && s === 'login' && !isLoginPath(location.pathname)) {
+    if (s === 'forgot' || s === 'forgot-sent') {
+      navigate(`${LOGIN_PATH}?forgot=1`)
+    } else if (s === 'login' && (location.pathname !== LOGIN_PATH || location.search)) {
       navigate(LOGIN_PATH)
     }
     setStep(s)
   }
 
   useEffect(() => {
+    if (parseResetToken(location.pathname)) {
+      if (step !== 'reset') setStep('reset')
+      return
+    }
     if (handlers.needsFamily) return
+    const wantsForgot = isLoginPath(location.pathname)
+      && new URLSearchParams(location.search).has('forgot')
+    if (wantsForgot) {
+      if (step !== 'forgot' && step !== 'forgot-sent') setStep('forgot')
+      return
+    }
     if (isLoginPath(location.pathname) && step !== 'login') setStep('login')
-  }, [handlers.needsFamily, location.pathname, step])
+  }, [handlers.needsFamily, location.pathname, location.search, step])
 
   const acceptInviteToken = async (raw: string) => {
     const token = normalizeInviteTokenInput(raw)
@@ -448,6 +469,43 @@ export default function Onboarding({ handlers }: Props) {
     navigator.clipboard?.writeText(inviteLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const doForgot = async () => {
+    if (!email.includes('@')) return
+    setBusy(true)
+    setError(null)
+    try {
+      await authApi.forgotPassword(email.trim())
+      go('forgot-sent')
+    } catch (e) {
+      setError(errMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const doReset = async () => {
+    const token = parseResetToken(location.pathname)
+    if (!token) {
+      setError('This link is invalid or expired. Request a new one.')
+      return
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await handlers.resetPassword(token, password)
+      navigate('/', { replace: true })
+      handlers.onEnterApp()
+    } catch (e) {
+      setError(errMessage(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const doLogin = async () => {
@@ -672,6 +730,24 @@ export default function Onboarding({ handlers }: Props) {
             value={password}
             onChange={setPassword}
           />
+          <button
+            type="button"
+            onClick={() => go('forgot')}
+            style={{
+              display: 'block',
+              marginTop: 10,
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--ob-primary)',
+              fontFamily: 'var(--ds-font)',
+            }}
+          >
+            Forgot password?
+          </button>
         </div>
         <PrimaryBtn type="submit" disabled={busy || !email.includes('@') || password.length < 8}>
           {busy ? 'Signing in…' : 'Sign in'}
@@ -684,6 +760,118 @@ export default function Onboarding({ handlers }: Props) {
       </form>
     </div>
   )
+
+  if (step === 'forgot') return (
+    <div style={shell}>
+      <form
+        style={{ ...card }}
+        onSubmit={e => {
+          e.preventDefault()
+          if (busy || !email.includes('@')) return
+          void doForgot()
+        }}
+      >
+        <BackBtn onClick={() => go('login')} />
+        <Eyebrow>Sign in</Eyebrow>
+        <Heading>Forgot your password?</Heading>
+        <Sub>Enter the email you use to sign in. If it has a login, we will send a link to choose a new password.</Sub>
+        <ErrorText message={error} />
+        <div style={{ marginBottom: 20 }}>
+          <label htmlFor="forgot-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>Email</label>
+          <Input
+            id="forgot-email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            placeholder="you@email.com"
+            value={email}
+            onChange={setEmail}
+            autoFocus
+          />
+        </div>
+        <PrimaryBtn type="submit" disabled={busy || !email.includes('@')}>
+          {busy ? 'Sending…' : 'Send reset link'}
+        </PrimaryBtn>
+      </form>
+    </div>
+  )
+
+  if (step === 'forgot-sent') return (
+    <div style={shell}>
+      <div style={{ ...card }}>
+        <BackBtn onClick={() => go('login')} />
+        <Eyebrow>Sign in</Eyebrow>
+        <Heading>Check your inbox</Heading>
+        <Sub>If that email has a login, we sent a link to choose a new password. The link expires in one hour.</Sub>
+        <PrimaryBtn onClick={() => go('login')}>Back to sign in</PrimaryBtn>
+      </div>
+    </div>
+  )
+
+  if (step === 'reset') {
+    const resetToken = parseResetToken(location.pathname)
+    return (
+      <div style={shell}>
+        <form
+          style={{ ...card }}
+          onSubmit={e => {
+            e.preventDefault()
+            if (busy || !resetToken || password.length < 8) return
+            void doReset()
+          }}
+        >
+          <Eyebrow>Sign in</Eyebrow>
+          <Heading>Choose a new password</Heading>
+          <Sub>
+            {resetToken
+              ? 'Use at least 8 characters. This signs you in on this device.'
+              : 'This link is invalid or expired. Request a new one.'}
+          </Sub>
+          <ErrorText message={error} />
+          {resetToken && (
+            <div style={{ marginBottom: 20 }}>
+              <label htmlFor="reset-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>New password</label>
+              <PasswordInput
+                id="reset-password"
+                name="new-password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={setPassword}
+              />
+            </div>
+          )}
+          {resetToken ? (
+            <PrimaryBtn type="submit" disabled={busy || password.length < 8}>
+              {busy ? 'Saving…' : 'Save password'}
+            </PrimaryBtn>
+          ) : (
+            <PrimaryBtn onClick={() => go('forgot')}>Request a new link</PrimaryBtn>
+          )}
+          {resetToken && (
+            <p style={{ fontSize: 12, color: t.textTer, marginTop: 14, textAlign: 'center', lineHeight: 1.5 }}>
+              <button
+                type="button"
+                onClick={() => go('forgot')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--ob-primary)',
+                  fontFamily: 'var(--ds-font)',
+                }}
+              >
+                Request a new link
+              </button>
+            </p>
+          )}
+        </form>
+      </div>
+    )
+  }
 
   // Register
   if (step === 'register') return (
@@ -886,7 +1074,7 @@ export default function Onboarding({ handlers }: Props) {
           <ProgressDots current="invite" />
           <Eyebrow>Step 3 of 3</Eyebrow>
           <Heading>Invite your partner</Heading>
-          <Sub>Copy and share this link. Email delivery is not enabled yet — the link is the invite.</Sub>
+          <Sub>Copy and share this link. If you add an email, we send the invite there too.</Sub>
           <ErrorText message={error} />
 
           <div style={{ marginBottom: 16 }}>
@@ -920,12 +1108,12 @@ export default function Onboarding({ handlers }: Props) {
 
           <div style={{ marginBottom: 8 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.textSec, marginBottom: 6 }}>
-              Email (saved for later — not sent yet)
+              Email (optional)
             </label>
             <Input placeholder="partner@email.com" value={inviteEmail} onChange={setInviteEmail} type="email" />
           </div>
           <p style={{ fontSize: 12, color: t.textTer, marginBottom: 24, lineHeight: 1.5 }}>
-            Share the invite link above. We&apos;ll use the email when delivery is turned on.
+            Share the invite link above. If you add an email, we also send it there.
           </p>
 
           <PrimaryBtn onClick={() => void doInviteAndContinue()} disabled={busy}>

@@ -17,6 +17,22 @@ export function login(email: string, password: string) {
   })
 }
 
+export function forgotPassword(email: string) {
+  return apiRequest<Record<string, never>>('/api/auth/forgot-password', {
+    method: 'POST',
+    auth: false,
+    body: { email },
+  })
+}
+
+export function resetPassword(token: string, password: string) {
+  return apiRequest<TokenPair>('/api/auth/reset-password', {
+    method: 'POST',
+    auth: false,
+    body: { token, password },
+  })
+}
+
 export function getMe() {
   return apiRequest<UserOut>('/api/auth/me')
 }

@@ -36,6 +36,7 @@ interface SessionContextValue {
   error: string | null
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
+  resetPassword: (token: string, password: string) => Promise<void>
   logout: () => void
   selectFamily: (familyId: string) => Promise<void>
   refreshFamily: () => Promise<void>
@@ -158,6 +159,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [afterAuth],
   )
 
+  const resetPassword = useCallback(
+    async (token: string, password: string) => {
+      setError(null)
+      const tokens = await authApi.resetPassword(token, password)
+      await afterAuth(tokens)
+    },
+    [afterAuth],
+  )
+
   const logout = useCallback(() => {
     void unsubscribeThisDevice()
     clearTokens()
@@ -246,6 +256,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     error,
     login,
     register,
+    resetPassword,
     logout,
     selectFamily,
     refreshFamily,

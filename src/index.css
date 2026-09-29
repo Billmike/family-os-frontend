@@ -693,9 +693,107 @@ html.assistant-phone-open .app-toast {
   .hide-desktop { display: none !important; }
 }
 
-/* FAB sits above bottom nav on mobile; lower on desktop when nav is hidden */
+/* Phone tab bar. Full pill height stays the clearance so a compact bar does not move the page. */
+:root {
+  --tab-pill-height: 50px;
+  --tab-pill-bottom: 8px;
+  --tab-fab-gap: 16px;
+  --tab-fab-size: 56px;
+  --tab-content-gap: 28px;
+  --tab-bar-clearance: calc(var(--tab-pill-height) + var(--tab-pill-bottom) + env(safe-area-inset-bottom, 0px));
+}
+
+.tab-bar {
+  position: fixed;
+  z-index: 8;
+  box-sizing: border-box;
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tab-pill-bottom) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  background: color-mix(in srgb, var(--ds-surface-chrome) 46%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.7);
+  backdrop-filter: blur(28px) saturate(1.7);
+  border: 1px solid color-mix(in srgb, var(--ds-text-primary) 14%, transparent);
+  border-radius: var(--ds-radius-pill);
+  box-shadow:
+    var(--ds-shadow-md),
+    inset 0 1px 0 color-mix(in srgb, white 48%, transparent);
+  transition:
+    opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tab-bar {
+    background: color-mix(in srgb, var(--ds-surface-chrome) 88%, transparent);
+  }
+}
+
+.tab-bar-item {
+  box-sizing: border-box;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border-radius: var(--ds-radius-pill);
+  transition:
+    min-height 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    padding 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    gap 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tab-bar.is-compact .tab-bar-item {
+  min-height: 44px;
+}
+
+.tab-bar svg {
+  width: 22px;
+  height: 22px;
+  transition:
+    width 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tab-bar.is-compact svg {
+  width: 18px;
+  height: 18px;
+}
+
+html.tab-bar-keyboard .tab-bar {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .app-main {
+    box-sizing: border-box;
+    padding-bottom: var(--tab-bar-clearance);
+  }
+
+  html.tab-bar-keyboard .fab,
+  html.tab-bar-keyboard .app-toast {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-bar,
+  .tab-bar-item,
+  .tab-bar svg {
+    transition: none;
+  }
+}
+
+/* FAB sits above the full pill on mobile; lower on desktop when the pill is hidden. */
 .fab {
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--tab-bar-clearance) + var(--tab-fab-gap));
 }
 @media (min-width: 768px) {
   .fab {
@@ -703,35 +801,31 @@ html.assistant-phone-open .app-toast {
   }
 }
 
-/* Overview and Activity scroll clear the FAB so the last paper card stays reachable. */
+/* The page already clears the pill. This extra space clears the FAB. */
 .budget-overview,
-.budget-activity {
-  padding-bottom: calc(72px + 56px + 28px + env(safe-area-inset-bottom, 0px));
+.budget-activity,
+.tasks-screen,
+.shopping-screen {
+  padding-bottom: calc(var(--tab-fab-gap) + var(--tab-fab-size) + var(--tab-content-gap));
 }
 @media (min-width: 768px) {
   .budget-overview,
-  .budget-activity {
-    padding-bottom: calc(24px + 56px + 28px);
-  }
-}
-
-/* Tasks scroll clears the FAB so the last swimlane stays reachable. */
-.tasks-screen {
-  padding-bottom: calc(72px + 56px + 28px + env(safe-area-inset-bottom, 0px));
-}
-@media (min-width: 768px) {
+  .budget-activity,
   .tasks-screen {
     padding-bottom: calc(24px + 56px + 28px);
   }
-}
 
-/* Shopping scroll clears the Basket bar and FAB. */
-.shopping-screen {
-  padding-bottom: calc(72px + 56px + 52px + 28px + env(safe-area-inset-bottom, 0px));
-}
-@media (min-width: 768px) {
   .shopping-screen {
     padding-bottom: calc(24px + 56px + 52px + 28px);
+  }
+}
+
+.calendar-scroll {
+  padding-bottom: calc(24px + var(--tab-fab-size) + var(--tab-content-gap));
+}
+@media (max-width: 767px) {
+  .calendar-scroll {
+    padding-bottom: calc(var(--tab-fab-gap) + var(--tab-fab-size) + var(--tab-content-gap));
   }
 }
 

@@ -1,57 +1,64 @@
+import { useEffect, useState } from 'react'
 import type { Screen } from '../../types'
 import { isBudgetSection } from '../../routing'
-import { t, fonts } from '../../ui'
+import { useVisualViewportBox } from '../assistant/useVisualViewportBox'
 import { BOTTOM_NAV } from './nav'
+import { useTabBarScroll } from './useTabBarScroll'
+
+const PHONE_TAB_QUERY = '(max-width: 767px)'
 
 interface Props {
   screen: Screen
   onNavigate: (screen: Screen) => void
 }
 
+const usePhoneTabBar = (): boolean => {
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia(PHONE_TAB_QUERY).matches)
+
+  useEffect(() => {
+    const media = window.matchMedia(PHONE_TAB_QUERY)
+    const handleChange = () => setIsPhone(media.matches)
+    media.addEventListener('change', handleChange)
+    return () => media.removeEventListener('change', handleChange)
+  }, [])
+
+  return isPhone
+}
+
 export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
+  const isPhone = usePhoneTabBar()
+  const { keyboardOpen } = useVisualViewportBox()
+  const keyboardHidden = isPhone && keyboardOpen
+  const isCompact = useTabBarScroll(screen, keyboardHidden)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('tab-bar-keyboard', keyboardHidden)
+    return () => document.documentElement.classList.remove('tab-bar-keyboard')
+  }, [keyboardHidden])
+
   return (
     <nav
       aria-label="Main"
-      style={{
-        display: 'flex',
-        width: '100%',
-        borderTop: `1px solid ${t.border}`,
-        background: t.bg,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        flexShrink: 0,
-      }}
+      aria-hidden={keyboardHidden || undefined}
+      inert={keyboardHidden || undefined}
+      className={isCompact ? 'tab-bar is-compact' : 'tab-bar'}
     >
       {BOTTOM_NAV.map(item => {
         const Icon = item.icon
         const active =
           screen === item.screen ||
           (item.screen === 'budgetSpend' && isBudgetSection(screen))
+        const handleNavigate = () => onNavigate(item.screen)
         return (
           <button
             key={item.screen}
             type="button"
-            className={active ? 'ds-btn ds-btn-icon ds-btn-selected' : 'ds-btn ds-btn-icon'}
-            onClick={() => onNavigate(item.screen)}
+            className={active ? 'ds-btn ds-btn-icon ds-btn-selected tab-bar-item' : 'ds-btn ds-btn-icon tab-bar-item'}
+            onClick={handleNavigate}
             aria-label={item.label}
             aria-current={active ? 'page' : undefined}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              padding: '8px 0',
-              minHeight: 52,
-              gap: 3,
-              fontFamily: fonts.ui,
-            }}
           >
-            <Icon
-              size={22}
-              strokeWidth={active ? 2 : 1.75}
-            />
-            <span style={{ fontSize: 10, fontWeight: active ? 500 : 400 }}>
-              {item.label}
-            </span>
+            <Icon size={22} strokeWidth={active ? 2 : 1.75} aria-hidden />
           </button>
         )
       })}

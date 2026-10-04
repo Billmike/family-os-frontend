@@ -2009,7 +2009,6 @@ function MainApp() {
 
           <main
             className="app-main"
-            data-tab-scroll=""
             style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}
           >
             {screen === "dashboard" && (

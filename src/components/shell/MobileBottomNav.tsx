@@ -3,7 +3,6 @@ import type { Screen } from '../../types'
 import { isBudgetSection } from '../../routing'
 import { useVisualViewportBox } from '../assistant/useVisualViewportBox'
 import { BOTTOM_NAV } from './nav'
-import { useTabBarScroll } from './useTabBarScroll'
 
 const PHONE_TAB_QUERY = '(max-width: 767px)'
 
@@ -29,7 +28,6 @@ export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
   const isPhone = usePhoneTabBar()
   const { keyboardOpen } = useVisualViewportBox()
   const keyboardHidden = isPhone && keyboardOpen
-  const isCompact = useTabBarScroll(screen, keyboardHidden)
 
   useEffect(() => {
     document.documentElement.classList.toggle('tab-bar-keyboard', keyboardHidden)
@@ -41,7 +39,7 @@ export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
       aria-label="Main"
       aria-hidden={keyboardHidden || undefined}
       inert={keyboardHidden || undefined}
-      className={isCompact ? 'tab-bar is-compact' : 'tab-bar'}
+      className="tab-bar"
     >
       {BOTTOM_NAV.map(item => {
         const Icon = item.icon
@@ -59,6 +57,7 @@ export const MobileBottomNav = ({ screen, onNavigate }: Props) => {
             aria-current={active ? 'page' : undefined}
           >
             <Icon size={22} strokeWidth={active ? 2 : 1.75} aria-hidden />
+            <span className="tab-bar-label">{item.label}</span>
           </button>
         )
       })}

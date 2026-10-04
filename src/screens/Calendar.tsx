@@ -428,7 +428,7 @@ function DayTimeline({ date, today, events, onEventTap, onEmptyGridTap }: {
   const emptyTop = date === today ? Math.max(12, nowY) : 12
 
   return (
-    <div ref={scrollRef} className="calendar-scroll" data-tab-scroll="" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+    <div ref={scrollRef} className="calendar-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
       <div style={{ position: 'relative', height: containerH }}>
         {hours.map(hour => (
           <div
@@ -615,7 +615,7 @@ function MonthGrid({ monthStart, selectedDate, today, events, onSelect }: {
   const currentMonth = monthStart.slice(0, 7)
 
   return (
-    <div className="calendar-scroll" data-tab-scroll="" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+    <div className="calendar-scroll" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(7, 1fr)',

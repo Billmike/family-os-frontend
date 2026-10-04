@@ -967,7 +967,7 @@ html.assistant-phone-open .app-toast {
 :root {
   --tab-pill-height: 70px;
   --tab-pill-bottom: 8px;
-  --tab-bar-inset-x: 40px;
+  --tab-bar-inset-x: 24px;
   --tab-fab-gap: 16px;
   --tab-fab-size: 56px;
   --tab-content-gap: 28px;
